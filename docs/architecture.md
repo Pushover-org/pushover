@@ -40,3 +40,38 @@ Nothing copies it.
 - `packages/agent` may not import PayPal code. The model never moves money.
 - `packages/oracle` may not import `packages/ledger`. The scorer stays
   independent of what it scores.
+
+## Database (packages/db)
+
+Schema is spec §4.5 with these deliberate changes:
+
+- **Customers and orders are keyed by (merchant, id).** The Lab sends one message to
+  both agents, so a scenario must exist in both stores under the same refs
+  ("C-1042", "PO-4417"). Child tables carry `merchant` in their foreign keys.
+- **Unassigned pool orders** have `customer_id` and `delivered_at` NULL until fixture
+  checkout assigns both (a CHECK keeps them together). Otherwise every pool order
+  would have to belong to a fake customer.
+- **audit_log is append-only for everyone:** a trigger blocks UPDATE, DELETE and
+  TRUNCATE even for the table owner, on top of the `pushover_app` grants (0002).
+  On Railway the app may connect as the database owner, so grants alone are not enough.
+- **policy rows are written only by migrations** (v1 is `0003_policy_v1.sql`).
+  Results are scored against a policy version, so a version is never edited.
+- **The migrator** stores a SHA-256 per file and refuses to run if an applied file
+  changed. It takes an advisory lock so two deploys cannot migrate at once.
+- **Rate limiting:** `rate_buckets` is a per-key lock row and `rate_grants` logs grants,
+  giving the same rolling-minute window as packages/paypal, shared by every process
+  (`PgRateLimiter`). The spec's token-bucket `tokens` column is not used.
+- **Integrity checks in SQL:** USD only; positive amounts; item scope ⇔ item SKU;
+  ledger intents only for the guarded store; an eval row is UNVERIFIED exactly when
+  `moved_cents` is NULL (unknown never becomes 0).
+
+### Local dev database
+
+- Docker container `pushover-pg` (postgres:17-alpine) on `127.0.0.1:5433`, volume
+  `pushover-pg-data`. The URL with its random password is only in `.env.local`.
+- It runs on the **`default`** Docker engine. This laptop also has Docker Desktop, which
+  may become the current context, so use `docker --context default ...` for it.
+- `pnpm db:migrate`, then `pnpm db:seed` (customers + `.data/seed` manifest).
+- Tests create a throwaway `pushover_test_*` database per run and drop it. They read
+  only `DATABASE_URL` from `.env.local`, not the PayPal or Anthropic keys.
+- To verify on Railway (step 10): its Postgres major version; we develop on 17.

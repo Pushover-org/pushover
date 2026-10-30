@@ -40,28 +40,42 @@ Last updated: 2026-10-30.
   - Sandbox play money moved so far: $3,587.28 captured (40 seed orders $3,581.28
     + 6 day-1 orders at $1.00) and $0.40 refunded. Merchants started at $10,000 each.
 
+- **§9 step 5:** `packages/db`.
+  - Migrations 0001 (schema, keyed by store + id; append-only audit_log trigger),
+    0002 (`pushover_app` role), 0003 (policy v1), checksummed migrator, typed
+    queries, Postgres-backed shared rate limiter. Changes from spec §4.5 are listed
+    in `docs/architecture.md` → Database.
+  - Dev DB: Docker `pushover-pg` (postgres 17.11) on 127.0.0.1:5433, on the
+    **default** Docker engine (`docker --context default ...`; Docker Desktop may be
+    the current context). `pnpm db:migrate` then `pnpm db:seed`.
+  - Dev DB loaded: 6 customers per store, 40 POOL orders (20 per store). Four rows
+    checked against PayPal GET order: capture IDs and amounts match.
+  - Evidence: `pnpm test` 69/69 (16 db tests on real Postgres; CI has a postgres service).
+
 ## In progress
 
-- Nothing. Step 4 is committed.
+- Nothing. Step 5 is committed.
 
 ## Open for the owner / notes for later steps
 
-- The rate limiter is per process. A Postgres-backed one (`rate_buckets`) comes
-  with `packages/db` (step 5), before web and worker run side by side.
-- **Step 5 (db):** load `.data/seed/*.jsonl` into `orders`/`order_items`/`captures`
-  (state POOL). `orders.id` is the global primary key while both merchants hold
-  mirrored scenarios, so seed refs are split by range (10001+ guarded,
-  20001+ baseline). Decide whether Lab fixtures need the same ref on both sides.
-  If so, the key must become (merchant, id).
+- `.env.local` had an existing `DATABASE_URL=` line that step 5 replaced without
+  reading it first. It was most likely the empty template placeholder; if it held a
+  real value, restore it under another name.
 - **Step 8 (ledger):** PayPal item tax is per unit, so an item refund is
   `qty × (unit + tax)`. Spec §7.1's "qty × unit + tax" is only right for qty 1.
 - **Step 8/12 (ledger, reconciler):** PayPal keeps request keys for 6 hours
   (Orders v2 spec). Before retrying an UNVERIFIED refund, read the order's
   refunds and match `custom_id`. Never re-POST blindly after 6 h.
+- **Step 10 (deploy):** check Railway's Postgres major version (dev uses 17), create
+  a login role that is a member of `pushover_app` for the app, and use the
+  `PgRateLimiter` (key per sandbox) in web and worker instead of the in-memory one.
+- The pool holds 20 captures per merchant; spec §3.6 wants ≥150 for the eval. The
+  worker's replenisher (step 12) tops it up; `pnpm seed --count N` works meanwhile.
 
 ## Next action
 
-- §9 step 5: `packages/db`: Postgres in Docker for local dev, migrations
-  0001 (§4.5) / 0002 (roles: app cannot UPDATE/DELETE audit_log), migrator,
-  typed queries, load the seed manifest, policy v1 row. Needs `DATABASE_URL`
-  in `.env.local` (local Docker URL; no owner secret needed).
+- §9 step 6: `packages/baseline` Path A: Claude through `ai@4.3.19` +
+  `@ai-sdk/anthropic@1.2.12` + `@paypal/agent-toolkit@1.11.0` (pinned), wired
+  exactly like PayPal's example; checkpoint **D1-6** (and D1-10: toolkit still
+  1.11.0). Uses `ANTHROPIC_API_KEY` (now present in `.env.local`; verify it works
+  and has a spend limit). If D1-6 fails with a 400, switch to Path B (spec §5.3.3).
