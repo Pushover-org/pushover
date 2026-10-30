@@ -37,7 +37,8 @@ Last updated: 2026-10-30.
     PO-20001..20020 (baseline), manifest in git-ignored `.data/seed/`.
     Re-send of PO-10002 returned the same order and capture.
   - Evidence: `pnpm test` 53/53; script outputs in `docs/sandbox-findings.md`.
-  - Sandbox play money spent so far: about $2,700 of captures and $0.40 of refunds.
+  - Sandbox play money moved so far: $3,587.28 captured (40 seed orders $3,581.28
+    + 6 day-1 orders at $1.00) and $0.40 refunded. Merchants started at $10,000 each.
 
 ## In progress
 
