@@ -1,0 +1,22 @@
+# secrets — never commit (spec §0.1 rule 6)
+.env
+.env.*
+!.env.example
+
+# local assistant instructions (owner decides whether to publish)
+CLAUDE.md
+
+# build output / deps
+node_modules/
+.next/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.log
+.DS_Store
+
+# tooling
+*.tsbuildinfo
+blob-report/
+.code-review-graph/
