@@ -1,0 +1,6 @@
+#!/bin/sh
+# Block any attribution/co-author lines (owner rule: commits are the owner's alone)
+if grep -i -q -E "co-authored-by|generated with|🤖|claude\.ai/code|noreply@anthropic\.com" "$1"; then
+  echo "commit-msg hook: attribution line found in the commit message — remove it. Commits carry no co-author or 'Generated with' lines." >&2
+  exit 1
+fi
