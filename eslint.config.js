@@ -12,6 +12,10 @@ export default tseslint.config(
   {
     languageOptions: { globals: { ...globals.node } },
   },
+  {
+    files: ["**/test/**"],
+    rules: { "@typescript-eslint/no-non-null-assertion": "off" },
+  },
   // The model never moves money (spec §0.1 rule 7, §2.7). The agent package must not
   // reach PayPal directly: no @pushover/paypal, no @paypal/* SDKs, no relative path into it.
   {
