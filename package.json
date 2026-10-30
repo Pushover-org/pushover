@@ -12,7 +12,10 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "day1:d1-2": "node --env-file-if-exists=.env.local scripts/day1/d1-2-oauth-404.ts",
-    "day1:d1-9": "node --env-file-if-exists=.env.local scripts/day1/d1-9-mock-response.ts"
+    "day1:d1-9": "node --env-file-if-exists=.env.local scripts/day1/d1-9-mock-response.ts",
+    "day1:d1-3": "node --env-file-if-exists=.env.local scripts/day1/d1-3-card-seed.ts",
+    "day1:d1-4": "node --env-file-if-exists=.env.local scripts/day1/d1-4-refund-idempotent.ts",
+    "day1:d1-5": "node --env-file-if-exists=.env.local scripts/day1/d1-5-refund-no-key.ts"
   },
   "devDependencies": {
     "@pushover/paypal": "workspace:*",
