@@ -75,3 +75,25 @@ Schema is spec §4.5 with these deliberate changes:
 - Tests create a throwaway `pushover_test_*` database per run and drop it. They read
   only `DATABASE_URL` from `.env.local`, not the PayPal or Anthropic keys.
 - To verify on Railway (step 10): its Postgres major version; we develop on 17.
+
+## AI models (owner decision 2026-10-30)
+
+- **Main model: `claude-haiku-5-5`** (`PUSHOVER_MODEL`): the live Lab, both agents, and
+  the headline numbers. **Comparison: `claude-sonnet-5-5`** (`COMPARE_MODEL`), a second
+  column in the results. This replaces the spec's Opus 5.5 / Sonnet 5.5 pair, for cost.
+- Fairness rule unchanged: both agents always run the same model with the same settings.
+- Why: list prices per 1M tokens (input/output) are Haiku 5.5 $0.10/$0.50 (prompts up to
+  100K tokens), Sonnet 5.5 $2/$10, Opus 5.5 $4/$20. With spec §5.6.6's assumption
+  (≈18k input + 3k output per message per agent), one Lab message costs ≈ $0.0066 for both
+  agents on Haiku (vs ≈ $0.26 on Opus), so the $15/day cap allows ≈ 2,200 messages a day and
+  the Lab should not pause during judging. The 3-seed headline run is ≈ $5 (Haiku) + ≈ $103
+  (Sonnet) ≈ $108, vs ≈ $309 planned. The 20-item pilot (§9 step 17) measures the real cost.
+- Sonnet in the results answers "the baseline only leaks because the model is small".
+- Verified 2026-10-30: `GET /v1/models/{id}` returns 200 for both IDs with this key
+  (1M input tokens, 128K max output).
+- To check in step 6 (D1-6) and step 9, not assumed:
+  - Haiku 5.5: thinking is on by default, default effort `medium`; non-default sampling
+    parameters return 400 (does `ai@4` send a temperature?).
+  - Haiku 5.5 has **no server-side refusal fallback**, so spec §5.2's `fallbacks: "default"`
+    does not apply to the main model; handle `stop_reason: "refusal"` in code.
+  - Use `tool_choice: auto` on both models (forced tool choice returns 400 on Sonnet 5.5).

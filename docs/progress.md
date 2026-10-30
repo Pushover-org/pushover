@@ -72,10 +72,15 @@ Last updated: 2026-10-30.
 - The pool holds 20 captures per merchant; spec §3.6 wants ≥150 for the eval. The
   worker's replenisher (step 12) tops it up; `pnpm seed --count N` works meanwhile.
 
+- **AI models (owner decision 2026-10-30):** main `claude-haiku-5-5`, comparison
+  `claude-sonnet-5-5` (was Opus 5.5 / Sonnet 5.5). Reasons and step-6 checks in
+  `docs/architecture.md` → AI models. `.env.local` updated; key verified via Models API.
+
 ## Next action
 
 - §9 step 6: `packages/baseline` Path A: Claude through `ai@4.3.19` +
   `@ai-sdk/anthropic@1.2.12` + `@paypal/agent-toolkit@1.11.0` (pinned), wired
   exactly like PayPal's example; checkpoint **D1-6** (and D1-10: toolkit still
-  1.11.0). Uses `ANTHROPIC_API_KEY` (now present in `.env.local`; verify it works
-  and has a spend limit). If D1-6 fails with a 400, switch to Path B (spec §5.3.3).
+  1.11.0) on **`claude-haiku-5-5`**, then Sonnet 5.5. Key works (Models API 200);
+  confirm with the owner that it has a monthly spend limit. If D1-6 fails with a 400,
+  switch to Path B (spec §5.3.3).
