@@ -27,19 +27,40 @@ Last updated: 2026-10-30.
   - **D1-2 PASS** and **D1-9 PASS** against the sandbox: outputs in
     `docs/sandbox-findings.md`.
 
+- **§9 step 4:** seeding path and refund idempotency.
+  - **D1-3 PASS:** card-source orders capture in one call, so seeding uses **Path A**.
+  - **D1-4 PASS:** same key → same refund. Same key with a different amount
+    silently returns the original refund; `refundCapture` now throws
+    `PayPalRefundMismatchError` on any amount mismatch.
+  - **D1-5:** two keyless refunds → two refunds (risk confirmed, evidence for §10).
+  - `pnpm seed` ran: 20 captures per merchant, refs PO-10001..10020 (guarded) and
+    PO-20001..20020 (baseline), manifest in git-ignored `.data/seed/`.
+    Re-send of PO-10002 returned the same order and capture.
+  - Evidence: `pnpm test` 53/53; script outputs in `docs/sandbox-findings.md`.
+  - Sandbox play money spent so far: about $2,700 of captures and $0.40 of refunds.
+
 ## In progress
 
-- Nothing. Step 3 is committed.
+- Nothing. Step 4 is committed.
 
-## Open for the owner
+## Open for the owner / notes for later steps
 
-- The limiter is per process for now. A Postgres-backed one (spec §4.7.1
-  `rate_buckets`) comes with `packages/db` (step 5), before web and worker run
-  side by side.
+- The rate limiter is per process. A Postgres-backed one (`rate_buckets`) comes
+  with `packages/db` (step 5), before web and worker run side by side.
+- **Step 5 (db):** load `.data/seed/*.jsonl` into `orders`/`order_items`/`captures`
+  (state POOL). `orders.id` is the global primary key while both merchants hold
+  mirrored scenarios, so seed refs are split by range (10001+ guarded,
+  20001+ baseline). Decide whether Lab fixtures need the same ref on both sides.
+  If so, the key must become (merchant, id).
+- **Step 8 (ledger):** PayPal item tax is per unit, so an item refund is
+  `qty × (unit + tax)`. Spec §7.1's "qty × unit + tax" is only right for qty 1.
+- **Step 8/12 (ledger, reconciler):** PayPal keeps request keys for 6 hours
+  (Orders v2 spec). Before retrying an UNVERIFIED refund, read the order's
+  refunds and match `custom_id`. Never re-POST blindly after 6 h.
 
 ## Next action
 
-- §9 step 4: D1-3 seeding path (card source, spec §3.6 Path A). Needs a sandbox
-  test card from Developer Dashboard → Testing Tools → Credit Card Generator
-  (never invent card numbers). Then `scripts/seed.ts`, then D1-4 / D1-5
-  (refund with and without a PayPal-Request-Id).
+- §9 step 5: `packages/db`: Postgres in Docker for local dev, migrations
+  0001 (§4.5) / 0002 (roles: app cannot UPDATE/DELETE audit_log), migrator,
+  typed queries, load the seed manifest, policy v1 row. Needs `DATABASE_URL`
+  in `.env.local` (local Docker URL; no owner secret needed).
