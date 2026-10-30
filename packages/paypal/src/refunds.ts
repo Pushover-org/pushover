@@ -1,4 +1,5 @@
 import type { PayPalClient } from "./client.ts";
+import { PayPalRefundMismatchError } from "./errors.ts";
 import { centsToValue } from "./money.ts";
 import type { Capture, Refund } from "./types.ts";
 
@@ -19,19 +20,25 @@ export interface RefundCaptureArgs {
 /**
  * The one money-moving call. Always sends an explicit amount: an empty body
  * refunds "captured minus previous refunds", which is the baseline's failure mode.
+ * The returned refund must be for the requested amount (see PayPalRefundMismatchError).
  */
-export function refundCapture(pp: PayPalClient, a: RefundCaptureArgs): Promise<Refund> {
+export async function refundCapture(pp: PayPalClient, a: RefundCaptureArgs): Promise<Refund> {
   if (a.customId.length > CUSTOM_ID_MAX) throw new Error(`custom_id longer than ${CUSTOM_ID_MAX}`);
-  return pp.request<Refund>("POST", `/v2/payments/captures/${encodeURIComponent(a.captureId)}/refund`, {
+  const value = centsToValue(a.amountCents);
+  const refund = await pp.request<Refund>("POST", `/v2/payments/captures/${encodeURIComponent(a.captureId)}/refund`, {
     requestId: a.requestId,
     prefer: "return=representation",
     ...(a.mockCode === undefined ? {} : { mockCode: a.mockCode }),
     body: {
-      amount: { currency_code: "USD", value: centsToValue(a.amountCents) },
+      amount: { currency_code: "USD", value },
       custom_id: a.customId,
       note_to_payer: a.note.slice(0, NOTE_MAX),
     },
   });
+  if (refund.amount?.value !== value) {
+    throw new PayPalRefundMismatchError(a.requestId, value, { id: refund.id, status: refund.status, value: refund.amount?.value });
+  }
+  return refund;
 }
 
 export function getRefund(pp: PayPalClient, refundId: string): Promise<Refund> {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { PayPalApiError, PayPalNetworkError, PayPalUnknownOutcomeError } from "../src/errors.ts";
+import { PayPalApiError, PayPalNetworkError, PayPalRefundMismatchError, PayPalUnknownOutcomeError } from "../src/errors.ts";
 import { refundCapture } from "../src/refunds.ts";
 import { fakePayPal, json, makeClient, timeoutError, tokenReply } from "./fake.ts";
 
-const created = () => json(201, { id: "R1", status: "COMPLETED" });
+const created = () => json(201, { id: "R1", status: "COMPLETED", amount: { currency_code: "USD", value: "42.00" } });
 const post = (client: ReturnType<typeof makeClient>["client"], requestId = "rr-1") =>
   client.request("POST", "/v2/payments/captures/C1/refund", { requestId, body: { amount: { currency_code: "USD", value: "1.00" } } });
 
@@ -25,7 +25,7 @@ describe("PayPalClient", () => {
   it("retries a 5xx POST with the same PayPal-Request-Id", async () => {
     const pp = fakePayPal([json(500, { name: "INTERNAL_SERVER_ERROR" }), json(503, {}), created()]);
     const { client } = makeClient(pp.fetch);
-    await expect(post(client)).resolves.toEqual({ id: "R1", status: "COMPLETED" });
+    await expect(post(client)).resolves.toMatchObject({ id: "R1", status: "COMPLETED" });
     expect(pp.calls.map((c) => c.headers["PayPal-Request-Id"])).toEqual(["rr-1", "rr-1", "rr-1"]);
   });
 
@@ -151,13 +151,21 @@ describe("refundCapture", () => {
     const pp = fakePayPal([]);
     const { client } = makeClient(pp.fetch);
     for (const amountCents of [0, -1, 1.5]) {
-      expect(() => refundCapture(client, { captureId: "C", amountCents, requestId: "k", customId: "c", note: "" })).toThrow();
+      await expect(refundCapture(client, { captureId: "C", amountCents, requestId: "k", customId: "c", note: "" })).rejects.toThrow();
     }
     expect(pp.fetch).not.toHaveBeenCalled();
   });
 
-  it("rejects a custom_id over PayPal's 127 character limit", () => {
+  it("rejects a custom_id over PayPal's 127 character limit", async () => {
     const { client } = makeClient(fakePayPal([]).fetch);
-    expect(() => refundCapture(client, { captureId: "C", amountCents: 1, requestId: "k", customId: "x".repeat(128), note: "" })).toThrow(/127/);
+    await expect(refundCapture(client, { captureId: "C", amountCents: 1, requestId: "k", customId: "x".repeat(128), note: "" })).rejects.toThrow(/127/);
+  });
+
+  it("flags a refund returned for a different amount (reused key, D1-4)", async () => {
+    const original = json(200, { id: "R1", status: "COMPLETED", amount: { currency_code: "USD", value: "0.10" } });
+    const { client } = makeClient(fakePayPal([original]).fetch);
+    const err = await refundCapture(client, { captureId: "C", amountCents: 20, requestId: "K", customId: "c", note: "" }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(PayPalRefundMismatchError);
+    expect(err).toMatchObject({ requestedValue: "0.20", refund: { id: "R1", value: "0.10" } });
   });
 });

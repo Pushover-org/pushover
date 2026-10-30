@@ -62,3 +62,22 @@ export class PayPalNetworkError extends Error {
     this.path = path;
   }
 }
+
+/**
+ * PayPal returned a refund whose amount differs from the one requested. PayPal
+ * answers a reused PayPal-Request-Id with the ORIGINAL refund and ignores the new
+ * body (D1-4, docs/sandbox-findings.md), so this means a key was reused for a
+ * different intent. A refund does exist; it is just not the one asked for.
+ */
+export class PayPalRefundMismatchError extends Error {
+  readonly requestId: string;
+  readonly requestedValue: string;
+  readonly refund: { id: string; status: string; value: string | undefined };
+  constructor(requestId: string, requestedValue: string, refund: { id: string; status: string; value: string | undefined }) {
+    super(`Refund ${refund.id} is ${refund.value ?? "unknown"}, requested ${requestedValue} (PayPal-Request-Id ${requestId})`);
+    this.name = "PayPalRefundMismatchError";
+    this.requestId = requestId;
+    this.requestedValue = requestedValue;
+    this.refund = refund;
+  }
+}
