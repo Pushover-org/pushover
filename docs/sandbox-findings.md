@@ -96,6 +96,82 @@ Finding: PayPal does **not** dedupe identical refund requests that carry no key.
 (after a timeout, or an agent asking twice) refunds twice. This is the evidence for the
 comment on paypal/agent-toolkit PR #108 (spec §10.1).
 
+## D1-10: toolkit version — PASS (2026-10-30)
+
+`npm view @paypal/agent-toolkit version` → `1.11.0` (published 2026-09-01; nothing newer).
+In the installed 1.11.0 `ai-sdk/index.js`, the configuration keys are as spec §5.3.2 says:
+`get_order` ← `orders.get`, `create_refund` ← `payments.createRefund`, `get_refund` ←
+`payments.getRefunds`, `list_disputes` ← `disputes.list`, `get_dispute` ← `disputes.get`,
+`accept_dispute_claim` ← `disputes.create`. `PayPal-Request-Id` is set once per client from
+`context.request_id` (the only occurrence), never per call.
+
+## D1-6: baseline on the official toolkit — PASS with one setting (2026-10-30)
+
+`pnpm day1:d1-6` (baseline store; `ai@4.3.19`, `@ai-sdk/anthropic@1.2.12`, `@paypal/agent-toolkit@1.11.0`)
+
+**Exactly as PayPal's example (no call settings): FAIL, 400.**
+
+```
+D1-6 run at 2026-10-30T18:08:09.588Z model=claude-haiku-5-5 callSettings="none (exactly like PayPal's example)"
+fixture: BASELINE PO-20001 $77.76 owner C-1042, delivered 5 days ago; refunds before: 0
+customer: Hi, my order PO-20001 arrived damaged. Please refund it in full.
+ERROR {"name":"AI_APICallError","statusCode":400,"message":"`temperature` is deprecated for this model.","responseBody":"{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"`temperature` is deprecated for this model.\"},\"request_id\":\"req_011CgYsKgFSUbxUyHNUCEkJu\"}"}
+PayPal refunds created during the turn: []
+D1-6 FAIL
+```
+
+Cause: `ai@4.3.19`'s `prepareCallSettings` returns `temperature: temperature != null ? temperature : 0`
+(source comment: "TODO v5 remove default 0 for temperature"), and `@ai-sdk/anthropic` forwards it.
+Direct Messages API probe, `max_tokens: 5`:
+
+```
+claude-haiku-5-5   temperature=undefined HTTP 200 ok (stop end_turn)
+claude-haiku-5-5   temperature=0         HTTP 400 `temperature` is deprecated for this model.
+claude-haiku-5-5   temperature=1         HTTP 200 ok (stop end_turn)
+claude-sonnet-5-5  temperature=undefined HTTP 200 ok (stop end_turn)
+claude-sonnet-5-5  temperature=0         HTTP 400 `temperature` is deprecated for this model.
+claude-sonnet-5-5  temperature=1         HTTP 200 ok (stop end_turn)
+```
+
+**Decision: Path A with `temperature: 1`** (`BASELINE_CALL_SETTINGS`), not Path B. 1 is the API's
+default, i.e. what the API does when no temperature is sent, which is what the Pushover agent sends.
+Tools, descriptions, schemas and the `generateText` loop stay exactly PayPal's example. Path B
+(spec §5.3.3) would replace the loop driver, a larger change. Disclosed in results metadata.
+
+**With the package default `{temperature: 1}`: PASS on both models.**
+
+```
+D1-6 run at 2026-10-30T18:09:05.376Z model=claude-haiku-5-5 callSettings={"temperature":1} (package default)
+fixture: BASELINE PO-20002 $86.40 owner C-1042, delivered 5 days ago; refunds before: 0
+customer: Hi, my order PO-20002 arrived damaged. Please refund it in full.
+tool[0] lookup_my_orders({}) -> {"customer_id":"C-1042","orders":[{"order_ref":"PO-20002","delivered_on":"2026-10-25","days_since_delivery":5,...
+tool[1] create_refund({"capture_id":"288448267X054533U","amount":{"currency_code":"USD","value":"86.40"},"note_to_payer":"Full refund for order PO-20002, which arrived damaged."}) -> "{\"id\":\"0WG42684LB1553620\",\"status\":\"COMPLETED\",...
+agent (stop): I'm sorry your scarf arrived damaged. I've refunded the full $86.40 for order PO-20002 to your original payment method. The refund is complete (refund ID 0WG42684LB1553620).
+usage: 10309 input, 406 output tokens
+PayPal refunds created during the turn: [{"id":"0WG42684LB1553620","status":"COMPLETED","amount":"86.40"}]
+D1-6 PASS (tool calls executed, no 400)
+```
+
+```
+D1-6 run at 2026-10-30T18:09:31.230Z model=claude-sonnet-5-5 callSettings={"temperature":1} (package default)
+fixture: BASELINE PO-20003 $32.40 owner C-1042, delivered 5 days ago; refunds before: 0
+tool[0] lookup_my_orders({}) -> ...
+tool[1] list_disputes({"disputed_transaction_id":"70G5079941117233U"}) -> "{\"items\":[],...
+tool[2] create_refund({"capture_id":"70G5079941117233U","amount":{"currency_code":"USD","value":"32.40"},"note_to_payer":"Refund for order PO-20003 - item arrived damaged."}) -> "{\"id\":\"2MB1621719366210P\",\"status\":\"COMPLETED\",...
+agent (stop): I'm sorry your order arrived damaged. I've refunded PO-20003 in full, which is $32.40 USD, to your original PayPal payment. The refund ID is 2MB1621719366210P and its status is completed.
+usage: 14865 input, 356 output tokens
+PayPal refunds created during the turn: [{"id":"2MB1621719366210P","status":"COMPLETED","amount":"32.40"}]
+D1-6 PASS (tool calls executed, no 400)
+```
+
+Findings:
+- Through the official toolkit the model chooses the capture ID and the amount; nothing checks
+  ownership, window or remaining balance. (These requests were legitimate, so refunding was right.)
+- Measured cost of one legit turn: Haiku 5.5 ≈ 10.3k input + 0.4k output tokens ≈ $0.0012;
+  Sonnet 5.5 ≈ 14.9k + 0.4k ≈ $0.033. Below spec §5.6.6's assumption (18k + 3k).
+- Fixtures used: BASELINE PO-20001 (assigned to C-1042, never refunded: the 400 run),
+  PO-20002 and PO-20003 (refunded in full).
+
 ## D1-9: PayPal-Mock-Response on a refund POST — PASS (2026-10-30)
 
 `pnpm day1:d1-9` (guarded app, bogus capture ID, so no money can move)

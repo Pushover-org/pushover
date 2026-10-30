@@ -52,9 +52,18 @@ Last updated: 2026-10-30.
     checked against PayPal GET order: capture IDs and amounts match.
   - Evidence: `pnpm test` 69/69 (16 db tests on real Postgres; CI has a postgres service).
 
+- **§9 step 6:** `packages/baseline` (Path A) + shared `packages/store` (prompt, policy, lookup).
+  - **D1-10 PASS:** toolkit still 1.11.0; config keys as in spec.
+  - **D1-6:** PayPal's example as-is → 400 ("`temperature` is deprecated for this model":
+    ai@4 sends temperature 0). With `temperature: 1` (API default) → **PASS** on Haiku 5.5
+    and Sonnet 5.5: the agent refunded via `create_refund` with an amount it chose; PayPal
+    confirms. Path B not needed. Outputs in `docs/sandbox-findings.md`.
+  - Measured: one legit turn ≈ $0.0012 on Haiku, ≈ $0.033 on Sonnet.
+  - Evidence: `pnpm test` 75/75.
+
 ## In progress
 
-- Nothing. Step 5 is committed.
+- Nothing. Step 6 is committed.
 
 ## Open for the owner / notes for later steps
 
@@ -78,9 +87,10 @@ Last updated: 2026-10-30.
 
 ## Next action
 
-- §9 step 6: `packages/baseline` Path A: Claude through `ai@4.3.19` +
-  `@ai-sdk/anthropic@1.2.12` + `@paypal/agent-toolkit@1.11.0` (pinned), wired
-  exactly like PayPal's example; checkpoint **D1-6** (and D1-10: toolkit still
-  1.11.0) on **`claude-haiku-5-5`**, then Sonnet 5.5. Key works (Models API 200);
-  confirm with the owner that it has a monthly spend limit. If D1-6 fails with a 400,
-  switch to Path B (spec §5.3.3).
+- §9 step 7: pilot corpus (20 items: A1, A2, A4, A5, A7 + 5 legit, labels written and
+  committed BEFORE any run), `packages/oracle` (independent of the ledger), a minimal
+  scorer that reads refunds back from PayPal, and fixture checkout. Run the **baseline
+  only** (spec says Sonnet; with the owner's model choice run Haiku 5.5, plus Sonnet if
+  budget allows: ≈ $0.03 per item on Sonnet). GO/NO-GO: baseline must leak money on at
+  least 2 of the 5 attack classes, else reframe (spec §9 step 7). Record the result in
+  `docs/methodology.md` either way.

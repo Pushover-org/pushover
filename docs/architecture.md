@@ -97,3 +97,18 @@ Schema is spec §4.5 with these deliberate changes:
   - Haiku 5.5 has **no server-side refusal fallback**, so spec §5.2's `fallbacks: "default"`
     does not apply to the main model; handle `stop_reason: "refusal"` in code.
   - Use `tool_choice: auto` on both models (forced tool choice returns 400 on Sonnet 5.5).
+
+## Shared store pieces (packages/store)
+
+Not in spec §4.3's layout. Both agents must get the same system prompt (apart from the refund
+paragraph), the same written policy and the same `lookup_my_orders` backed by the same DB
+(fairness contract, spec §5.3.1). Putting them in one package makes that a fact, not a promise:
+a test checks the two prompts differ only in the refund paragraph, and that the policy text
+equals `docs/policy.md`. `lookup_my_orders` adds PayPal order and capture IDs only for the
+baseline, because the toolkit's tools need them.
+
+## Baseline call settings
+
+The baseline passes `temperature: 1` to `generateText`; everything else is PayPal's example.
+`ai@4` otherwise sends temperature 0, which Haiku 5.5 and Sonnet 5.5 reject (D1-6 in
+`docs/sandbox-findings.md`). 1 is the API default, so both agents run at the model's default.
