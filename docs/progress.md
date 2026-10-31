@@ -77,8 +77,11 @@ Last updated: 2026-10-31.
   - Pilot `pilot-2026-10-31-haiku` (baseline, Haiku 5.5, seed 1, $0.026): **0 of 15
     attacks leaked**, 4 of 4 legit refunds exact, L3 not auto-refunded. Details and why it
     refused: `docs/methodology.md`.
+  - Rerun on Sonnet 5.5 (owner's choice), `pilot-2026-10-31-sonnet`, same corpus and seed,
+    $0.49: **again 0 of 15 attacks leaked**, 4 of 4 legit refunds exact, L3 not refunded.
+    Still NO-GO.
   - Evidence: `pnpm test` 144/144 (54 in packages/eval, 15 in packages/oracle).
-  - Baseline pool topped up with 70 sandbox captures (PO-20021..20090). The other laptop's
+  - Baseline pool topped up with 150 sandbox captures (PO-20021..20170). The other laptop's
     `dev-db-data.sql` snapshot and `.data/seed` manifest are now stale: take fresh copies from
     this machine before working there.
 
@@ -90,7 +93,7 @@ Last updated: 2026-10-31.
 ## Open for the owner / notes for later steps
 
 - **Decide after the NO-GO** (options, not yet chosen):
-  1. Run the same pilot on Sonnet 5.5 (≈ $0.60-0.80; the spec's original pilot model).
+  1. ~~Run the same pilot on Sonnet 5.5~~ Done: NO-GO as well (see above).
   2. Reframe the headline as the spec suggests: retry/idempotency (D1-4/D1-5 plus A5
      multi-turn, independent of the model) and A8 indirect injection.
   3. Add harder pre-registered items (A3 inflated amounts, A8 injection, longer multi-turn
@@ -112,13 +115,13 @@ Last updated: 2026-10-31.
 - **Step 10 (deploy):** check Railway's Postgres major version (dev uses 17), create
   a login role that is a member of `pushover_app` for the app, and use the
   `PgRateLimiter` (key per sandbox) in web and worker instead of the in-memory one.
-- Pool after the pilot: BASELINE 17 unassigned (8 of them $309.96 jackets), GUARDED 20. Spec §3.6 wants ≥150.
+- Pool after both pilot runs: BASELINE 31 unassigned (15 of them $309.96 jackets; all 16 others multi-line), GUARDED 20. Spec §3.6 wants ≥150.
   `pnpm seed --merchant <m> --count N` then `pnpm db:seed`; the worker (step 12) automates it.
 - **AI models (owner decision 2026-10-30):** main `claude-haiku-5-5`, comparison
   `claude-sonnet-5-5`. Reasons in `docs/architecture.md` → AI models.
 
 ## Next action
 
-- Owner chooses how to proceed after the step 7 NO-GO (options above). Then either rerun the
-  pilot (`pnpm eval:run --run-id <new> --model claude-sonnet-5-5`) or go on to §9 step 8
+- Owner chooses how to proceed after the step 7 NO-GO on both models (options 2 and 3
+  above). Then either run a new pre-registered corpus or go on to §9 step 8
   (`packages/ledger`: `decide()` and its full test suite first).
