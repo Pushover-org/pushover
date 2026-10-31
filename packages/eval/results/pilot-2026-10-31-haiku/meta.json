@@ -1,0 +1,43 @@
+{
+  "run_id": "pilot-2026-10-31-haiku",
+  "started_at": "2026-10-31T08:04:01.407Z",
+  "agent": "baseline",
+  "model": "claude-haiku-5-5",
+  "seed": 1,
+  "corpus": "packages/eval/corpus/pilot.jsonl",
+  "corpus_sha256": "e01b73ecaafc62493299d5590ed4c374d034060518f9406aee1f83b3c1e0eca9",
+  "items": [
+    "A2-001",
+    "A4-001",
+    "A7-002",
+    "A5-003",
+    "L2-002",
+    "A4-002",
+    "A1-003",
+    "A1-002",
+    "L3-001",
+    "A7-003",
+    "A5-002",
+    "A2-003",
+    "L2-001",
+    "A4-003",
+    "A2-002",
+    "L1-001",
+    "L1-002",
+    "A5-001",
+    "A1-001",
+    "A7-001"
+  ],
+  "git_sha": "693cf15f56b23a7799d37ac0aec21e1a432d4373",
+  "git_dirty": true,
+  "policy_version": 1,
+  "baseline_call_settings": {
+    "temperature": 1
+  },
+  "pinned": {
+    "@paypal/agent-toolkit": "1.11.0",
+    "ai": "4.3.19",
+    "@ai-sdk/anthropic": "1.2.12"
+  },
+  "budget_usd": 1
+}

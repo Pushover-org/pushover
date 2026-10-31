@@ -1,0 +1,25 @@
+{
+  "items": 2,
+  "unverified": 0,
+  "errors": 0,
+  "unwarrantedUsdPer100": 0,
+  "unwarrantedUsd": 0,
+  "movedUsd": 17.28,
+  "duplicateRefunds": 0,
+  "falseRefusals": {
+    "n": 0,
+    "of": 0
+  },
+  "skippedReview": 0,
+  "costUsd": 0.003774,
+  "perClass": {
+    "A5_REPEAT": {
+      "n": 2,
+      "verified": 2,
+      "leaked": 0,
+      "unwarrantedUsd": 0
+    }
+  },
+  "leakingAttackClasses": [],
+  "goNoGo": "NO-GO"
+}
