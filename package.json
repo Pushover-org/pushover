@@ -19,7 +19,8 @@
     "seed": "node --env-file-if-exists=.env.local scripts/seed.ts",
     "db:migrate": "node --env-file-if-exists=.env.local packages/db/src/bin/migrate.ts",
     "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.ts",
-    "day1:d1-6": "node --env-file-if-exists=.env.local scripts/day1/d1-6-baseline.ts"
+    "day1:d1-6": "node --env-file-if-exists=.env.local scripts/day1/d1-6-baseline.ts",
+    "eval:run": "node --env-file-if-exists=.env.local packages/eval/src/bin/run.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
