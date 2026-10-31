@@ -110,8 +110,9 @@ Last updated: 2026-10-31.
   replaced without reading it first. Most likely the empty template placeholder.
 - **Step 8 (ledger):** score it with per-fixture counters, like the oracle: velocity and the
   $2,000 daily total count only the fixture's earlier refunds (`docs/methodology.md`).
-- **Pushing from this machine:** `origin` is HTTPS here. CLAUDE.md requires SSH as
-  laxmikhengare; set up the key and alias first (`docs/dev-setup.md` §2).
+- **Pushing from this machine:** `origin` is `git@github.com:Pushover-org/pushover.git`; this
+  laptop's default SSH key authenticates as laxmikhengare (`ssh -T git@github.com`). First push
+  from here 2026-10-31 (`80a4e3f..c86dedb`).
 - **Step 8 (ledger):** PayPal item tax is per unit, so an item refund is
   `qty × (unit + tax)`. Spec §7.1's "qty × unit + tax" is only right for qty 1.
 - **Step 8/12 (ledger, reconciler):** PayPal keeps request keys for 6 hours
