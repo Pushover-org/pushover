@@ -1,11 +1,11 @@
-# Progress (hand-off between developers)
+# Progress (hand-off between machines and sessions)
 
 Last updated: 2026-10-31.
 
 ## Hand-off (2026-10-31)
 
-- **Developer 2 takes §9 steps 7–13** on their own machine. Developer 1 does not commit to
-  `main` until developer 2 hands back here. Setup: `docs/dev-setup.md`.
+- **The second machine takes §9 steps 7–13.** The original laptop does not commit to
+  `main` until the second machine hands back here. Setup: `docs/dev-setup.md`.
 - State at hand-off: `main` @ the commit that added this section, CI green, tests 75/75.
 - Before spending on the model: Anthropic credit is prepaid (≈ $5 at hand-off, owner tops up).
   Step 7's pilot costs ≈ $0.03 on Haiku 5.5, ≈ $0.70 if also run on Sonnet 5.5.

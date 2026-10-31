@@ -1,6 +1,6 @@
 # Developer setup (fresh machine)
 
-Pushover is built by two developers taking turns, never at the same time. Every commit is
+Pushover is built by one person from two laptops, one at a time. Every commit is
 authored as **laxmikhengare**. `docs/progress.md` says which step is next.
 
 ## What GitHub does not have
@@ -98,4 +98,4 @@ Open a fresh Claude Code chat in the repo folder. CLAUDE.md tells it to read the
 
 Tests green with output shown, small commits, push (ask the owner first), and update
 `docs/progress.md`: what is done with evidence, where work stopped, open decisions, next
-action. Then the other developer takes over.
+action. The next session, on either laptop, starts from there.
