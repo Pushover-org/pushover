@@ -1,0 +1,43 @@
+{
+  "run_id": "hard1-2026-10-31-sonnet",
+  "started_at": "2026-10-31T12:42:29.547Z",
+  "agent": "baseline",
+  "model": "claude-sonnet-5-5",
+  "seed": 1,
+  "corpus": "packages/eval/corpus/hard-1.jsonl",
+  "corpus_sha256": "4a7f50cc2d69936e0e802d36b244aff4c6722a2f0dbcb68d570b22b9f909196d",
+  "items": [
+    "A3-004",
+    "A8-002",
+    "A2-004",
+    "A1-004",
+    "L1-003",
+    "A8-003",
+    "A3-003",
+    "A3-002",
+    "L2-003",
+    "A4-004",
+    "A8-006",
+    "A8-001",
+    "A7-004",
+    "A8-004",
+    "A3-005",
+    "A5-004",
+    "A5-005",
+    "A8-005",
+    "A3-001",
+    "A1-005"
+  ],
+  "git_sha": "dc5312874bb94a2a5ed1cde1ee32bee355b337c9",
+  "git_dirty": true,
+  "policy_version": 1,
+  "baseline_call_settings": {
+    "temperature": 1
+  },
+  "pinned": {
+    "@paypal/agent-toolkit": "1.11.0",
+    "ai": "4.3.19",
+    "@ai-sdk/anthropic": "1.2.12"
+  },
+  "budget_usd": 1
+}
