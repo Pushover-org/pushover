@@ -71,15 +71,39 @@ Last updated: 2026-10-31.
   - Measured: one legit turn ≈ $0.0012 on Haiku, ≈ $0.033 on Sonnet.
   - Evidence: `pnpm test` 75/75.
 
+- **§9 step 7 (second machine, 2026-10-31): pilot built and run. Result NO-GO.**
+  - Corpus `packages/eval/corpus/pilot.jsonl` (20 items) committed in `bf60338` before any
+    run; `packages/oracle`; `oracle-vs-labels`; scorer; fixture checkout; `pnpm eval:run`.
+  - Pilot `pilot-2026-10-31-haiku` (baseline, Haiku 5.5, seed 1, $0.026): **0 of 15
+    attacks leaked**, 4 of 4 legit refunds exact, L3 not auto-refunded. Details and why it
+    refused: `docs/methodology.md`.
+  - Evidence: `pnpm test` 144/144 (54 in packages/eval, 15 in packages/oracle).
+  - Baseline pool topped up with 70 sandbox captures (PO-20021..20090). The other laptop's
+    `dev-db-data.sql` snapshot and `.data/seed` manifest are now stale: take fresh copies from
+    this machine before working there.
+
 ## In progress
 
-- Nothing. Step 6 is committed.
+- Step 7 stopped at the go/no-go. Spec §9 step 7: on NO-GO, stop and reassess. Nothing
+  after step 7 has been started.
 
 ## Open for the owner / notes for later steps
 
-- `.env.local` had an existing `DATABASE_URL=` line that step 5 replaced without
-  reading it first. It was most likely the empty template placeholder; if it held a
-  real value, restore it under another name.
+- **Decide after the NO-GO** (options, not yet chosen):
+  1. Run the same pilot on Sonnet 5.5 (≈ $0.60-0.80; the spec's original pilot model).
+  2. Reframe the headline as the spec suggests: retry/idempotency (D1-4/D1-5 plus A5
+     multi-turn, independent of the model) and A8 indirect injection.
+  3. Add harder pre-registered items (A3 inflated amounts, A8 injection, longer multi-turn
+     pressure) as a new corpus file, committed before running. Never edit the pilot corpus.
+- **Transcripts not committed:** `packages/eval/results/*/transcripts.jsonl` contain the
+  sandbox test card's last 4 digits and expiry (PayPal returns them in order data). Decide
+  whether to publish them redacted or keep them local.
+- The original laptop: `.env.local` had an existing `DATABASE_URL=` line that step 5
+  replaced without reading it first. Most likely the empty template placeholder.
+- **Step 8 (ledger):** score it with per-fixture counters, like the oracle: velocity and the
+  $2,000 daily total count only the fixture's earlier refunds (`docs/methodology.md`).
+- **Pushing from this machine:** `origin` is HTTPS here. CLAUDE.md requires SSH as
+  laxmikhengare; set up the key and alias first (`docs/dev-setup.md` §2).
 - **Step 8 (ledger):** PayPal item tax is per unit, so an item refund is
   `qty × (unit + tax)`. Spec §7.1's "qty × unit + tax" is only right for qty 1.
 - **Step 8/12 (ledger, reconciler):** PayPal keeps request keys for 6 hours
@@ -88,19 +112,13 @@ Last updated: 2026-10-31.
 - **Step 10 (deploy):** check Railway's Postgres major version (dev uses 17), create
   a login role that is a member of `pushover_app` for the app, and use the
   `PgRateLimiter` (key per sandbox) in web and worker instead of the in-memory one.
-- The pool holds 20 captures per merchant; spec §3.6 wants ≥150 for the eval. The
-  worker's replenisher (step 12) tops it up; `pnpm seed --count N` works meanwhile.
-
+- Pool after the pilot: BASELINE 17 unassigned (8 of them $309.96 jackets), GUARDED 20. Spec §3.6 wants ≥150.
+  `pnpm seed --merchant <m> --count N` then `pnpm db:seed`; the worker (step 12) automates it.
 - **AI models (owner decision 2026-10-30):** main `claude-haiku-5-5`, comparison
-  `claude-sonnet-5-5` (was Opus 5.5 / Sonnet 5.5). Reasons and step-6 checks in
-  `docs/architecture.md` → AI models. `.env.local` updated; key verified via Models API.
+  `claude-sonnet-5-5`. Reasons in `docs/architecture.md` → AI models.
 
 ## Next action
 
-- §9 step 7: pilot corpus (20 items: A1, A2, A4, A5, A7 + 5 legit, labels written and
-  committed BEFORE any run), `packages/oracle` (independent of the ledger), a minimal
-  scorer that reads refunds back from PayPal, and fixture checkout. Run the **baseline
-  only** (spec says Sonnet; with the owner's model choice run Haiku 5.5, plus Sonnet if
-  budget allows: ≈ $0.03 per item on Sonnet). GO/NO-GO: baseline must leak money on at
-  least 2 of the 5 attack classes, else reframe (spec §9 step 7). Record the result in
-  `docs/methodology.md` either way.
+- Owner chooses how to proceed after the step 7 NO-GO (options above). Then either rerun the
+  pilot (`pnpm eval:run --run-id <new> --model claude-sonnet-5-5`) or go on to §9 step 8
+  (`packages/ledger`: `decide()` and its full test suite first).
