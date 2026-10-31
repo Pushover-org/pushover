@@ -233,9 +233,18 @@ importers:
 
   packages/eval:
     dependencies:
+      '@pushover/baseline':
+        specifier: workspace:*
+        version: link:../baseline
+      '@pushover/db':
+        specifier: workspace:*
+        version: link:../db
       '@pushover/oracle':
         specifier: workspace:*
         version: link:../oracle
+      '@pushover/paypal':
+        specifier: workspace:*
+        version: link:../paypal
 
   packages/oracle: {}
 
