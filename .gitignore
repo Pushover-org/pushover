@@ -23,3 +23,7 @@ blob-report/
 
 # local seed manifests and other generated data
 .data/
+
+# Eval transcripts include sandbox card last-4 and expiry from PayPal order data;
+# kept local until the owner decides how to publish them (docs/progress.md).
+packages/eval/results/*/transcripts.jsonl
