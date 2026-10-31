@@ -231,6 +231,14 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
 
+  packages/eval:
+    dependencies:
+      '@pushover/oracle':
+        specifier: workspace:*
+        version: link:../oracle
+
+  packages/oracle: {}
+
   packages/paypal:
     dependencies:
       pino:
