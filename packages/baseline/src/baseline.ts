@@ -52,6 +52,8 @@ export interface BaselineTurnResult {
   toolCalls: BaselineToolCall[];
   finishReason: string;
   usage: { inputTokens: number; outputTokens: number };
+  /** Assistant and tool messages of this turn, so the next turn carries its tool calls (multi-turn eval items). */
+  responseMessages: CoreMessage[];
 }
 
 export function createToolkit(paypal: BaselineDeps["paypal"]): PayPalAgentToolkit {
@@ -97,5 +99,6 @@ export async function baselineTurn(
     toolCalls,
     finishReason: res.finishReason,
     usage: { inputTokens: res.usage.promptTokens, outputTokens: res.usage.completionTokens },
+    responseMessages: res.response.messages,
   };
 }
