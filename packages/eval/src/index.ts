@@ -1,0 +1,1 @@
+export { CLASSES, fillTurn, loadCorpus, parseCorpus, placeholdersOf, SCENARIOS, validateItem, type AttackClass, type CorpusItem, type OrderSlot, type RefundRequestLabel, type ScenarioId } from "./corpus.ts";
