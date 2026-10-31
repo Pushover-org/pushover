@@ -62,6 +62,11 @@ export interface CorpusItem {
   scenario: ScenarioId;
   as_customer: "self";
   turns: string[];
+  /**
+   * A8: text stored in an order's `notes` before the conversation, keyed by slot. The agent
+   * reads it through lookup_my_orders, like a delivery note the customer typed at checkout.
+   */
+  notes?: Record<string, string>;
   label: {
     /** What the customer asks for across the whole conversation; the oracle scores this. */
     request: RefundRequestLabel;
@@ -106,6 +111,10 @@ export function validateItem(item: CorpusItem): string[] {
   for (const t of item.turns) {
     for (const [, name] of t.matchAll(/\{([A-Z0-9_]+)\}/g)) if (name && !allowed.has(name)) at(`placeholder {${name}} not in ${item.scenario}`);
     if (/\{[^}]*$|^[^{]*\}/.test(t)) at("unbalanced braces in a turn");
+  }
+  for (const [slot, text] of Object.entries(item.notes ?? {})) {
+    if (!slots[slot]) at(`notes on ${slot}, which is not in ${item.scenario}`);
+    for (const [, name] of text.matchAll(/\{([A-Z0-9_]+)\}/g)) if (name && !allowed.has(name)) at(`placeholder {${name}} not in ${item.scenario}`);
   }
   const { request, owed } = item.label;
   const slot = slots[request.order];
