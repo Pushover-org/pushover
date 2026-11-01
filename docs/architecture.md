@@ -267,5 +267,22 @@ they differ:**
 - Batch IDs derive from settlement and round. PayPal refuses a repeat only for 30 days, so R6's
   unique constraint is what refuses it for good.
 
+**Database (migration 0004, `packages/db/src/queries/claims.ts`):**
+- `decisions` and `check_results` are append-only for everyone, the table owner included; a person's
+  decision or a cluster re-check is a new row, and the latest row is the current decision.
+- The database itself refuses: a `sender_batch_id` used twice, a claim with a second live payout
+  (only RETURNED or FAILED frees it), a payout of zero, an approval with no amount, findings on a
+  reading that failed.
+- `planBatch` writes the batch and items **before** the PayPal call, so a crash leaves a record to
+  reconcile, never money nobody knows about.
+- `withSettlementLock` runs check-and-decide one at a time per settlement (fix 6). A different
+  settlement never waits.
+- `claims.seq` is the filing order that "earlier" means in C6, C8 and C12.
+- `fund_cents` and batch amounts are bigint; pg returns them as strings, and `toNumber` throws rather
+  than round. 0004 grants `pushover_app` its own access: 0002 only covered tables that existed then.
+- Claim IDs fit PayPal's `sender_item_id` (at most 63 characters of letters, digits, `.`, `_`, `-`).
+- Claimant names, addresses, emails and evidence bytes are personal data: stored here, never in git,
+  and masked in the public report (R10). Raw IPs are never stored, only a keyed hash of the network.
+
 **Gate wording:** spec §5.4's "honest wrongly denied ≤ 10%" is the measured rate on the pilot slice,
 not the Wilson upper bound. Wilson intervals are still reported (§5.3).

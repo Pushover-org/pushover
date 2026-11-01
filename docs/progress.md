@@ -37,8 +37,8 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | R3 `packages/claims`: settlement config, reason codes, decision table v1 | done |
 | R4 `packages/checks`: C1–C12, cited tax table | done |
 | R5 `packages/distribute`: allocation, batch builder, reconciliation | done |
-| R6 Migration 0004 + queries | next |
-| R7 `packages/examiner` (needs ≥ 1 real receipt photo from the owner) | |
+| R6 Migration 0004 + queries | done |
+| R7 `packages/examiner` (one dataset receipt + one rendered fake) | next |
 | R8–R14 Corpus, eval + pilot gate, web, worker, deploy, full run, submission | |
 
 - **R1 evidence (2026-11-01):** tag `pushover-final` → `b613415`. `pnpm lint` exit 0,
@@ -94,9 +94,15 @@ Corrections to the spec are in `docs/architecture.md`.
   (Σ payouts + leftover = net fund exactly); planted bugs failed tests (below). Sandbox fee at $15,
   $75 and $250: flat $0.25 (batch `GS2WKU3SB63TQ`, `docs/sandbox-findings.md`).
 
+- **R6 evidence (2026-11-01):** migration 0004 and queries; DB tests on real Postgres, including the
+  guards above and an end-to-end proof claim from the database to a decision. Planted bugs in the
+  guards failed tests. Removing the settlement lock at first went unnoticed, so a test now forces
+  the collision.
+
 ## Next action
 
-- R6: migration 0004 and queries, DB tests on real Postgres. Leave the old Pushover tables alone.
+- R7: `packages/examiner`: zod schema (`FindingsSchema` is in `packages/claims`), refusal handling,
+  cost guard. One dataset receipt and one rendered fake give valid findings.
 
 ## Pushover history (kept for the record)
 
