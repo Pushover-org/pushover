@@ -37,9 +37,15 @@ Nothing copies it.
 
 ## Import boundaries (ESLint `no-restricted-imports`, tested in `test/`)
 
-- `packages/agent` may not import PayPal code. The model never moves money.
-- `packages/oracle` may not import `packages/ledger`. The scorer stays
-  independent of what it scores.
+- `packages/examiner` may not import PayPal code (`@pushover/paypal`, `@paypal/*`, or a
+  relative path into `packages/paypal`). The model reports findings; it never decides a claim
+  and never pays (Rightful Share spec §0.1 rule 7).
+- `packages/eval/src/oracle` may not import `claims`, `checks`, `distribute` or `examiner`.
+  The oracle checks the corpus labels against the rules as written, independently of the code
+  it checks (spec §5.1). The rest of `packages/eval` may import them: arm C runs the real
+  decision table.
+- (Pushover's bans, `agent` → PayPal and `oracle` → `ledger`, retired with that code at tag
+  `pushover-final`.)
 
 ## Database (packages/db)
 
@@ -98,7 +104,7 @@ Schema is spec §4.5 with these deliberate changes:
     does not apply to the main model; handle `stop_reason: "refusal"` in code.
   - Use `tool_choice: auto` on both models (forced tool choice returns 400 on Sonnet 5.5).
 
-## Shared store pieces (packages/store)
+## Shared store pieces (packages/store; Pushover, retired at tag `pushover-final`)
 
 Not in spec §4.3's layout. Both agents must get the same system prompt (apart from the refund
 paragraph), the same written policy and the same `lookup_my_orders` backed by the same DB
@@ -107,7 +113,7 @@ a test checks the two prompts differ only in the refund paragraph, and that the 
 equals `docs/policy.md`. `lookup_my_orders` adds PayPal order and capture IDs only for the
 baseline, because the toolkit's tools need them.
 
-## Baseline call settings
+## Baseline call settings (Pushover, retired at tag `pushover-final`)
 
 The baseline passes `temperature: 1` to `generateText`; everything else is PayPal's example.
 `ai@4` otherwise sends temperature 0, which Haiku 5.5 and Sonnet 5.5 reject (D1-6 in

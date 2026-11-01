@@ -4,6 +4,10 @@ How Pushover's number is measured, and what each run found. The plan is spec §2
 this file records how it was built, every deviation, and every result, including the ones that
 went against us.
 
+The code these runs used (baseline agent, oracle, eval runner, fixtures, scorer) was retired
+after the NO-GO and is preserved at git tag **`pushover-final`**. The corpora and results it
+produced stay in `packages/eval/corpus/` and `packages/eval/results/`.
+
 ## How an item is scored
 
 1. **Corpus.** Items are hand-written and committed before any run (the git timestamp is the

@@ -80,8 +80,9 @@ Files: `packages/eval/corpus/pilot.jsonl`, `packages/eval/corpus/hard-1.jsonl`.
 
 ## Reusing this
 
-- Code: `packages/eval` (corpus, fixtures, scorer, runner), `packages/oracle` (referee),
-  `packages/baseline` (the agent under test).
+- Code: at git tag **`pushover-final`** (`git checkout pushover-final`): `packages/eval`
+  (corpus, fixtures, scorer, runner), `packages/oracle` (referee), `packages/baseline` (the
+  agent under test). The main branch now builds Rightful Share and no longer contains them.
 - Setup: `docs/dev-setup.md` (Node 24, pnpm, Docker Postgres, PayPal sandbox apps, an
   Anthropic API key in `.env.local`).
 - Run: `pnpm eval:run --run-id <new-id> --corpus packages/eval/corpus/hard-1.jsonl --model claude-haiku-5-5 --check`

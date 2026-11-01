@@ -32,8 +32,8 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | Step | Status |
 |---|---|
 | R0 Record the pivot | done (this update) |
-| R1 Retire baseline/store/oracle; ban `examiner` → `paypal`; CI green | next |
-| R2 Payouts client + sandbox test; retry cancel | |
+| R1 Retire baseline/store/oracle; ban `examiner` → `paypal`; CI green | done (local; CI on push) |
+| R2 Payouts client + sandbox test; retry cancel | next |
 | R3 `packages/claims`: settlement config, reason codes, decision table v1 | |
 | R4 `packages/checks`: C1–C11, cited tax table | |
 | R5 `packages/distribute`: allocation, batch builder, reconciliation | |
@@ -41,9 +41,13 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | R7 `packages/examiner` (needs ≥ 1 real receipt photo from the owner) | |
 | R8–R14 Corpus, eval + pilot gate, web, worker, deploy, full run, submission | |
 
+- **R1 evidence (2026-11-01):** tag `pushover-final` → `b613415`. `pnpm lint` exit 0,
+  `pnpm typecheck` exit 0, `pnpm test` 75/75 in 7 files (15 import-boundary tests for the
+  examiner and oracle bans). The lockfile no longer contains `@paypal/agent-toolkit`.
+
 ## In progress
 
-- Nothing. R0 is committed.
+- Nothing. R0 and R1 are committed.
 
 ## Open for the owner / notes for later steps
 
@@ -63,9 +67,11 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 
 ## Next action
 
-- R1: tag `pushover-final`, delete `packages/baseline`, `packages/store`, `packages/oracle`
-  and the Pushover-only eval runner, fixtures and D1-6 script that import them; keep
-  `cost.ts`, the corpora and results as evidence; retarget the ESLint ban; CI green.
+- R2: vendor `payments_payouts_batch_v1.json`; write `packages/paypal/src/payouts.ts` (create,
+  read batch with pagination, read item, cancel) with unit tests on recorded responses and a
+  guard for a reused key with a different body; sandbox test with one SUCCESS and one
+  UNCLAIMED item; retry cancel on `MQR5FQGFWBUCU` once; record 7ZRZDZZLRGEAY and the new
+  results in `docs/sandbox-findings.md`.
 
 ## Pushover history (kept for the record)
 
