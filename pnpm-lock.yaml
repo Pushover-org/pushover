@@ -236,6 +236,16 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
 
+  packages/distribute:
+    dependencies:
+      '@pushover/paypal':
+        specifier: workspace:*
+        version: link:../paypal
+    devDependencies:
+      fast-check:
+        specifier: 4.10.2
+        version: 4.10.2
+
   packages/eval: {}
 
   packages/paypal:
