@@ -16,6 +16,7 @@
     "day1:d1-3": "node --env-file-if-exists=.env.local scripts/day1/d1-3-card-seed.ts",
     "day1:d1-4": "node --env-file-if-exists=.env.local scripts/day1/d1-4-refund-idempotent.ts",
     "day1:d1-5": "node --env-file-if-exists=.env.local scripts/day1/d1-5-refund-no-key.ts",
+    "receipts:download": "node scripts/receipts/download.ts",
     "seed": "node --env-file-if-exists=.env.local scripts/seed.ts",
     "db:migrate": "node --env-file-if-exists=.env.local packages/db/src/bin/migrate.ts",
     "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.ts",

@@ -1,0 +1,15 @@
+{
+  "note": "Known copies inside the ExpressExpense SRD zip. Only 'keep' may be used in a corpus. Found 2026-11-01 with md5, sharp-phash 2.2.0 and printed amounts from OCR; the second group was confirmed by eye. The search is not proof that no other copies exist, so H1 candidates are also checked by eye.",
+  "groups": [
+    {
+      "how": "byte-identical (md5 4111e9d537edb38c2d7e0ecfe19e9010)",
+      "keep": "1034-receipt.jpg",
+      "exclude": ["1041-receipt.jpg", "1114-receipt.jpg"]
+    },
+    {
+      "how": "same receipt. 1063 is a smaller re-encode of 1186 (pHash distance 0); 1053 is a different crop (pHash distance 26 from both)",
+      "keep": "1186-receipt.jpg",
+      "exclude": ["1063-receipt.jpg", "1053-receipt.jpg"]
+    }
+  ]
+}
