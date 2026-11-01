@@ -11,7 +11,8 @@ const confidence = z.enum(["high", "medium", "low"]);
 export const AnomalySchema = z.strictObject({
   kind: z.enum(["font_mismatch", "pasted_region", "misaligned_columns", "impossible_layout", "other"]),
   where: z.string(),
-  box: z.tuple([z.number(), z.number(), z.number(), z.number()]).nullable(),
+  /** [x, y, width, height]. A list of 4, because structured output has no fixed-length tuple. */
+  box: z.array(z.number()).length(4).nullable(),
   /** Per anomaly: C10 fails only on an anomaly the examiner is sure of. */
   confidence,
 });

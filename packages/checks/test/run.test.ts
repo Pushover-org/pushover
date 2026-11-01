@@ -46,3 +46,37 @@ describe("runChecks", () => {
     expect(decide(S, { tier: "no_proof", unitsClaimed: 1, examiner: { status: "NOT_RUN" }, checks })).toMatchObject({ outcome: "APPROVE", entitlementCents: 1000 });
   });
 });
+
+// What the models actually returned (2026-11-01, packages/examiner/scripts/try-reading.ts),
+// through the real checks and the real table.
+describe("real model readings, end to end", () => {
+  const realHaiku = findings({
+    merchant_name: "GREEN FIELD", merchant_address: "5305 E Pacific Coast HWY, Long Beach, CA 90804",
+    line_items: [
+      { description: "1 Coffee", qty: 1, unit_cents: null, line_total_cents: 300, matches_product_id: "restaurant-drink" },
+      { description: "2 Lunch", qty: 2, unit_cents: null, line_total_cents: 4590, matches_product_id: null },
+      { description: "1 Coke", qty: 1, unit_cents: null, line_total_cents: 300, matches_product_id: "restaurant-drink" },
+    ],
+    declaration_issues: ["The receipt also shows a Coke and two lunches, which the declaration does not mention."],
+  });
+  const fake = (model_recommendation: "approve" | "deny") => findings({
+    merchant_name: "TEST KITCHEN", merchant_address: "12 Fiction Ave, Austin, TX 7870", merchant_state: "TX", purchase_date: "2018-06-14",
+    line_items: [
+      { description: "1 Coffee", qty: 1, unit_cents: null, line_total_cents: 300, matches_product_id: "restaurant-drink" },
+      { description: "1 Sandwich", qty: 1, unit_cents: null, line_total_cents: 1100, matches_product_id: null },
+    ],
+    subtotal_cents: 1400, tax_cents: 116, total_cents: 4816, model_recommendation,
+  });
+  const decideOn = (f: ReturnType<typeof findings>, unitsClaimed = 2) => {
+    const { checks, unitsEvidenced } = runChecks(claim({ unitsClaimed }), ctx({ findings: f }));
+    return decide(S, { tier: "proof", unitsClaimed, unitsEvidenced, examiner: { status: "OK", confidence: f.confidence }, checks });
+  };
+
+  it("the real receipt is approved for the 2 drinks on it", () => {
+    expect(decideOn(realHaiku)).toMatchObject({ outcome: "APPROVE", units: 2, entitlementCents: 3000 });
+  });
+  it("the fake with a broken total is denied, and the same if the model had said approve", () => {
+    expect(decideOn(fake("deny"))).toMatchObject({ outcome: "DENY", reason: "ARITHMETIC_MISMATCH" });
+    expect(decideOn(fake("approve"))).toMatchObject({ outcome: "DENY", reason: "ARITHMETIC_MISMATCH" });
+  });
+});
