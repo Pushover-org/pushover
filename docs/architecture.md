@@ -244,6 +244,9 @@ they differ:**
 - C4: zero tax → UNKNOWN (REVIEW), because some sales are exempt, such as hot coffee to go in CA.
 - C5: the state must appear in the address the examiner read, or it is UNKNOWN. This is how "never
   inferred from the area code" is enforced in code, since the model's state field alone cannot show it.
+  Accepted forms (R8, from real receipts): the code in capitals or title case ("TX", "Tx"), the
+  full name, or a traditional abbreviation ("Calif", "Tex.", "N.J."). An all-lowercase code is not
+  accepted, because "in", "or" and "me" are ordinary words in addresses.
 - C2 ignores a product ID that is not in the settlement. C11 counts a line with no printed quantity
   as one unit.
 - Check settings (`PROVISIONAL_CONFIG`: distance 4, tax margin 2 points, shingle 3, similarity 0.5,
@@ -304,3 +307,17 @@ not the Wilson upper bound. Wilson intervals are still reported (§5.3).
   table moved here from `packages/eval`, which re-exports it, because this package now spends.
 - The model is passed in by the caller, who reads `PUSHOVER_MODEL` or `COMPARE_MODEL`. Findings `box`
   is a list of 4 numbers, because the SDK cannot express a fixed-length tuple.
+
+## The eval (packages/eval, R8)
+
+- `src/corpus/schema.ts` holds the claim set's formats; `src/oracle/` is the referee and may not
+  import claims, checks, distribute or examiner (ESLint). The oracle restates decision table v1
+  and the checks' rules in its own code, from each receipt's truth.
+- `src/pipeline.ts` is arm C: findings, then checks, then the table, claim by claim in filing
+  order, with C8's earlier claims marked APPROVED, PENDING or CLOSED by their decisions so far.
+  The R9 runner feeds it real readings.
+- C7 and C9 always see every claim in the set, even when only a slice is read, as in a real
+  settlement where every claim is filed before clusters are checked.
+- Rendered receipts and F4 copies are made into git-ignored `.data/claims-v1/` by
+  `pnpm corpus:images`; F4 copies are made exactly as R4 measured the image hash.
+
