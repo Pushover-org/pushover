@@ -1,5 +1,21 @@
 # Methodology
 
+## Rightful Share: limits of the real receipts (ExpressExpense SRD)
+
+Real receipts come from a public dataset (`docs/architecture.md`). What that means for any result
+measured on them:
+
+- **Restaurant receipts only.** Nothing here measures supermarket, online or product receipts.
+- **Dated about 2015 to 2019.** Tax rates are checked as they were then. A few files are older or
+  newer (OCR read dates from 2012 to 2020), and those are outside the class period.
+- **Some photos are low resolution.** 73 of 200 are under 600 px wide; the smallest is 245 px.
+  Reading accuracy on them says little about modern phone photos, and the reverse.
+- **The images are public,** so a model may have seen them in training. Reading accuracy on them
+  may be better than on receipts it has never seen.
+- **The honest label means "real receipt", not "a real claimant".** Nobody filed these as claims.
+
+The rest of this file is the Pushover record, kept as it was.
+
 How Pushover's number is measured, and what each run found. The plan is spec §2.6 and §5.5–§5.6;
 this file records how it was built, every deviation, and every result, including the ones that
 went against us.

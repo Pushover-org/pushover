@@ -81,6 +81,12 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 - Anthropic credit is prepaid (owner tops up); state the estimate before any run over ~$1.
 - Pushover's database tables stay in place (spec §2 default).
 
+## Owner decision 2026-11-01: receipts come from a dataset
+
+ExpressExpense SRD, restaurant coffee demo settlement: `docs/architecture.md` → Receipt source.
+Waiting on the owner: H1's size or product (12 usable coffee receipts, not about 30), and the
+proposed corrections to the checks. R4 has not started.
+
 ## Next action
 
 - R4: `packages/checks`: C1–C11 as pure functions plus DB lookups, each returning

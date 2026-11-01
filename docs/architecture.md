@@ -152,3 +152,42 @@ first match wins (spec §4.4, with the corrections marked *):
   ≤ end, unique product IDs, 50 states + DC, reserve below the fund, no-proof amount at most the
   proof maximum. A demo settlement's name must contain "(fictional demo)" and its cy-près
   recipient "(demo)" (spec rule 8).
+
+## Receipt source and demo settlement (owner decision 2026-11-01)
+
+The owner has no receipts to photograph, so spec §5.1's H1 and §7.3 change. Real receipts come
+from the **ExpressExpense SRD** dataset: 200 phone photos of US restaurant receipts, MIT licence,
+credit "ExpressExpense.com" (`data/receipts/README.md`).
+
+- **Images are never committed.** `pnpm receipts:download` checks the md5 and unzips them into
+  git-ignored `.data/receipts/expressexpense/`.
+- **Copies inside the set** are listed in `data/receipts/expressexpense-duplicates.json`; only the
+  `keep` file of a group may enter a corpus.
+- **Demo settlement:** "Acme Restaurant Coffee Settlement (fictional demo)". Qualifying product:
+  coffee or espresso drinks bought at a restaurant. The restaurants on the receipts are never the
+  defendant. Class period and states cover the receipts chosen for H1; the R3 fixture holds
+  provisional values (2015-01-01 to 2019-12-31; CA, CT, MI, NJ, NY, SC, TX).
+- **R4 tax table:** restaurant and prepared-food sales tax for those states, with local rates,
+  as ranges where the city is unknown, and **the rates in force on the receipt's date**, not
+  today's. So rows carry effective dates, and C4 needs `purchase_date`.
+- **C5:** a receipt with no printed state is UNKNOWN (the claimant can fix it, so NEED_MORE under
+  rule 5). The state is never inferred from a phone area code.
+- **R7** uses one of these receipts plus one rendered fake. **R8 H1** was to use about 30 of them.
+
+### What the set showed when it was checked (2026-11-01)
+
+OCR here means macOS Vision on this laptop, which costs no AI credit; it is a count, not a label.
+
+- md5 matches; 200 JPGs; widths 245 to 1174 px (median 750), 73 under 600 px.
+- **Copies:** `1034 = 1041 = 1114` (byte-identical). `1186 = 1063 = 1053` (same receipt).
+- **Only 12 receipts** have a coffee or espresso line plus a state, a date, a subtotal, tax and a
+  total (OCR). 26 do if the product is any non-alcoholic drink. H1's "about 30" does not fit
+  coffee alone. Open for the owner.
+- **pHash cannot catch a re-crop.** `1053` and `1186` are the same receipt at pHash distance 26,
+  while 2,271 of 19,900 file pairs are closer; different receipts reach distance 8 (`1173`/`1199`
+  share no OCR text). Rotations and re-encodes are a separate question, tested in R4.
+- **Honest receipts break the checks as specified.** `2 Lunch 45.90` prints a line total, not a
+  unit price. `1099` prints a second total with an 18% gratuity. `1084` (Hoboken NJ, 2018-07)
+  charged 7.00% when the state rate was 6.625% (Tax Foundation 2018). `1099` (San Jose, 2017-12)
+  charged 10.91%; the rate in force is still to be read from CDTFA. These receipts are real, so
+  whether they pass is measured, never fixed by leaving them out of H1.
