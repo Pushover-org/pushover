@@ -1,6 +1,6 @@
 # Developer setup (fresh machine)
 
-Pushover is built by one person from two laptops, one at a time. Every commit is
+Rightful Share (formerly Pushover) is built by one person from two laptops, one at a time. Every commit is
 authored as **laxmikhengare**. `docs/progress.md` says which step is next.
 
 ## What GitHub does not have
@@ -10,10 +10,13 @@ The owner hands these over directly, never through git, chat or email:
 | File | Put it at | Notes |
 |---|---|---|
 | `CLAUDE.md` | repo root | The working rules for Claude sessions. Git-ignored on purpose. |
-| `PUSHOVER-BUILD-SPEC.md` | the folder **above** the repo | The build spec. CLAUDE.md expects it at `../PUSHOVER-BUILD-SPEC.md`. |
+| `RIGHTFULSHARE-BUILD-SPEC.md` | the folder **above** the repo | The build spec. CLAUDE.md expects it at `../RIGHTFULSHARE-BUILD-SPEC.md`. |
+| `PUSHOVER-BUILD-SPEC.md` | the folder **above** the repo | Reference only: hackathon facts (§1), PayPal basics (§3), Railway (§8). |
+| `research/03-pick-after-pushover-nogo.md` | `../research/` | Why the project pivoted. |
 | `.env.local` | repo root | Secrets: PayPal sandbox apps, Anthropic key, sandbox test card. **Send through a password manager or another encrypted channel.** |
-| `captures-*.jsonl` | `.data/seed/` | The PayPal seed manifest. |
-| `dev-db-data.sql` | anywhere | A snapshot of the dev database (which test orders are used or refunded). |
+
+The Pushover seed manifest and database snapshot are no longer needed: Rightful Share uses
+Payouts, not the seeded orders.
 
 ## 1. Tools
 
@@ -68,12 +71,7 @@ Put `DATABASE_URL=postgres://pushover:<random>@127.0.0.1:5433/pushover` in `.env
 
 ```
 pnpm db:migrate
-docker exec -i pushover-pg psql -q -v ON_ERROR_STOP=1 -U pushover -d pushover < dev-db-data.sql
 ```
-
-Use the snapshot rather than `pnpm db:seed`: the snapshot knows which seeded orders were
-already used and refunded at PayPal, and the manifest does not. (`pnpm db:seed` is for a
-brand-new seed made with `pnpm seed`.)
 
 If Docker Desktop is also installed, check which engine you are talking to
 (`docker context show`) and stay on one.
@@ -82,7 +80,7 @@ If Docker Desktop is also installed, check which engine you are talking to
 
 ```
 pnpm test            # all green; the db tests run against the container
-pnpm day1:d1-2       # PayPal sandbox login + 404 parse, moves no money
+pnpm test:sandbox    # optional: a real sandbox Payouts batch of 2 x $1.00 play money
 ```
 
 ## 6. Start the Claude session
@@ -90,9 +88,9 @@ pnpm day1:d1-2       # PayPal sandbox login + 404 parse, moves no money
 Open a fresh Claude Code chat in the repo folder. CLAUDE.md tells it to read the spec and
 `docs/progress.md` first. A first message that works:
 
-> Read CLAUDE.md, then the spec's §0.1, §1 and §2, then docs/progress.md and
-> docs/architecture.md. Verify the git identity shows laxmikhengare. Continue with the
-> next §9 step from docs/progress.md, explaining each step in plain language.
+> Read CLAUDE.md, then ../RIGHTFULSHARE-BUILD-SPEC.md §0–§4 fully and §6, then
+> docs/progress.md and docs/architecture.md. Verify the git identity shows laxmikhengare.
+> Continue with the next R step from docs/progress.md, explaining each step in plain language.
 
 ## Ending a turn
 

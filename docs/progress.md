@@ -57,7 +57,10 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
   (unknown tax let through) failed both a rule test and the property test, then was reverted.
   Three corrections to spec §4.4 in `docs/architecture.md` → Decision table v1.
 
-- Nothing in progress. R0–R3 are committed.
+- Nothing in progress. R0–R3 are committed and pushed.
+- **Hand-off (2026-11-01):** the other laptop continues with **R4–R9**, then hands back here;
+  the original laptop takes over from R10. R8 needs the owner's real receipt photos; R9 spends
+  Anthropic credit (state the estimate first) and ends with the pilot GO/NO-GO to the owner.
 
 ## Open for the owner / notes for later steps
 
