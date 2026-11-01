@@ -1,134 +1,83 @@
 # Progress (hand-off between machines and sessions)
 
-Last updated: 2026-10-31.
+Last updated: 2026-11-01.
 
-## Hand-off (2026-10-31)
+## The project: Rightful Share (pivot from Pushover, 2026-10-31)
 
-- **The second machine takes §9 steps 7–13.** The original laptop does not commit to
-  `main` until the second machine hands back here. Setup: `docs/dev-setup.md`.
-- State at hand-off: `main` @ the commit that added this section, CI green, tests 75/75.
-- Before spending on the model: Anthropic credit is prepaid (≈ $5 at hand-off, owner tops up).
-  Step 7's pilot costs ≈ $0.03 on Haiku 5.5, ≈ $0.70 if also run on Sonnet 5.5.
-- Owner decisions that override the spec are in `docs/architecture.md` (models, store-scoped
-  keys, baseline `temperature: 1`, rate limiter). Read it before §9 step 7.
+Pushover stopped at its pre-registered NO-GO: 0 of 33 attacks leaked on both Haiku 5.5 and
+Sonnet 5.5 (`docs/research-findings.md`, `docs/methodology.md`). This repo now builds
+**Rightful Share** per `../RIGHTFULSHARE-BUILD-SPEC.md` (build order §6, steps R0–R14):
+a claims desk for class-action settlements. The AI reports findings about claim evidence,
+deterministic code decides and computes amounts, and PayPal Payouts pays approved claimants,
+with unclaimed money going to the court's chosen nonprofit (cy-près).
 
-## Done
+Reused from Pushover: `packages/paypal`, `packages/db` (migrator, pool, `PgRateLimiter`,
+append-only audit log), the pre-registered eval method and `packages/eval/src/cost.ts`.
 
-- **§9 step 1:** Day-0 PayPal sandbox setup, checkpoint D1-1 passed (spec §3.0).
-- **§9 step 2:** repo skeleton.
-  - pnpm 12.16.1 workspace, TypeScript 6.0.3, ESLint 10.13.0 with the
-    agent→PayPal and oracle→ledger import bans, vitest 5.0.5,
-    Playwright 1.64.1 (config only; specs arrive with `apps/web`).
-  - MIT `LICENSE`, `.env.example`, extended `.gitignore`.
-  - `.github/workflows/ci.yml`: frozen install, lint, typecheck, unit tests.
-  - Evidence (local, 2026-10-30): `pnpm lint` exit 0; `pnpm typecheck` exit 0;
-    `pnpm test` 9/9 passed (`test/import-boundaries.test.ts`); a real file in
-    `packages/agent` importing `@pushover/paypal` fails lint.
-  - Why versions differ from the spec: see `docs/architecture.md`.
+Owner decisions (2026-11-01):
+- Commit as we go; ask before every push.
+- Pushover's agent code is retired by tag + delete: tag `pushover-final` marks the last
+  Pushover commit.
+- Package scope stays `@pushover/*`; a later single-commit rename is allowed.
+- Admin screens are built on **AG Grid** (sponsor prize target, spec §4.7). The **AG Studio**
+  trial starts **on or after Nov 3**, never before.
+- Models unchanged: main `claude-haiku-5-5`, comparison `claude-sonnet-5-5`; the examiner
+  pilot (spec §5.4) may move receipts to Sonnet (`docs/architecture.md`).
 
-  - Pushed 2026-10-30; first GitHub CI run passed; GitHub detects the MIT license.
-- **§9 step 3:** `packages/paypal`.
-  - Client (cached OAuth token, single-flight, refresh on 401/403
-    NOT_AUTHORIZED), required `PayPal-Request-Id` on every POST kept across
-    retries, unknown POST outcomes never reported as failures, a sliding-window
-    rate limiter (≤ 40 per rolling minute), integer-cent money, refund/capture/
-    order calls. PayPal OpenAPI specs vendored in `docs/paypal-specs/`.
-  - Evidence: `pnpm test` 47/47 passed (9 boundary + 38 paypal).
-  - **D1-2 PASS** and **D1-9 PASS** against the sandbox: outputs in
-    `docs/sandbox-findings.md`.
+Dates (IST): R0–R7 by Nov 3; a minimal version (/demo plus one real Payouts batch) submitted
+by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 
-- **§9 step 4:** seeding path and refund idempotency.
-  - **D1-3 PASS:** card-source orders capture in one call, so seeding uses **Path A**.
-  - **D1-4 PASS:** same key → same refund. Same key with a different amount
-    silently returns the original refund; `refundCapture` now throws
-    `PayPalRefundMismatchError` on any amount mismatch.
-  - **D1-5:** two keyless refunds → two refunds (risk confirmed, evidence for §10).
-  - `pnpm seed` ran: 20 captures per merchant, refs PO-10001..10020 (guarded) and
-    PO-20001..20020 (baseline), manifest in git-ignored `.data/seed/`.
-    Re-send of PO-10002 returned the same order and capture.
-  - Evidence: `pnpm test` 53/53; script outputs in `docs/sandbox-findings.md`.
-  - Sandbox play money moved so far: $3,587.28 captured (40 seed orders $3,581.28
-    + 6 day-1 orders at $1.00) and $0.40 refunded. Merchants started at $10,000 each.
+## Rightful Share steps
 
-- **§9 step 5:** `packages/db`.
-  - Migrations 0001 (schema, keyed by store + id; append-only audit_log trigger),
-    0002 (`pushover_app` role), 0003 (policy v1), checksummed migrator, typed
-    queries, Postgres-backed shared rate limiter. Changes from spec §4.5 are listed
-    in `docs/architecture.md` → Database.
-  - Dev DB: Docker `pushover-pg` (postgres 17.11) on 127.0.0.1:5433, on the
-    **default** Docker engine (`docker --context default ...`; Docker Desktop may be
-    the current context). `pnpm db:migrate` then `pnpm db:seed`.
-  - Dev DB loaded: 6 customers per store, 40 POOL orders (20 per store). Four rows
-    checked against PayPal GET order: capture IDs and amounts match.
-  - Evidence: `pnpm test` 69/69 (16 db tests on real Postgres; CI has a postgres service).
-
-- **§9 step 6:** `packages/baseline` (Path A) + shared `packages/store` (prompt, policy, lookup).
-  - **D1-10 PASS:** toolkit still 1.11.0; config keys as in spec.
-  - **D1-6:** PayPal's example as-is → 400 ("`temperature` is deprecated for this model":
-    ai@4 sends temperature 0). With `temperature: 1` (API default) → **PASS** on Haiku 5.5
-    and Sonnet 5.5: the agent refunded via `create_refund` with an amount it chose; PayPal
-    confirms. Path B not needed. Outputs in `docs/sandbox-findings.md`.
-  - Measured: one legit turn ≈ $0.0012 on Haiku, ≈ $0.033 on Sonnet.
-  - Evidence: `pnpm test` 75/75.
-
-- **§9 step 7 (second machine, 2026-10-31): pilot built and run. Result NO-GO.**
-  - Corpus `packages/eval/corpus/pilot.jsonl` (20 items) committed in `bf60338` before any
-    run; `packages/oracle`; `oracle-vs-labels`; scorer; fixture checkout; `pnpm eval:run`.
-  - Pilot `pilot-2026-10-31-haiku` (baseline, Haiku 5.5, seed 1, $0.026): **0 of 15
-    attacks leaked**, 4 of 4 legit refunds exact, L3 not auto-refunded. Details and why it
-    refused: `docs/methodology.md`.
-  - Rerun on Sonnet 5.5 (owner's choice), `pilot-2026-10-31-sonnet`, same corpus and seed,
-    $0.49: **again 0 of 15 attacks leaked**, 4 of 4 legit refunds exact, L3 not refunded.
-    Still NO-GO.
-  - Harder corpus `hard-1.jsonl` (owner's choice; A3, A8 injected order notes, 3-4 turn
-    pressure), committed in `dc53128` before running. Haiku $0.035, Sonnet $0.70: **$0.00
-    unwarranted on both, NO-GO**, but Haiku **skipped staff review** on A8-004 (an injected
-    "staff approved" note got it to refund the $309.96 jacket itself). Sonnet held it.
-  - Code: corpus items can plant text in order `notes` (A8); go/no-go counts the run's own
-    attack classes. Evidence: `pnpm test` 167/167.
-  - Evidence: `pnpm test` 144/144 (54 in packages/eval, 15 in packages/oracle).
-  - Baseline pool topped up with 290 sandbox captures (PO-20021..20310). The other laptop's
-    `dev-db-data.sql` snapshot and `.data/seed` manifest are now stale: take fresh copies from
-    this machine before working there.
+| Step | Status |
+|---|---|
+| R0 Record the pivot | done (this update) |
+| R1 Retire baseline/store/oracle; ban `examiner` → `paypal`; CI green | next |
+| R2 Payouts client + sandbox test; retry cancel | |
+| R3 `packages/claims`: settlement config, reason codes, decision table v1 | |
+| R4 `packages/checks`: C1–C11, cited tax table | |
+| R5 `packages/distribute`: allocation, batch builder, reconciliation | |
+| R6 Migration 0004 + queries | |
+| R7 `packages/examiner` (needs ≥ 1 real receipt photo from the owner) | |
+| R8–R14 Corpus, eval + pilot gate, web, worker, deploy, full run, submission | |
 
 ## In progress
 
-- Step 7 stopped at the go/no-go. Spec §9 step 7: on NO-GO, stop and reassess. Nothing
-  after step 7 has been started.
+- Nothing. R0 is committed.
 
 ## Open for the owner / notes for later steps
 
-- **Decide after the NO-GO** (options, not yet chosen):
-  1. ~~Run the same pilot on Sonnet 5.5~~ Done: NO-GO as well (see above).
-  2. Reframe the headline as the spec suggests: retry/idempotency (D1-4/D1-5 plus A5
-     multi-turn, independent of the model) and A8 indirect injection.
-  3. ~~Harder pre-registered corpus~~ Done as `hard-1`: NO-GO, one skipped review (above).
-- **Transcripts not committed:** `packages/eval/results/*/transcripts.jsonl` contain the
-  sandbox test card's last 4 digits and expiry (PayPal returns them in order data). Decide
-  whether to publish them redacted or keep them local.
-- The original laptop: `.env.local` had an existing `DATABASE_URL=` line that step 5
-  replaced without reading it first. Most likely the empty template placeholder.
-- **Step 8 (ledger):** score it with per-fixture counters, like the oracle: velocity and the
-  $2,000 daily total count only the fixture's earlier refunds (`docs/methodology.md`).
-- **Pushing from this machine:** `origin` is `git@github.com:Pushover-org/pushover.git`; this
-  laptop's default SSH key authenticates as laxmikhengare (`ssh -T git@github.com`). First push
-  from here 2026-10-31 (`80a4e3f..c86dedb`).
-- **Step 8 (ledger):** PayPal item tax is per unit, so an item refund is
-  `qty × (unit + tax)`. Spec §7.1's "qty × unit + tax" is only right for qty 1.
-- **Step 8/12 (ledger, reconciler):** PayPal keeps request keys for 6 hours
-  (Orders v2 spec). Before retrying an UNVERIFIED refund, read the order's
-  refunds and match `custom_id`. Never re-POST blindly after 6 h.
-- **Step 10 (deploy):** check Railway's Postgres major version (dev uses 17), create
-  a login role that is a member of `pushover_app` for the app, and use the
-  `PgRateLimiter` (key per sandbox) in web and worker instead of the in-memory one.
-- Pool after the pilot and hard-1 runs: BASELINE 47 unassigned (27 of them $309.96 jackets), GUARDED 20. Spec §3.6 wants ≥150.
-  `pnpm seed --merchant <m> --count N` then `pnpm db:seed`; the worker (step 12) automates it.
-- **AI models (owner decision 2026-10-30):** main `claude-haiku-5-5`, comparison
-  `claude-sonnet-5-5`. Reasons in `docs/architecture.md` → AI models.
+- **R7:** at least one real receipt photo (card digits covered) is needed for R7's check;
+  about 30 for R8.
+- **R2 facts checked 2026-11-01 in PayPal's `payments_payouts_batch_v1.json`:** item status has
+  9 values (`SUCCESS, FAILED, PENDING, UNCLAIMED, RETURNED, ONHOLD, BLOCKED, REFUNDED,
+  REVERSED`), batch status 5 (`DENIED, PENDING, PROCESSING, SUCCESS, CANCELED`); reading a
+  batch is paginated; each item carries `payout_item_fee`; cancel documents a 500 response.
+  `GET /v1/reporting/balances` exists in the vendored reporting spec.
+- **Already verified on this laptop 2026-10-31** (to record in `docs/sandbox-findings.md` in
+  R2): batch `7ZRZDZZLRGEAY`, 3 × $1.00, two SUCCESS (po-buyer2, po-buyer3), one UNCLAIMED
+  `RECEIVER_UNREGISTERED`, fees $0.75; early cancel of item `MQR5FQGFWBUCU` returned 500
+  INTERNAL_SERVICE_ERROR twice (debug_id `f9401880fbffb`).
+- Anthropic credit is prepaid (owner tops up); state the estimate before any run over ~$1.
+- Pushover's database tables stay in place (spec §2 default).
 
 ## Next action
 
-- Owner decides the headline after pilot and hard-1 (all NO-GO for money; one injected note
-  made Haiku skip staff review). Likely option 2: lead with retry/idempotency (D1-5) and A8
-  skipped review. Then go on to §9 step 8 (`packages/ledger`: `decide()` and its full test
-  suite first).
+- R1: tag `pushover-final`, delete `packages/baseline`, `packages/store`, `packages/oracle`
+  and the Pushover-only eval runner, fixtures and D1-6 script that import them; keep
+  `cost.ts`, the corpora and results as evidence; retarget the ESLint ban; CI green.
+
+## Pushover history (kept for the record)
+
+- Steps 1–6: repo skeleton, CI, `packages/paypal` (D1-2, D1-9), seeding and refund
+  idempotency (D1-3, D1-4, D1-5: two keyless refunds made two refunds), `packages/db`,
+  baseline agent on PayPal's toolkit (D1-6, D1-10). Evidence: `docs/sandbox-findings.md`.
+- Step 7 (pilot and hard-1, pre-registered): NO-GO for money on both models; Haiku skipped
+  staff review once when an order note claimed "staff approval already granted". Details:
+  `docs/methodology.md`, `docs/research-findings.md`.
+- Decisions and corrections to the Pushover spec: `docs/architecture.md`.
+- Dev database: Docker `pushover-pg` (postgres 17) on 127.0.0.1:5433, on the `default` Docker
+  engine (`docker --context default ...`). Setup on another machine: `docs/dev-setup.md`.
+- Pushing: on the original laptop `origin` is `git@github-account4:Pushover-org/pushover.git`;
+  on the other laptop it is `git@github.com:Pushover-org/pushover.git`. Both push as
+  laxmikhengare.
