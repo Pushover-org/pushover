@@ -286,3 +286,21 @@ they differ:**
 
 **Gate wording:** spec §5.4's "honest wrongly denied ≤ 10%" is the measured rate on the pilot slice,
 not the Wilson upper bound. Wilson intervals are still reported (§5.3).
+
+## The examiner (packages/examiner)
+
+- Official `@anthropic-ai/sdk` 1.3.0. Image as a base64 block; structured output through
+  `output_config.format` with `zodOutputFormat(FindingsSchema)`, called with `messages.create`, so a
+  refusal or a bad reading is handled as a status and not an exception. Code runs `FindingsSchema`
+  itself: the SDK moves constraints such as enums and integer ranges into descriptions, so the API
+  does not enforce them.
+- Every failure becomes a status and the table sends it to a person: refusal → REFUSED; early stop,
+  bad JSON or a schema mismatch → INVALID; API error or budget stop → NOT_RUN. A bug in our own code
+  still throws.
+- **No refusal fallback.** Sonnet 5.5 offers a server-side one and Haiku 5.5 has none. A refusal goes
+  to a person (spec §4.2), and a silent switch of model would corrupt the Haiku and Sonnet comparison.
+- Effort is `medium` on both models, set explicitly, because their defaults differ.
+- `CostGuard` stops before a call that could pass the budget, and counts refused calls too. The price
+  table moved here from `packages/eval`, which re-exports it, because this package now spends.
+- The model is passed in by the caller, who reads `PUSHOVER_MODEL` or `COMPARE_MODEL`. Findings `box`
+  is a list of 4 numbers, because the SDK cannot express a fixed-length tuple.
