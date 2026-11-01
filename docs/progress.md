@@ -35,8 +35,8 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | R1 Retire baseline/store/oracle; ban `examiner` → `paypal`; CI green | done (local; CI on push) |
 | R2 Payouts client + sandbox test; retry cancel | done |
 | R3 `packages/claims`: settlement config, reason codes, decision table v1 | done |
-| R4 `packages/checks`: C1–C11, cited tax table | next |
-| R5 `packages/distribute`: allocation, batch builder, reconciliation | |
+| R4 `packages/checks`: C1–C12, cited tax table | done |
+| R5 `packages/distribute`: allocation, batch builder, reconciliation | next |
 | R6 Migration 0004 + queries | |
 | R7 `packages/examiner` (needs ≥ 1 real receipt photo from the owner) | |
 | R8–R14 Corpus, eval + pilot gate, web, worker, deploy, full run, submission | |
@@ -81,18 +81,19 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 - Anthropic credit is prepaid (owner tops up); state the estimate before any run over ~$1.
 - Pushover's database tables stay in place (spec §2 default).
 
-## Owner decision 2026-11-01: receipts come from a dataset
+## Owner decisions 2026-11-01: receipts and corrections
 
-ExpressExpense SRD, restaurant coffee demo settlement: `docs/architecture.md` → Receipt source.
-Waiting on the owner: H1's size or product (12 usable coffee receipts, not about 30), and the
-proposed corrections to the checks. R4 has not started.
+ExpressExpense SRD set; demo is now "Acme Restaurant Beverage Settlement (fictional demo)".
+Corrections to the spec are in `docs/architecture.md`.
+
+- **R4 evidence (2026-11-01):** `packages/checks` 118 tests (C3 properties at up to 2,000 cases); 9
+  planted bugs each failed tests. `data/tax-rates.json` has 55 state rows and 155 city rows, one
+  source per row. `packages/checks/scripts/measure-phash.ts` measured C6 on the real receipts.
 
 ## Next action
 
-- R4: `packages/checks`: C1–C11 as pure functions plus DB lookups, each returning
-  PASS/FAIL/UNKNOWN with detail; a cited, versioned `data/tax-rates.json` (source URL per row,
-  only the corpus's states); a perceptual-hash package chosen and its API checked with
-  `npm view` and its `.d.ts`; property tests for C3.
+- R5: `packages/distribute`: allocation, batch builder, reconciliation (spec §4.5, corrections in
+  `docs/architecture.md`).
 
 ## Pushover history (kept for the record)
 

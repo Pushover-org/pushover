@@ -230,7 +230,27 @@ they differ:**
   outside → FAIL (DENY). Real shops overcharge: receipt 1084 charged 7.00% where the state rate was
   6.625%. The margin is set on the dev slice.
 - C6 hashes all four rotations; the threshold must stay below 8, because different receipts in the
-  set come that close. Only a hash match denies.
+  set come that close (code refuses 8 or more). Only a hash match denies. Measured on the 196
+  distinct real receipts (`packages/checks/scripts/measure-phash.ts`): at threshold 4, 100% of
+  recompressed, half-size and exactly rotated copies are caught, and no receipt wrongly matches
+  another. But only 4% of copies cropped 3% per side and 1% of copies tilted 2 degrees are caught,
+  and none cropped 8% or tilted 5 degrees. **The spec's "re-cropped" copies get past C6;** C12 sends
+  them to a person if the model reads the same merchant, date and total. R8's F4 labels follow this.
+- `data/tax-rates.json` (`tax-rates-v1`) holds rates in force on the date, one source per row. CA
+  comes from CDTFA's archive by period; rows were rebuilt from word positions in the PDFs and agree
+  with the tax on real receipts. Other states are ranges from the Tax Foundation's January 1 tables,
+  plus the meals taxes named in each row's note. Its "max local" cannot simply be added: for CA in
+  2018 it gives 9.75% where CDTFA lists 10.25%, and for NJ it is Salem County's lower rate.
+- C4: zero tax → UNKNOWN (REVIEW), because some sales are exempt, such as hot coffee to go in CA.
+- C5: the state must appear in the address the examiner read, or it is UNKNOWN. This is how "never
+  inferred from the area code" is enforced in code, since the model's state field alone cannot show it.
+- C2 ignores a product ID that is not in the settlement. C11 counts a line with no printed quantity
+  as one unit.
+- Check settings (`PROVISIONAL_CONFIG`: distance 4, tax margin 2 points, shingle 3, similarity 0.5,
+  3 others, more than 5 claims in 24 hours) are provisional. The margin was chosen knowing receipts
+  1084 and 1099. Later tuning uses the dev slice only.
+- Lookups come in as arguments, and a failed one is passed as null, which gives UNKNOWN. R6 supplies
+  them from Postgres.
 - C7 and C9 are symmetric, not "earlier claims only", and are re-run across all claims before
   Distribute, so the first members of a cluster are held too.
 - C8: a match with an approved claim → FAIL; with a claim still pending → UNKNOWN (REVIEW). Check
