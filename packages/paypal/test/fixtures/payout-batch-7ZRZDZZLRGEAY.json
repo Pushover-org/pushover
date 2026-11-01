@@ -1,0 +1,137 @@
+{
+  "total_items": 3,
+  "total_pages": 1,
+  "batch_header": {
+    "payout_batch_id": "7ZRZDZZLRGEAY",
+    "batch_status": "SUCCESS",
+    "time_created": "2026-10-31T14:03:00Z",
+    "time_completed": "2026-10-31T14:03:33Z",
+    "sender_batch_header": {
+      "sender_batch_id": "rs-test-1793455379",
+      "email_subject": "Settlement test",
+      "email_message": "test"
+    },
+    "funding_source": "BALANCE",
+    "amount": {
+      "currency": "USD",
+      "value": "3.00"
+    },
+    "fees": {
+      "currency": "USD",
+      "value": "0.75"
+    }
+  },
+  "items": [
+    {
+      "payout_item_id": "XM8MDDFPC5G8S",
+      "transaction_id": "09S79105EA7079531",
+      "activity_id": "8UN42745PM342621J",
+      "transaction_status": "SUCCESS",
+      "payout_item_fee": {
+        "currency": "USD",
+        "value": "0.25"
+      },
+      "payout_batch_id": "7ZRZDZZLRGEAY",
+      "payout_item": {
+        "recipient_type": "EMAIL",
+        "amount": {
+          "currency": "USD",
+          "value": "1.00"
+        },
+        "note": "approved claim",
+        "receiver": "po-buyer2-3h8w@personal.example.com",
+        "sender_item_id": "claim-1",
+        "recipient_wallet": "PAYPAL",
+        "purpose": "GOODS"
+      },
+      "time_processed": "2026-10-31T14:03:25Z",
+      "links": [
+        {
+          "href": "https://api.sandbox.paypal.com/v1/payments/payouts-item/XM8MDDFPC5G8S",
+          "rel": "item",
+          "method": "GET",
+          "encType": "application/json"
+        }
+      ]
+    },
+    {
+      "payout_item_id": "58UNDQS3URPHA",
+      "transaction_id": "4LF69280FT181700C",
+      "activity_id": "38T638393H2804201",
+      "transaction_status": "SUCCESS",
+      "payout_item_fee": {
+        "currency": "USD",
+        "value": "0.25"
+      },
+      "payout_batch_id": "7ZRZDZZLRGEAY",
+      "payout_item": {
+        "recipient_type": "EMAIL",
+        "amount": {
+          "currency": "USD",
+          "value": "1.00"
+        },
+        "note": "approved claim",
+        "receiver": "po-buyer3-3h8w@personal.example.com",
+        "sender_item_id": "claim-2",
+        "recipient_wallet": "PAYPAL",
+        "purpose": "GOODS"
+      },
+      "time_processed": "2026-10-31T14:03:25Z",
+      "links": [
+        {
+          "href": "https://api.sandbox.paypal.com/v1/payments/payouts-item/58UNDQS3URPHA",
+          "rel": "item",
+          "method": "GET",
+          "encType": "application/json"
+        }
+      ]
+    },
+    {
+      "payout_item_id": "MQR5FQGFWBUCU",
+      "transaction_id": "8UH64143E8465862D",
+      "activity_id": "5YN6156660332842M",
+      "transaction_status": "UNCLAIMED",
+      "payout_item_fee": {
+        "currency": "USD",
+        "value": "0.25"
+      },
+      "payout_batch_id": "7ZRZDZZLRGEAY",
+      "payout_item": {
+        "recipient_type": "EMAIL",
+        "amount": {
+          "currency": "USD",
+          "value": "1.00"
+        },
+        "note": "no paypal account",
+        "receiver": "no-account-rs-test@example.com",
+        "sender_item_id": "claim-3",
+        "recipient_wallet": "PAYPAL",
+        "purpose": "GOODS"
+      },
+      "time_processed": "2026-10-31T14:03:25Z",
+      "errors": {
+        "name": "RECEIVER_UNREGISTERED",
+        "message": "The recipient for this payout does not have an account. A link to sign up for an account was sent to the recipient. However, if the recipient does not claim this payout within 30 days, the funds will be returned to your account.",
+        "information_link": "https://developer.paypal.com/docs/api/payments.payouts-batch/#errors",
+        "details": [],
+        "links": []
+      },
+      "links": [
+        {
+          "href": "https://api.sandbox.paypal.com/v1/payments/payouts-item/MQR5FQGFWBUCU",
+          "rel": "item",
+          "method": "GET",
+          "encType": "application/json"
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "href": "https://api.sandbox.paypal.com/v1/payments/payouts/7ZRZDZZLRGEAY?page_size=1000&page=1",
+      "rel": "self",
+      "method": "GET",
+      "encType": "application/json"
+    }
+  ]
+}

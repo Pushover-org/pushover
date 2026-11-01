@@ -6,3 +6,21 @@ export { centsToValue, valueToCents } from "./money.ts";
 export { captureOrder, createOrder, getOrder, type CardSource, type CreateOrderArgs, type CreatePurchaseUnit, type OrderItem } from "./orders.ts";
 export { getCapture, getRefund, refundCapture, type RefundCaptureArgs } from "./refunds.ts";
 export type * from "./types.ts";
+export {
+  buildPayoutRequest,
+  cancelPayoutItem,
+  createPayoutBatch,
+  getPayoutBatch,
+  getPayoutItem,
+  PayoutBatchMismatchError,
+  payoutItemOutcome,
+  type CreatePayoutBatchArgs,
+  type PayoutBatch,
+  type PayoutBatchHeader,
+  type PayoutBatchStatus,
+  type PayoutItem,
+  type PayoutItemInput,
+  type PayoutItemOutcome,
+  type PayoutItemStatus,
+  type PayoutMoney,
+} from "./payouts.ts";
