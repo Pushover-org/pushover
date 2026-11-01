@@ -33,8 +33,8 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 |---|---|
 | R0 Record the pivot | done (this update) |
 | R1 Retire baseline/store/oracle; ban `examiner` → `paypal`; CI green | done (local; CI on push) |
-| R2 Payouts client + sandbox test; retry cancel | next |
-| R3 `packages/claims`: settlement config, reason codes, decision table v1 | |
+| R2 Payouts client + sandbox test; retry cancel | done |
+| R3 `packages/claims`: settlement config, reason codes, decision table v1 | next |
 | R4 `packages/checks`: C1–C11, cited tax table | |
 | R5 `packages/distribute`: allocation, batch builder, reconciliation | |
 | R6 Migration 0004 + queries | |
@@ -47,12 +47,20 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 
 ## In progress
 
-- Nothing. R0 and R1 are committed.
+- **R2 evidence (2026-11-01):** `pnpm test` 95/95 (20 Payouts unit tests on a recorded sandbox
+  batch and PayPal's real duplicate error); `pnpm test:sandbox` PASS (batch `FHT9WYQD2RX9G`:
+  one SUCCESS, one UNCLAIMED, duplicate handled). Early cancel: third 500, not used.
+  Details in `docs/sandbox-findings.md` → Rightful Share: Payouts.
+
+- Nothing in progress. R0–R2 are committed.
 
 ## Open for the owner / notes for later steps
 
 - **R7:** at least one real receipt photo (card digits covered) is needed for R7's check;
   about 30 for R8.
+- **Payouts behaviour to remember (R2):** a reused `sender_batch_id` is refused with 400 even with
+  the same key; `createPayoutBatch` returns the original batch as `duplicate: true`. Unclaimed
+  test items `MQR5FQGFWBUCU`, `7DVXQR5XJHJF2`, `WUC3VU8LEEB7L` should return about Nov 30–Dec 1.
 - **R2 facts checked 2026-11-01 in PayPal's `payments_payouts_batch_v1.json`:** item status has
   9 values (`SUCCESS, FAILED, PENDING, UNCLAIMED, RETURNED, ONHOLD, BLOCKED, REFUNDED,
   REVERSED`), batch status 5 (`DENIED, PENDING, PROCESSING, SUCCESS, CANCELED`); reading a
@@ -67,11 +75,8 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 
 ## Next action
 
-- R2: vendor `payments_payouts_batch_v1.json`; write `packages/paypal/src/payouts.ts` (create,
-  read batch with pagination, read item, cancel) with unit tests on recorded responses and a
-  guard for a reused key with a different body; sandbox test with one SUCCESS and one
-  UNCLAIMED item; retry cancel on `MQR5FQGFWBUCU` once; record 7ZRZDZZLRGEAY and the new
-  results in `docs/sandbox-findings.md`.
+- R3: `packages/claims`: settlement config schema (zod 4, verify the version), reason codes,
+  decision table v1 (spec §4.4), one test per row and per rule-order interaction.
 
 ## Pushover history (kept for the record)
 

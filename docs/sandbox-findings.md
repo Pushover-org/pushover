@@ -190,6 +190,81 @@ Findings:
   TRANSACTION_DISPUTED) therefore do not consume a real capture.
 - Mocked refund errors are `422 UNPROCESSABLE_ENTITY` with the code in `details[0].issue`.
 
+## Rightful Share: Payouts (R2)
+
+Spec: `docs/paypal-specs/payments_payouts_batch_v1.json`. Fund account: the `pushover-guarded`
+app (merchant `po-merchant-guarded-3h8w@business.example.com`). Play money.
+
+### Day-1 Payouts test (run 2026-10-31 on this laptop, before R2)
+
+- The token's scopes include `https://uri.paypal.com/payments/payouts`.
+- Batch `7ZRZDZZLRGEAY` (`sender_batch_id` `rs-test-1793455379`), 3 × $1.00: batch `SUCCESS`,
+  amount $3.00, **fees $0.75** ($0.25 on each item).
+  - `XM8MDDFPC5G8S` → po-buyer2: `SUCCESS`
+  - `58UNDQS3URPHA` → po-buyer3: `SUCCESS`
+  - `MQR5FQGFWBUCU` → no-account-rs-test@example.com: `UNCLAIMED`, `RECEIVER_UNREGISTERED`.
+    PayPal's message: if not claimed "within 30 days, the funds will be returned to your account".
+- Early cancel of `MQR5FQGFWBUCU` returned 500 `INTERNAL_SERVICE_ERROR` twice (debug_id
+  `f9401880fbffb`).
+- The batch read back on 2026-11-01 is the unit-test fixture
+  `packages/paypal/test/fixtures/payout-batch-7ZRZDZZLRGEAY.json`.
+
+### Sandbox test (`pnpm test:sandbox`, 2026-11-01) — PASS
+
+First run, batch `FPXZYK4U4ZA9Y`: the two items behaved as expected, then the test failed on the
+duplicate step, which showed the client was wrong:
+
+```
+created {"payout_batch_id":"FPXZYK4U4ZA9Y","batch_status":"PENDING","sender_batch_id":"rs-sandbox-1793513377762"}
+batch {"batch_status":"SUCCESS","amount":{"currency":"USD","value":"2.00"},"fees":{"currency":"USD","value":"0.50"},"time_completed":"2026-11-01T06:10:11Z"}
+item {"id":"QAHAD7XFP97KN","sender_item_id":"claim-paid","status":"SUCCESS","outcome":"PAID","fee":"0.25"}
+item {"id":"7DVXQR5XJHJF2","sender_item_id":"claim-unclaimed","status":"UNCLAIMED","outcome":"UNCLAIMED","fee":"0.25","error":"RECEIVER_UNREGISTERED"}
+PayPalApiError: PayPal 400 Batch with given sender_batch_id already exists on /v1/payments/payouts (debug_id f803695983d97)
+body: { name: 'USER_BUSINESS_ERROR', details: [ { field: 'SENDER_BATCH_ID', location: 'body', issue: 'Batch with given sender_batch_id already exists',
+        link: [ { href: 'https://api.sandbox.paypal.com/v1/payments/payouts/FPXZYK4U4ZA9Y', rel: 'self', method: 'GET' } ] } ] }
+```
+
+After the fix, batch `FHT9WYQD2RX9G`:
+
+```
+created {"payout_batch_id":"FHT9WYQD2RX9G","batch_status":"PENDING","sender_batch_id":"rs-sandbox-1793513468971"}
+batch {"batch_status":"SUCCESS","amount":{"currency":"USD","value":"2.00"},"fees":{"currency":"USD","value":"0.50"},"time_completed":"2026-11-01T06:11:43Z"}
+item {"id":"G5AVNH6ECEW44","sender_item_id":"claim-paid","status":"SUCCESS","outcome":"PAID","fee":"0.25"}
+item {"id":"WUC3VU8LEEB7L","sender_item_id":"claim-unclaimed","status":"UNCLAIMED","outcome":"UNCLAIMED","fee":"0.25","error":"RECEIVER_UNREGISTERED"}
+same request again {"duplicate":true,"payout_batch_id":"FHT9WYQD2RX9G","batch_status":"SUCCESS"}
+same sender_batch_id, new key {"status":400,"name":"USER_BUSINESS_ERROR","issue":"Batch with given sender_batch_id already exists","debug_id":"f918300e4f3b8","message":"User business error."}
+ ✓ ... pays one item and leaves the unregistered one UNCLAIMED; duplicates are refused 40417ms
+```
+
+Findings:
+- **Payouts does not replay a reused `PayPal-Request-Id`** the way Refunds do (D1-4). An identical
+  retry with the same key is refused with **400 `USER_BUSINESS_ERROR`**, `details[0].field =
+  "SENDER_BATCH_ID"`, and a `self` link to the original batch. A new key gets the same 400. So
+  the duplicate protection is `sender_batch_id` itself (the spec: rejected for 30 days).
+- **Danger fixed:** that 400 looks like a failure, but the original batch may have paid out.
+  `createPayoutBatch` now follows the link, reads the original batch, checks its
+  `sender_batch_id`, and returns it with `duplicate: true`. Other 400s still throw.
+- Fees are per item (`payout_item_fee` $0.25 each) and add up to the batch `fees`.
+- Payouts money is `{currency, value}`, not Orders/Refunds' `{currency_code, value}`.
+- A batch of 2 settles (both items out of `PENDING`) in about 30–40 s in sandbox.
+
+### Early cancel, retried once (2026-11-01) — still fails
+
+`node --env-file-if-exists=.env.local scripts/payouts/cancel-item.ts MQR5FQGFWBUCU` (one attempt, no retries):
+
+```
+cancel run at 2026-11-01T06:12:06.464Z item=MQR5FQGFWBUCU
+before {"status":"UNCLAIMED","error":"RECEIVER_UNREGISTERED","time_processed":"2026-10-31T14:03:25Z"}
+cancel failed {"type":"PayPalUnknownOutcomeError","status":500,"issue":"INTERNAL_SERVICE_ERROR","debug_id":"f614854bd5931"}
+after (read back) {"status":"UNCLAIMED","error":"RECEIVER_UNREGISTERED","time_processed":"2026-10-31T14:03:25Z"}
+```
+
+Third 500 across two days. **The product does not depend on early cancel**; returns come from
+PayPal's 30-day rule. Unclaimed items now waiting to return, all $1.00:
+`MQR5FQGFWBUCU` (processed 2026-10-31, so about Nov 30), `7DVXQR5XJHJF2` and `WUC3VU8LEEB7L`
+(2026-11-01, about Dec 1). These land at the start of judging (Dec 1–15) and can feed a real
+cy-près batch.
+
 ## Spec corrections found while building
 
 - `refund_request.custom_id` is `maxLength 127`, pattern `^.*$`
