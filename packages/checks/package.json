@@ -1,0 +1,21 @@
+{
+  "name": "@pushover/checks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@pushover/claims": "workspace:*",
+    "sharp": "0.35.5",
+    "sharp-phash": "2.2.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "fast-check": "4.10.2"
+  }
+}
