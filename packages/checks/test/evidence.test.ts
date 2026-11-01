@@ -133,6 +133,19 @@ describe("C5 geography", () => {
     expect(stateIsPrinted("CA", "Cape Cod Cafe")).toBe(false);
     expect(stateIsPrinted("CA", null)).toBe(false);
   });
+
+  it("reads title-case codes and traditional abbreviations, as real receipts print them", () => {
+    // Receipts 1166 and 1028 in the ExpressExpense set, found while labelling claims-v1.
+    expect(stateIsPrinted("TX", "7800 Airport Blvd (HOU), Houston, Tx 77061")).toBe(true);
+    expect(stateIsPrinted("CA", "11325 Washington Blvd, Whitter, Calif 90606")).toBe(true);
+    expect(stateIsPrinted("TX", "Austin, Tex. 78701")).toBe(true);
+    expect(stateIsPrinted("NJ", "Hoboken, N.J. 07030")).toBe(true);
+    // An all-lowercase code is an ordinary word, and an abbreviation must stand alone.
+    expect(stateIsPrinted("IN", "open in the morning")).toBe(false);
+    expect(stateIsPrinted("OR", "Pickup or delivery")).toBe(false);
+    expect(stateIsPrinted("TX", "Textile Plaza, Springfield")).toBe(false);
+    expect(stateIsPrinted("CA", "Calico Rd, Barstow")).toBe(false);
+  });
 });
 
 describe("C10 visual anomaly", () => {

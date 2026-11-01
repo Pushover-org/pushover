@@ -87,12 +87,29 @@ const STATE_NAMES: Record<string, string> = {
   WA: "washington", WV: "west virginia", WI: "wisconsin", WY: "wyoming",
 };
 
-/** The state must be printed in the address the examiner read: never inferred from an area code. */
+/** Traditional (AP style) abbreviations longer than the code, as printed on real receipts: "Calif", "Tex.". */
+const STATE_ABBREVIATIONS: Record<string, string[]> = {
+  AL: ["ala"], AZ: ["ariz"], AR: ["ark"], CA: ["calif", "cal"], CO: ["colo"], CT: ["conn"], DE: ["del"], DC: ["d.c."], FL: ["fla"], IL: ["ill"], IN: ["ind"],
+  KS: ["kan", "kans"], KY: ["ky."], MA: ["mass"], MI: ["mich"], MN: ["minn"], MS: ["miss"], MT: ["mont"], NE: ["neb", "nebr"], NV: ["nev"], NH: ["n.h."],
+  NJ: ["n.j."], NM: ["n.m."], NY: ["n.y."], NC: ["n.c."], ND: ["n.d."], OK: ["okla"], OR: ["ore", "oreg"], RI: ["r.i."], SC: ["s.c."], SD: ["s.d."],
+  TN: ["tenn"], TX: ["tex"], WA: ["wash"], WV: ["w.va."], WI: ["wis", "wisc"], WY: ["wyo"],
+};
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * The state must be printed in the address the examiner read: never inferred from an area code.
+ * Accepted: the code in capitals or title case ("TX", "Tx"), the name, or a traditional
+ * abbreviation ("Calif", "Tex."). An all-lowercase code is not, because "in", "or" and "me" are
+ * ordinary words.
+ */
 export function stateIsPrinted(state: string, address: string | null): boolean {
   if (!address) return false;
-  if (new RegExp(`(^|[^A-Za-z])${state}([^A-Za-z]|$)`).test(address)) return true;
+  const title = state.charAt(0) + state.charAt(1).toLowerCase();
+  if (new RegExp(`(^|[^A-Za-z])(${state}|${title})([^A-Za-z]|$)`).test(address)) return true;
+  const lower = address.toLowerCase();
   const name = STATE_NAMES[state];
-  return name !== undefined && address.toLowerCase().includes(name);
+  if (name !== undefined && lower.includes(name)) return true;
+  return (STATE_ABBREVIATIONS[state] ?? []).some((a) => new RegExp(`(^|[^a-z])${escapeRe(a)}(\\.|[^a-z]|$)`).test(lower));
 }
 
 /** C5. A proof claim also needs the store's state, printed on the receipt. */
