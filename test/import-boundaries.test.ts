@@ -9,33 +9,40 @@ async function restrictedImportErrors(filePath: string, source: string): Promise
 }
 
 describe("import boundaries", () => {
-  const agentFile = "packages/agent/src/probe.ts";
-  const oracleFile = "packages/oracle/src/probe.ts";
+  const examinerFile = "packages/examiner/src/probe.ts";
+  const oracleFile = "packages/eval/src/oracle/probe.ts";
 
   it.each([
     `import { PayPalClient } from "@pushover/paypal";`,
-    `import { refund } from "@pushover/paypal/refunds";`,
+    `import { createPayoutBatch } from "@pushover/paypal/payouts";`,
     `import { PayPalAgentToolkit } from "@paypal/agent-toolkit/ai-sdk";`,
     `import { PayPalClient } from "../../paypal/src/client.ts";`,
     `export { PayPalClient } from "@pushover/paypal";`,
-  ])("packages/agent rejects %s", async (source) => {
-    expect(await restrictedImportErrors(agentFile, source)).toBe(1);
+  ])("packages/examiner rejects %s", async (source) => {
+    expect(await restrictedImportErrors(examinerFile, source)).toBe(1);
   });
 
-  it("packages/agent may import the ledger", async () => {
-    expect(await restrictedImportErrors(agentFile, `import { handleRefundIntent } from "@pushover/ledger";`)).toBe(0);
+  it("packages/examiner may import the claims types", async () => {
+    expect(await restrictedImportErrors(examinerFile, `import type { Settlement } from "@pushover/claims";`)).toBe(0);
   });
 
   it.each([
-    `import { decide } from "@pushover/ledger";`,
-    `import { decide } from "../../ledger/src/decide.ts";`,
-  ])("packages/oracle rejects %s", async (source) => {
+    `import { decide } from "@pushover/claims";`,
+    `import { decide } from "../../../claims/src/decision-v1.ts";`,
+    `import { runChecks } from "@pushover/checks";`,
+    `import { allocate } from "@pushover/distribute";`,
+    `import { examine } from "@pushover/examiner";`,
+  ])("the eval oracle rejects %s", async (source) => {
     expect(await restrictedImportErrors(oracleFile, source)).toBe(1);
+  });
+
+  it("the rest of packages/eval may use the decision code (arm C runs it)", async () => {
+    expect(await restrictedImportErrors("packages/eval/src/run.ts", `import { decide } from "@pushover/claims";`)).toBe(0);
   });
 
   it("other packages may import PayPal code", async () => {
     expect(
-      await restrictedImportErrors("packages/ledger/src/probe.ts", `import { PayPalClient } from "@pushover/paypal";`),
+      await restrictedImportErrors("packages/distribute/src/probe.ts", `import { PayPalClient } from "@pushover/paypal";`),
     ).toBe(0);
   });
 });

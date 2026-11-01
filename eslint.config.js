@@ -16,10 +16,11 @@ export default tseslint.config(
     files: ["**/test/**"],
     rules: { "@typescript-eslint/no-non-null-assertion": "off" },
   },
-  // The model never moves money (spec §0.1 rule 7, §2.7). The agent package must not
-  // reach PayPal directly: no @pushover/paypal, no @paypal/* SDKs, no relative path into it.
+  // The model never moves money and never decides a claim (Rightful Share spec §0.1 rule 7).
+  // The examiner reports findings only: no @pushover/paypal, no @paypal/* SDKs, no relative
+  // path into packages/paypal.
   {
-    files: ["packages/agent/**"],
+    files: ["packages/examiner/**"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -27,24 +28,26 @@ export default tseslint.config(
           patterns: [
             {
               regex: "^@paypal/|(^|/)paypal(/|$)",
-              message: "packages/agent must not import PayPal code. Refunds go through request_refund and the ledger.",
+              message: "packages/examiner must not import PayPal code. It reports findings; code decides and pays.",
             },
           ],
         },
       ],
     },
   },
-  // The oracle scores the ledger, so it must not share code with it (spec §5.6.3).
+  // The oracle checks the corpus labels against the rules as written, so it must not share
+  // code with what it checks: the decision table, the checks, the allocation or the examiner
+  // (spec §5.1).
   {
-    files: ["packages/oracle/**"],
+    files: ["packages/eval/src/oracle/**"],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [
             {
-              regex: "(^|/)ledger(/|$)",
-              message: "packages/oracle must stay independent of packages/ledger (spec §5.6.3).",
+              regex: "(^|/)(claims|checks|distribute|examiner)(/|$)",
+              message: "The eval oracle must stay independent of claims, checks, distribute and examiner (spec §5.1).",
             },
           ],
         },
