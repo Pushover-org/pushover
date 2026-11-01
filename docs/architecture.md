@@ -320,4 +320,11 @@ not the Wilson upper bound. Wilson intervals are still reported (§5.3).
   settlement where every claim is filed before clusters are checked.
 - Rendered receipts and F4 copies are made into git-ignored `.data/claims-v1/` by
   `pnpm corpus:images`; F4 copies are made exactly as R4 measured the image hash.
+- R9 runner: `pnpm eval:claims --run-id <id> --model <m> [--split pilot|holdout|dev|all] [--check]`.
+  Arm B (`src/arm-b.ts`) gives the model the settlement's rules and one claim and asks it to
+  approve or deny; a failed call is no decision and is not paid. Arm C's worst case lets the
+  examiner's logged `model_recommendation` (or, for a no-proof claim, arm B's answer) decide every
+  REVIEW. The slice's fund is the full fund scaled by its share of claims.
+- Examiner model after the pilot (2026-11-01): Haiku 5.5 read all 24 pilot receipts exactly on
+  date, state, subtotal, tax, total and drinks, as Sonnet 5.5 did, so Haiku stays the main model.
 

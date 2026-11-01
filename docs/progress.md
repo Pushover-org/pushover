@@ -40,8 +40,9 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | R6 Migration 0004 + queries | done |
 | R7 `packages/examiner` (one dataset receipt + one rendered fake) | done |
 | R8 Corpus scripts, manifest and labels committed before any run | done |
-| R9 Eval runner, three arms, pilot gate | next |
-| R10–R14 Web, worker, deploy, full run, submission | |
+| R9 Eval runner, three arms, pilot gate | done: **GO** on both models |
+| R10 `apps/web` (AG Grid admin) | next |
+| R11–R14 Worker, deploy, full run, submission | |
 
 - **R1 evidence (2026-11-01):** tag `pushover-final` → `b613415`. `pnpm lint` exit 0,
   `pnpm typecheck` exit 0, `pnpm test` 75/75 in 7 files (15 import-boundary tests for the
@@ -110,12 +111,15 @@ Corrections to the spec are in `docs/architecture.md`.
   misses. Found and fixed: C5 rejected "Calif" and "Tx". Pre-registration, deviations and the
   gate: `docs/methodology.md` → claims-v1.
 
+- **R9 evidence (2026-11-01):** pilot gate GO on Haiku 5.5 and Sonnet 5.5 (fraud paid: pay
+  everyone $560, model alone $160, Rightful Share $10; honest denied 1/15; workload 2/15). Cost
+  $0.04 + $0.46. `pnpm test` 710/710. Numbers: `docs/methodology.md` → pilot gate on claims-v1.
+
 ## Next action
 
-- R9: the eval runner (`pnpm eval:claims --run-id <id> --corpus claims-v1 --model <m> [--check]`)
-  on `src/pipeline.ts`: read the pilot's 32 claims (`pnpm receipts:download && pnpm corpus:images`
-  first), arms A, B and C, score per `docs/methodology.md`, gate on Haiku then Sonnet. State the
-  cost estimate to the owner before the run; then GO/NO-GO to the owner.
+- R10: `apps/web`: /demo, /claim, /admin, /money, /report; admin tables on AG Grid with custom
+  cell renderers (spec §4.7). The AG Studio trial starts on or after Nov 3: build without the key
+  until then (watermark). Minimal version (/demo plus one real Payouts batch) by Nov 5.
 
 ## Pushover history (kept for the record)
 

@@ -76,6 +76,52 @@ results are reported for all claims and for unseen claims only.
   intervals reported (n is small). Otherwise **NO-GO**: stop and report the numbers to the owner.
 - C7 and C9 run across all 157 claims' declarations and arrivals; only pilot claims are read.
 
+## Rightful Share: pilot gate on claims-v1 — GO on both models (R9, 2026-11-01)
+
+Runs `claims-pilot-2026-11-01-haiku` and `-sonnet` (`packages/eval/results/`), code at commit
+`0cf6bf2`, 32 pilot claims (15 honest, 15 fraud, 2 ineligible), check settings unchanged from
+`PROVISIONAL_CONFIG`. Every reading and every model-alone call returned OK on both models.
+
+| | Haiku 5.5 | Sonnet 5.5 |
+|---|---|---|
+| Fraud paid, A pay everyone | $560.00 | $560.00 |
+| Fraud paid, B model alone | $160.00 | $160.00 |
+| Fraud paid, C Rightful Share (worst case) | **$10.00** ($55.00) | **$10.00** ($55.00) |
+| Ineligible paid, A / B / C | $30 / $0 / $0 | $30 / $15 / $0 |
+| Honest wrongly denied, B | 3/15 (20.0%, CI 7.0–45.2%) | 1/15 (6.7%, CI 1.2–29.8%) |
+| Honest wrongly denied, C | **1/15** (6.7%, CI 1.2–29.8%) | **1/15** (6.7%, CI 1.2–29.8%) |
+| Honest REVIEW + NEED_MORE, C | 2/15 (13.3%, CI 3.7–37.9%) | 2/15 (13.3%, CI 3.7–37.9%) |
+| Honest average check, A / B / C | $8.23 / $15.65 / $14.00 | $8.23 / $15.42 / $14.00 |
+| Receipts read exactly (date, state, subtotal, tax, total, drinks) | 24/24 each | 24/24 each |
+| Arm C outcome = expected | 29/32 | 30/32 |
+| Cost | $0.041 | $0.462 |
+
+**Gate:** fraud ratio C/A 0.018 (≤ 0.25), honest denied 6.7% (≤ 10%), workload 13.3% (≤ 30%):
+**GO** for both models.
+
+What the numbers show:
+- **The model alone paid fraud that the checks stop**, the same claims on both models: two
+  impossible-tax receipts (F2), an edited total (F3), a copied receipt (F4), three template bots
+  (F5) and the identity farm's first claim (F6). Arm C paid only that farm claim, the limit
+  recorded before the run.
+- **The honest denial in arm C is receipt 1108**, the tax-included line values predicted before the
+  run. Both NEED_MORE claims are honest receipts with no state printed, as labelled.
+- **Average check:** pay-everyone dilutes the honest check to $8.23. Arm C's $14.00 counts the
+  two NEED_MORE claims as unpaid this round; they are paid if the claimant sends the document. Arm B's
+  is higher only because it also pays the claims arm C asks a document for.
+- **Where arm C differed from the label, the label was wrong, not the money:** c-033 and c-152 were
+  labelled REVIEW because the transcriber marked the photos partly illegible, and both models read
+  them exactly; the honest claim was paid and the fraud denied. Haiku called receipt 1023 "other"
+  instead of "receipt", so that ineligible claim got NEED_MORE instead of DENY (not paid either way).
+  Sonnet misread the arithmetic on the recompressed F4 copy c-032, which was denied for that instead
+  of as a duplicate.
+- **Reading:** Haiku 5.5 read every pilot receipt as exactly as Sonnet 5.5 at about a tenth of the cost,
+  so spec §4.2's switch to Sonnet is not triggered; the owner keeps Haiku as the main model.
+
+Limits: 32 claims, one run per model, wide intervals (stated above). The pilot holds no receipt
+seen before the checks were designed, so the unseen-only numbers equal the totals. The full run
+(R13) uses the 100 holdout claims.
+
 The rest of this file is the Pushover record, kept as it was.
 
 How Pushover's number is measured, and what each run found. The plan is spec §2.6 and §5.5–§5.6;
