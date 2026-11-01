@@ -54,8 +54,9 @@ describe("createPayoutBatch", () => {
   it("POSTs with PayPal-Request-Id = sender_batch_id", async () => {
     const pp = fakePayPal([json(201, { batch_header: { payout_batch_id: "B1", batch_status: "PENDING", sender_batch_header: { sender_batch_id: args.senderBatchId } } })]);
     const { client } = makeClient(pp.fetch);
-    const header = await createPayoutBatch(client, args);
+    const { header, duplicate } = await createPayoutBatch(client, args);
     expect(header).toMatchObject({ payout_batch_id: "B1", batch_status: "PENDING" });
+    expect(duplicate).toBe(false);
     const call = pp.calls[0]!;
     expect(call.method).toBe("POST");
     expect(call.url).toBe("https://api-m.sandbox.paypal.com/v1/payments/payouts");
@@ -66,6 +67,29 @@ describe("createPayoutBatch", () => {
   it("throws when PayPal returns a different batch for this key (reused key, D1-4)", async () => {
     const pp = fakePayPal([json(201, { batch_header: { payout_batch_id: "OLD", batch_status: "SUCCESS", sender_batch_header: { sender_batch_id: "rs-old" } } })]);
     const { client } = makeClient(pp.fetch);
+    await expect(createPayoutBatch(client, args)).rejects.toBeInstanceOf(PayoutBatchMismatchError);
+  });
+
+  it("treats PayPal's 'sender_batch_id already exists' 400 as the original batch, not a failure", async () => {
+    const dupBody = JSON.parse(readFileSync(new URL("./fixtures/payout-duplicate-sender-batch-id.json", import.meta.url), "utf8"));
+    const original = { batch_header: { payout_batch_id: "FPXZYK4U4ZA9Y", batch_status: "SUCCESS", sender_batch_header: { sender_batch_id: args.senderBatchId } } };
+    const pp = fakePayPal([json(400, dupBody), json(200, original)]);
+    const { client } = makeClient(pp.fetch);
+    const res = await createPayoutBatch(client, args);
+    expect(res).toEqual({ header: original.batch_header, duplicate: true });
+    expect(pp.calls.map((c) => `${c.method} ${new URL(c.url).pathname}`)).toEqual(["POST /v1/payments/payouts", "GET /v1/payments/payouts/FPXZYK4U4ZA9Y"]);
+  });
+
+  it("does not mistake other 400s for a duplicate", async () => {
+    const pp = fakePayPal([json(400, { name: "VALIDATION_ERROR", details: [{ field: "items[0].receiver", issue: "bad" }] })]);
+    const { client } = makeClient(pp.fetch);
+    await expect(createPayoutBatch(client, args)).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("still checks the linked batch really carries our sender_batch_id", async () => {
+    const dupBody = JSON.parse(readFileSync(new URL("./fixtures/payout-duplicate-sender-batch-id.json", import.meta.url), "utf8"));
+    const other = { batch_header: { payout_batch_id: "FPXZYK4U4ZA9Y", batch_status: "SUCCESS", sender_batch_header: { sender_batch_id: "rs-someone-else" } } };
+    const { client } = makeClient(fakePayPal([json(400, dupBody), json(200, other)]).fetch);
     await expect(createPayoutBatch(client, args)).rejects.toBeInstanceOf(PayoutBatchMismatchError);
   });
 

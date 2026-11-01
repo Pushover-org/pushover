@@ -2,6 +2,7 @@
 // docs/paypal-specs/payments_payouts_batch_v1.json. Note that Payouts money is
 // { currency, value }, not the { currency_code, value } that Orders and Refunds use.
 import type { PayPalClient } from "./client.ts";
+import { PayPalApiError } from "./errors.ts";
 import { centsToValue } from "./money.ts";
 
 /** `transaction_enum`. */
@@ -123,18 +124,55 @@ export function buildPayoutRequest(a: CreatePayoutBatchArgs): unknown {
 }
 
 /**
- * POST /v1/payments/payouts. Returns the batch header (status is usually PENDING); read the
- * batch afterwards for item statuses. A 5xx or timeout surfaces as PayPalUnknownOutcomeError:
- * the spec says retrying with the same sender_batch_id is safe, so the caller retries or reads.
+ * The batch ID PayPal links to when it refuses a reused sender_batch_id. Observed in sandbox
+ * 2026-11-01: 400 USER_BUSINESS_ERROR, details[0].field "SENDER_BATCH_ID", with a "self" link to
+ * the original batch, even when the PayPal-Request-Id was the same (docs/sandbox-findings.md).
  */
-export async function createPayoutBatch(pp: PayPalClient, a: CreatePayoutBatchArgs): Promise<PayoutBatchHeader> {
+export function existingBatchIdOf(err: unknown): string | undefined {
+  if (!(err instanceof PayPalApiError) || err.status !== 400) return undefined;
+  const details = (err.body as { details?: { field?: string; link?: { href?: string; rel?: string }[] }[] } | undefined)?.details ?? [];
+  for (const d of details) {
+    if (d.field !== "SENDER_BATCH_ID") continue;
+    const href = d.link?.find((l) => l.rel === "self")?.href;
+    const m = href ? /\/v1\/payments\/payouts\/([A-Za-z0-9]+)$/.exec(href) : null;
+    if (m?.[1]) return m[1];
+  }
+  return undefined;
+}
+
+export interface CreatePayoutBatchResult {
+  header: PayoutBatchHeader;
+  /** True when PayPal already had a batch with this sender_batch_id; nothing new was sent. */
+  duplicate: boolean;
+}
+
+/**
+ * POST /v1/payments/payouts. Returns the batch header (status is usually PENDING); read the
+ * batch afterwards for item statuses.
+ *
+ * Safe to retry. A 5xx or timeout surfaces as PayPalUnknownOutcomeError, and the spec says
+ * retrying with the same sender_batch_id is safe. A retry that PayPal refuses because the batch
+ * already exists returns that original batch with `duplicate: true`: it is never reported as a
+ * failure, because the money may well have gone out.
+ */
+export async function createPayoutBatch(pp: PayPalClient, a: CreatePayoutBatchArgs): Promise<CreatePayoutBatchResult> {
   const body = buildPayoutRequest(a);
-  const res = await pp.request<{ batch_header: PayoutBatchHeader }>("POST", "/v1/payments/payouts", { requestId: a.senderBatchId, body });
-  const header = res.batch_header;
+  let header: PayoutBatchHeader;
+  let duplicate = false;
+  try {
+    const res = await pp.request<{ batch_header: PayoutBatchHeader }>("POST", "/v1/payments/payouts", { requestId: a.senderBatchId, body });
+    header = res.batch_header;
+  } catch (err) {
+    const existing = existingBatchIdOf(err);
+    if (existing === undefined) throw err;
+    const res = await pp.request<{ batch_header: PayoutBatchHeader }>("GET", `/v1/payments/payouts/${encodeURIComponent(existing)}?page=1&page_size=1`);
+    header = res.batch_header;
+    duplicate = true;
+  }
   if (header.sender_batch_header.sender_batch_id !== a.senderBatchId) {
     throw new PayoutBatchMismatchError(a.senderBatchId, header.sender_batch_header.sender_batch_id, header.payout_batch_id);
   }
-  return header;
+  return { header, duplicate };
 }
 
 /** GET /v1/payments/payouts/{id}, every page. */
