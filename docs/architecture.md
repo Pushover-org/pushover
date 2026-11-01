@@ -118,3 +118,37 @@ baseline, because the toolkit's tools need them.
 The baseline passes `temperature: 1` to `generateText`; everything else is PayPal's example.
 `ai@4` otherwise sends temperature 0, which Haiku 5.5 and Sonnet 5.5 reject (D1-6 in
 `docs/sandbox-findings.md`). 1 is the API default, so both agents run at the model's default.
+
+## Decision table v1 (packages/claims, Rightful Share)
+
+`decide()` is pure: no I/O, no clock, no model. Its input has no field for the examiner's own
+approve/deny recommendation, and a test fails if the word appears in the decision code. Rules,
+first match wins (spec §4.4, with the corrections marked *):
+
+0. * Proof claim whose examiner run was INVALID, REFUSED or NOT_RUN → REVIEW (spec §4.2 says an
+   invalid reading goes to REVIEW; it has to come first, or its UNKNOWN checks would ask the
+   claimant for documents they already sent).
+1. Proof claim with C1, C2, C3 or C4 FAIL → DENY (first in that order). * **C5 (geography) FAIL
+   denies every claim.** As written, a no-proof claim failing C5 matched neither rule 1 (evidence
+   only) nor rule 6 (needs C5 passing) and fell through to rule 7, "approve at the proof tier".
+2. C6 (proof only) or C8 FAIL → DENY as a duplicate.
+3. C7 or C9 FAIL → REVIEW (cluster).
+4. Proof claim: C10 FAIL or examiner confidence low → REVIEW.
+5. * **UNKNOWN the claimant can fix** (C1 date, C2 product, C3 totals, C5 address/store) →
+   NEED_MORE, naming the document.
+6. * **UNKNOWN on our side** (C4 tax table has no row for the state, C6 image hash, C7, C8, C9
+   lookups, C10, C11) → REVIEW. Asking the claimant for paperwork cannot fix these, and unknown
+   is never a pass.
+7. No-proof claim → APPROVE, flat amount, 1 unit.
+8. Proof claim → APPROVE, units capped at the tier maximum (C11 FAIL caps, never denies).
+
+- Which checks apply: all of C1–C11 for proof claims; C5, C7, C8, C9, C11 for no-proof claims.
+  A missing applicable check counts as UNKNOWN.
+- Every decision records `version: "decision-v1"`, the matching rule, a reason code with a
+  court-readable sentence (`REASONS`), and the check results it saw.
+- Property test (5,000 random cases): APPROVE only when every applicable check passed (C11 may
+  FAIL, meaning capped), and with evidence only after a clean, confident examiner run.
+- Settlement config (`SettlementSchema`, zod 4.6.7): USD only, integer cents, class period start
+  ≤ end, unique product IDs, 50 states + DC, reserve below the fund, no-proof amount at most the
+  proof maximum. A demo settlement's name must contain "(fictional demo)" and its cy-près
+  recipient "(demo)" (spec rule 8).

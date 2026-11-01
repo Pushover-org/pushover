@@ -34,8 +34,8 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | R0 Record the pivot | done (this update) |
 | R1 Retire baseline/store/oracle; ban `examiner` → `paypal`; CI green | done (local; CI on push) |
 | R2 Payouts client + sandbox test; retry cancel | done |
-| R3 `packages/claims`: settlement config, reason codes, decision table v1 | next |
-| R4 `packages/checks`: C1–C11, cited tax table | |
+| R3 `packages/claims`: settlement config, reason codes, decision table v1 | done |
+| R4 `packages/checks`: C1–C11, cited tax table | next |
 | R5 `packages/distribute`: allocation, batch builder, reconciliation | |
 | R6 Migration 0004 + queries | |
 | R7 `packages/examiner` (needs ≥ 1 real receipt photo from the owner) | |
@@ -52,7 +52,12 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
   one SUCCESS, one UNCLAIMED, duplicate handled). Early cancel: third 500, not used.
   Details in `docs/sandbox-findings.md` → Rightful Share: Payouts.
 
-- Nothing in progress. R0–R2 are committed.
+- **R3 evidence (2026-11-01):** `pnpm test` 158/158; `packages/claims` 63 tests (every rule,
+  rule-order interactions, settlement validation, a 5,000-case property test). A planted bug
+  (unknown tax let through) failed both a rule test and the property test, then was reverted.
+  Three corrections to spec §4.4 in `docs/architecture.md` → Decision table v1.
+
+- Nothing in progress. R0–R3 are committed.
 
 ## Open for the owner / notes for later steps
 
@@ -75,8 +80,10 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 
 ## Next action
 
-- R3: `packages/claims`: settlement config schema (zod 4, verify the version), reason codes,
-  decision table v1 (spec §4.4), one test per row and per rule-order interaction.
+- R4: `packages/checks`: C1–C11 as pure functions plus DB lookups, each returning
+  PASS/FAIL/UNKNOWN with detail; a cited, versioned `data/tax-rates.json` (source URL per row,
+  only the corpus's states); a perceptual-hash package chosen and its API checked with
+  `npm view` and its `.d.ts`; property tests for C3.
 
 ## Pushover history (kept for the record)
 
