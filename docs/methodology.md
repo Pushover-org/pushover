@@ -14,6 +14,68 @@ measured on them:
   may be better than on receipts it has never seen.
 - **The honest label means "real receipt", not "a real claimant".** Nobody filed these as claims.
 
+## Rightful Share: claims-v1, pre-registered (R8, 2026-11-01)
+
+The claim set is `packages/eval/corpus/claims-v1/` (README there). It and this section are
+committed before any eval run. Nothing below changes after a run; a new set is a new folder.
+
+**How real receipts were chosen (by rule).** All 196 distinct photos (copies removed per
+`data/receipts/expressexpense-duplicates.json`) were transcribed. Then, with the class states
+CA, CT, FL, MI, NJ, NY, SC, TX, WA:
+- H1 (honest) = every US receipt with at least one charged non-alcoholic drink, dated in the
+  class period, whose printed state is a class state or is not printed: 48.
+- X2 = the same but printed in another state: 8, plus 1173 (Illinois by its tax lines, no state
+  in the address).
+- F1 = drink receipts dated before 2015: all 10.
+- X1 = receipts with no drink, in a class state and the period: the first 8 by file number.
+- Excluded: 14 foreign receipts, receipts with no readable date, and receipts where it is unclear
+  whether any line is a drink.
+
+**Who labelled.** The transcriptions were made in a Claude Code session (Claude models looking
+at the images), not by a person. The examiner is also a Claude model, so a reading mistake both
+make the same way would not show up as an error. Every receipt whose numbers did not add up was
+checked again by eye; 4 transcriptions were corrected (noted per receipt). The owner may spot-check
+any receipt against its photo.
+
+**Deviations from spec §5.1.**
+- F5 bot declarations come from a spinner over hand-written alternatives. Haiku 5.5 declined
+  to write rewordings meant to look script-filed ("that output could be used for real fraud even
+  if it's labeled as test data"). The 3 declined calls cost under $0.01.
+- Fakes are drawn as SVG through sharp, the route R7 used, not Playwright.
+- A third truth value, `ineligible` (X1, X2): a mistaken claim, not fraud. Its money is reported
+  on its own line, never inside fraud dollars or honest rates.
+- The fund is $2,000, so paying everyone dilutes the honest claimant's check.
+
+**Found while labelling, before any run.**
+- **C5 bug, fixed:** real receipts print "Calif" (1028) and "Tx" (1166), which C5 did not accept,
+  so two honest claimants would have been asked for documents they had already sent.
+- **1108** prints line values with tax included, so its lines never add to the subtotal. Expected
+  DENY (C3): an honest claimant the rules as written deny. Left in, not fixed on test data.
+- **1097** prints no line labelled Total: expected NEED_MORE.
+- **C7** misses 2 of the 14 tmpl-a bots on perfect readings (c-093, held by C9 anyway; c-106,
+  paid). The provisional threshold was **not** changed; tuning uses the dev slice's tmpl-b only.
+- With a perfect reader the pilot gives: honest wrongly denied 1 of 15 (6.7%, receipt 1108),
+  honest REVIEW + NEED_MORE 3 of 15 (20%), fraud paid $10 (the identity farm's first claim).
+  The pilot was drawn by seeded shuffle before these numbers were looked at and is not redrawn.
+  With 15 honest claims, one more wrong denial makes 13%, which fails the gate.
+
+**Seen before the checks were designed:** receipts 1000 1014 1030 1057 1069 1084 1099 1105 1148
+1162 1163 1187 1173 (the other laptop's OCR and eye checks). All are in the dev slice. Honest
+results are reported for all claims and for unseen claims only.
+
+**The gate (spec §5.4), on the 32-claim pilot slice, Haiku 5.5 then Sonnet 5.5:**
+- Honest = truth `honest` (15 in the pilot). Fraud = truth `fraud` (15). Ineligible (2) is
+  reported separately.
+- Arm A, pay everyone: every fraud claim paid its claimed entitlement (proof: min(units claimed,
+  5) × $15; no proof: $10), before any pro-rata cut.
+- Arm C fraud dollars: the entitlement of every fraud claim arm C approves. A REVIEW is decided
+  by its label (a perfect analyst), as spec §5.3 says; the worst case, where every REVIEW follows
+  the model's own recommendation, is reported beside it.
+- **GO** if all three hold for that model: arm C fraud dollars ≤ 25% of arm A's; honest wrongly
+  denied ≤ 10%; honest REVIEW + NEED_MORE ≤ 30%. Rates are measured rates, with 95% Wilson
+  intervals reported (n is small). Otherwise **NO-GO**: stop and report the numbers to the owner.
+- C7 and C9 run across all 157 claims' declarations and arrivals; only pilot claims are read.
+
 The rest of this file is the Pushover record, kept as it was.
 
 How Pushover's number is measured, and what each run found. The plan is spec §2.6 and §5.5–§5.6;
