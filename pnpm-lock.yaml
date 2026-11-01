@@ -257,9 +257,21 @@ importers:
 
   packages/eval:
     dependencies:
+      '@pushover/checks':
+        specifier: workspace:*
+        version: link:../checks
+      '@pushover/claims':
+        specifier: workspace:*
+        version: link:../claims
       '@pushover/examiner':
         specifier: workspace:*
         version: link:../examiner
+      sharp:
+        specifier: 0.35.5
+        version: 0.35.5(@types/node@26.6.6)
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
 
   packages/examiner:
     dependencies:
