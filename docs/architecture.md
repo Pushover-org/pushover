@@ -163,16 +163,21 @@ credit "ExpressExpense.com" (`data/receipts/README.md`).
   git-ignored `.data/receipts/expressexpense/`.
 - **Copies inside the set** are listed in `data/receipts/expressexpense-duplicates.json`; only the
   `keep` file of a group may enter a corpus.
-- **Demo settlement:** "Acme Restaurant Coffee Settlement (fictional demo)". Qualifying product:
-  coffee or espresso drinks bought at a restaurant. The restaurants on the receipts are never the
-  defendant. Class period and states cover the receipts chosen for H1; the R3 fixture holds
-  provisional values (2015-01-01 to 2019-12-31; CA, CT, MI, NJ, NY, SC, TX).
+- **Demo settlement (changed the same day, see below):** "Acme Restaurant Beverage Settlement
+  (fictional demo)". Qualifying product: any non-alcoholic drink bought at a restaurant. The
+  restaurants on the receipts are never the defendant. Class period and states cover the receipts
+  chosen for H1; the fixture holds 2015-01-01 to 2019-12-31 and CA, CT, FL, MI, NJ, NY, SC, TX, WA
+  until the H1 list is committed.
+- **The rest of the set is used too:** real receipts dated outside the class period become real
+  F1 claims, and real receipts with no qualifying drink become real "no qualifying product" claims
+  (expected DENY), labelled as such.
 - **R4 tax table:** restaurant and prepared-food sales tax for those states, with local rates,
   as ranges where the city is unknown, and **the rates in force on the receipt's date**, not
   today's. So rows carry effective dates, and C4 needs `purchase_date`.
 - **C5:** a receipt with no printed state is UNKNOWN (the claimant can fix it, so NEED_MORE under
   rule 5). The state is never inferred from a phone area code.
-- **R7** uses one of these receipts plus one rendered fake. **R8 H1** was to use about 30 of them.
+- **R7** uses one of these receipts plus one rendered fake. **R8 H1** uses the 26 usable drink
+  receipts (OCR count; each is checked by eye when the list is committed).
 
 ### What the set showed when it was checked (2026-11-01)
 
@@ -181,8 +186,8 @@ OCR here means macOS Vision on this laptop, which costs no AI credit; it is a co
 - md5 matches; 200 JPGs; widths 245 to 1174 px (median 750), 73 under 600 px.
 - **Copies:** `1034 = 1041 = 1114` (byte-identical). `1186 = 1063 = 1053` (same receipt).
 - **Only 12 receipts** have a coffee or espresso line plus a state, a date, a subtotal, tax and a
-  total (OCR). 26 do if the product is any non-alcoholic drink. H1's "about 30" does not fit
-  coffee alone. Open for the owner.
+  total (OCR). 26 do if the product is any non-alcoholic drink, which is why the owner widened
+  the product from coffee.
 - **pHash cannot catch a re-crop.** `1053` and `1186` are the same receipt at pHash distance 26,
   while 2,271 of 19,900 file pairs are closer; different receipts reach distance 8 (`1173`/`1199`
   share no OCR text). Rotations and re-encodes are a separate question, tested in R4.
@@ -191,3 +196,48 @@ OCR here means macOS Vision on this laptop, which costs no AI credit; it is a co
   charged 7.00% when the state rate was 6.625% (Tax Foundation 2018). `1099` (San Jose, 2017-12)
   charged 10.91%; the rate in force is still to be read from CDTFA. These receipts are real, so
   whether they pass is measured, never fixed by leaving them out of H1.
+
+## Corrections to spec §4.2–§4.5 (owner decisions 2026-11-01)
+
+These win over the spec. `DECISION_VERSION` stays `decision-v1`: no decisions have run yet.
+
+**Decision table (`packages/claims`), replacing the rules listed in "Decision table v1" above where
+they differ:**
+- **Low confidence moves up.** Rule 0 now also sends a proof claim with examiner confidence `low`
+  to REVIEW `LOW_CONFIDENCE`, before any denial. Otherwise a misread number fails a check at rule 1
+  and denies an honest person. Rule 4 is now C10 only. A side effect to remember: a low-confidence
+  claim that would also fail C5, C6 or C8 goes to REVIEW, not DENY.
+- **Units are capped by the evidence.** Rule 8 pays for the lowest of units claimed, units the
+  evidence shows (`unitsEvidenced`) and the tier maximum. Before this, a receipt for 1 unit could
+  claim 5 and be paid for 5. No evidenced units at rule 8 → REVIEW on C11.
+- **New check C12, repeat receipt details:** same merchant, date and total as another claim →
+  REVIEW `REPEAT_RECEIPT_DETAILS`, never DENY, because it rests on what the model read. It exists
+  because a re-cropped copy defeats the perceptual hash. Proof claims only. Only C6 denies a
+  duplicate receipt.
+- **C4 UNKNOWN has its own reason,** `TAX_UNCONFIRMED`, so a court reads why it was held.
+
+**Findings (`FindingsSchema`, moved to `packages/claims` so checks and examiner share it):**
+- Each line has a printed `line_total_cents`, and `qty` and `unit_cents` may be null: "2 Lunch
+  45.90" prints a line total.
+- `adjustments[]` holds printed discounts, fees and tips, marked before or after the subtotal.
+- Each visual anomaly has its own `confidence`; C10 fails only on one marked `high`.
+
+**Checks (`packages/checks`):**
+- C3 uses printed line totals and adjustments. With no printed subtotal it checks line items + tax
+  = total. See that package for how unpriced lines and tips are handled.
+- C4 stays two-sided, because restaurant meals are generally taxed (to be confirmed per state in
+  `data/tax-rates.json`). Tax outside the limit by no more than a margin → UNKNOWN (REVIEW); further
+  outside → FAIL (DENY). Real shops overcharge: receipt 1084 charged 7.00% where the state rate was
+  6.625%. The margin is set on the dev slice.
+- C6 hashes all four rotations; the threshold must stay below 8, because different receipts in the
+  set come that close. Only a hash match denies.
+- C7 and C9 are symmetric, not "earlier claims only", and are re-run across all claims before
+  Distribute, so the first members of a cluster are held too.
+- C8: a match with an approved claim → FAIL; with a claim still pending → UNKNOWN (REVIEW). Check
+  and decide run one at a time per settlement (R6).
+
+**Reconciliation (`packages/distribute`):** buckets are mutually exclusive and include `unverified`.
+Spec §1.3's equation double-counts money that returns and then goes to cy-près.
+
+**Gate wording:** spec §5.4's "honest wrongly denied ≤ 10%" is the measured rate on the pilot slice,
+not the Wilson upper bound. Wilson intervals are still reported (§5.3).

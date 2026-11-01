@@ -13,6 +13,8 @@ export interface DecisionInput {
   tier: Tier;
   /** Units the claimant asked for (proof tier). */
   unitsClaimed: number;
+  /** Proof tier: qualifying units the evidence shows. The claim never pays for more than this. */
+  unitsEvidenced?: number | undefined;
   /** How the examiner run went; only its findings feed the checks. */
   examiner: { status: ExaminerStatus; confidence?: "high" | "medium" | "low" };
   /** Results from packages/checks. A missing applicable check counts as UNKNOWN. */
@@ -56,6 +58,9 @@ export function decide(settlement: Settlement, input: DecisionInput): Decision {
     if (s === "INVALID") return { ...base, outcome: "REVIEW", rule: 0, reason: "EXAMINER_INVALID" };
     if (s === "REFUSED") return { ...base, outcome: "REVIEW", rule: 0, reason: "EXAMINER_REFUSED" };
     if (s === "NOT_RUN") return { ...base, outcome: "REVIEW", rule: 0, reason: "EXAMINER_NOT_RUN" };
+    // A reading the examiner doubts must not deny anyone: a misread number would fail a check
+    // below. So this comes before every denial, and a person looks.
+    if (input.examiner.confidence === "low") return { ...base, outcome: "REVIEW", rule: 0, reason: "LOW_CONFIDENCE" };
   }
 
   // 1. The evidence contradicts the settlement's rules; geography applies to every claim.
@@ -71,12 +76,12 @@ export function decide(settlement: Settlement, input: DecisionInput): Decision {
   // 3. Clusters go to a person, who can deny the whole cluster.
   if (r("C7") === "FAIL") return { ...base, outcome: "REVIEW", rule: 3, reason: "TEMPLATE_CLUSTER", check: "C7" };
   if (r("C9") === "FAIL") return { ...base, outcome: "REVIEW", rule: 3, reason: "VELOCITY_CLUSTER", check: "C9" };
+  // Same merchant, date and total as another claim. This rests on what the model read, so it
+  // never denies; only a perceptual-hash match (C6) does.
+  if (evidence && r("C12") === "FAIL") return { ...base, outcome: "REVIEW", rule: 3, reason: "REPEAT_RECEIPT_DETAILS", check: "C12" };
 
-  // 4. Signs of editing, or a reading the examiner itself doubts. Never a denial on its own.
-  if (evidence) {
-    if (r("C10") === "FAIL") return { ...base, outcome: "REVIEW", rule: 4, reason: "VISUAL_ANOMALY", check: "C10" };
-    if (input.examiner.confidence === "low") return { ...base, outcome: "REVIEW", rule: 4, reason: "LOW_CONFIDENCE" };
-  }
+  // 4. Signs of editing. Never a denial on its own.
+  if (evidence && r("C10") === "FAIL") return { ...base, outcome: "REVIEW", rule: 4, reason: "VISUAL_ANOMALY", check: "C10" };
 
   // 5. Unknown, and the claimant can fix it: ask for the specific document.
   for (const id of applicable) {
@@ -87,7 +92,7 @@ export function decide(settlement: Settlement, input: DecisionInput): Decision {
   // 6. Unknown on our side (tax table gap, image hash, dedupe or velocity lookup failed):
   //    unknown is never a pass, so a person decides.
   for (const id of applicable) {
-    if (r(id) === "UNKNOWN") return { ...base, outcome: "REVIEW", rule: 6, reason: "CHECK_UNVERIFIED", check: id };
+    if (r(id) === "UNKNOWN") return { ...base, outcome: "REVIEW", rule: 6, reason: id === "C4" ? "TAX_UNCONFIRMED" : "CHECK_UNVERIFIED", check: id };
   }
 
   // 7. No-proof tier: the flat amount, one claim per person (C8 enforced above).
@@ -95,8 +100,11 @@ export function decide(settlement: Settlement, input: DecisionInput): Decision {
     return { ...base, outcome: "APPROVE", rule: 7, reason: "APPROVED_NO_PROOF", tier: "no_proof", units: 1, unitsClaimed: input.unitsClaimed, entitlementCents: settlement.tiers.noProof.flatCents };
   }
 
-  // 8. Proof tier: units capped at the tier maximum (C11 caps, it never denies).
+  // 8. Proof tier: units capped at what the evidence shows and at the tier maximum (C11 caps,
+  //    it never denies). No evidenced units means nothing can be paid yet, so a person looks.
   const { unitCents, maxUnits } = settlement.tiers.proof;
-  const units = Math.min(input.unitsClaimed, maxUnits);
+  const evidenced = input.unitsEvidenced;
+  if (evidenced === undefined || !Number.isInteger(evidenced) || evidenced < 1) return { ...base, outcome: "REVIEW", rule: 6, reason: "CHECK_UNVERIFIED", check: "C11" };
+  const units = Math.min(input.unitsClaimed, evidenced, maxUnits);
   return { ...base, outcome: "APPROVE", rule: 8, reason: "APPROVED_PROOF", tier: "proof", units, unitsClaimed: input.unitsClaimed, entitlementCents: units * unitCents };
 }

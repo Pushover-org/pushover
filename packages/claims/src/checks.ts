@@ -1,5 +1,5 @@
 /** Deterministic checks (spec §4.3). packages/checks computes them; the decision table reads them. */
-export const CHECK_IDS = ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11"] as const;
+export const CHECK_IDS = ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12"] as const;
 export type CheckId = (typeof CHECK_IDS)[number];
 
 /** UNKNOWN is never PASS. */
@@ -23,6 +23,7 @@ export const CHECK_NAMES: Record<CheckId, string> = {
   C9: "Velocity",
   C10: "Visual anomaly",
   C11: "Units cap",
+  C12: "Repeat receipt details",
 };
 
 export type Tier = "proof" | "no_proof";
