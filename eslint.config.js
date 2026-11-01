@@ -13,7 +13,7 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
   },
   {
-    files: ["**/test/**"],
+    files: ["**/test/**", "**/sandbox/**"],
     rules: { "@typescript-eslint/no-non-null-assertion": "off" },
   },
   // The model never moves money and never decides a claim (Rightful Share spec §0.1 rule 7).

@@ -18,7 +18,8 @@
     "day1:d1-5": "node --env-file-if-exists=.env.local scripts/day1/d1-5-refund-no-key.ts",
     "seed": "node --env-file-if-exists=.env.local scripts/seed.ts",
     "db:migrate": "node --env-file-if-exists=.env.local packages/db/src/bin/migrate.ts",
-    "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.ts"
+    "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.ts",
+    "test:sandbox": "node --env-file-if-exists=.env.local node_modules/vitest/vitest.mjs run --config vitest.sandbox.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
