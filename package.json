@@ -18,14 +18,11 @@
     "day1:d1-5": "node --env-file-if-exists=.env.local scripts/day1/d1-5-refund-no-key.ts",
     "seed": "node --env-file-if-exists=.env.local scripts/seed.ts",
     "db:migrate": "node --env-file-if-exists=.env.local packages/db/src/bin/migrate.ts",
-    "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.ts",
-    "day1:d1-6": "node --env-file-if-exists=.env.local scripts/day1/d1-6-baseline.ts",
-    "eval:run": "node --env-file-if-exists=.env.local packages/eval/src/bin/run.ts"
+    "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.64.1",
-    "@pushover/baseline": "workspace:*",
     "@pushover/db": "workspace:*",
     "@pushover/paypal": "workspace:*",
     "@types/node": "26.6.6",
