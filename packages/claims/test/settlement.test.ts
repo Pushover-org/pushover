@@ -6,7 +6,7 @@ const base = () => structuredClone(demoSettlement()) as Record<string, unknown> 
 
 describe("settlement config", () => {
   it("accepts the fictional demo settlement", () => {
-    expect(demoSettlement().name).toBe("Acme HydroBottle Settlement (fictional demo)");
+    expect(demoSettlement().name).toBe("Acme Restaurant Coffee Settlement (fictional demo)");
   });
 
   it.each<[string, (s: ReturnType<typeof base>) => unknown]>([
@@ -18,7 +18,7 @@ describe("settlement config", () => {
     ["duplicate product ids", (s) => ({ ...s, products: [s.products[0], s.products[0]] })],
     ["a non-US state", (s) => ({ ...s, geography: { states: ["ON"] } })],
     ["a duplicate state", (s) => ({ ...s, geography: { states: ["CA", "CA"] } })],
-    ["a demo name without (fictional demo)", (s) => ({ ...s, name: "Acme HydroBottle Settlement" })],
+    ["a demo name without (fictional demo)", (s) => ({ ...s, name: "Acme Restaurant Coffee Settlement" })],
     ["a demo cy-pres recipient without (demo)", (s) => ({ ...s, cyPres: { ...s.cyPres, name: "Clean Water Access Fund" } })],
     ["a bad cy-pres email", (s) => ({ ...s, cyPres: { ...s.cyPres, payoutEmail: "nope" } })],
     ["a no-proof amount above the proof maximum", (s) => ({ ...s, tiers: { ...s.tiers, noProof: { flatCents: 999_999 } } })],

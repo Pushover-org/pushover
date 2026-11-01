@@ -3,15 +3,15 @@ import { parseSettlement } from "../src/settlement.ts";
 
 export const demoSettlement = () =>
   parseSettlement({
-    id: "acme-hydrobottle",
-    name: "Acme HydroBottle Settlement (fictional demo)",
+    id: "acme-restaurant-coffee",
+    name: "Acme Restaurant Coffee Settlement (fictional demo)",
     demo: true,
     currency: "USD",
     fundCents: 500_000,
     adminReserveCents: 10_000,
-    classPeriod: { start: "2026-01-01", end: "2026-09-30" },
-    products: [{ id: "insulated-bottle-24oz", name: "24-oz insulated bottle", description: "Any 24-oz insulated water bottle" }],
-    geography: { states: ["CA", "NY", "TX", "WA"] },
+    classPeriod: { start: "2015-01-01", end: "2019-12-31" },
+    products: [{ id: "restaurant-coffee", name: "Coffee or espresso drink", description: "Any coffee or espresso drink bought at a restaurant" }],
+    geography: { states: ["CA", "CT", "MI", "NJ", "NY", "SC", "TX"] },
     tiers: { proof: { unitCents: 1500, maxUnits: 5 }, noProof: { flatCents: 1000 } },
     cyPres: { name: "Clean Water Access Fund (demo)", payoutEmail: "po-merchant-baseline-3h8w@business.example.com" },
   });
