@@ -19,6 +19,7 @@
     "receipts:download": "node scripts/receipts/download.ts",
     "corpus:build": "node packages/eval/scripts/build-claims-v1.ts",
     "corpus:images": "node packages/eval/scripts/materialise-claims-v1.ts",
+    "eval:claims": "node --env-file-if-exists=.env.local packages/eval/scripts/eval-claims.ts",
     "seed": "node --env-file-if-exists=.env.local scripts/seed.ts",
     "db:migrate": "node --env-file-if-exists=.env.local packages/db/src/bin/migrate.ts",
     "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.ts",

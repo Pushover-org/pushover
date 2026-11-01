@@ -18,6 +18,8 @@ export interface ArmCResult {
 export interface ArmCInput {
   /** Every claim filed in the settlement. Clusters (C7, C9) are found across all of them. */
   claims: Claim[];
+  /** The claims to read and decide (a slice). Default: all. Only these count as earlier claims. */
+  decide?: Set<string>;
   /** Readings for proof claims; a proof claim with none counts as NOT_RUN. */
   readings: Map<string, Reading>;
   /** hashRotations of each proof claim's image; null if hashing failed. */
@@ -39,6 +41,7 @@ export function runArmC(input: ArmCInput): Map<string, ArmCResult> {
   const identities: EarlierIdentity[] = [];
 
   for (const c of ordered) {
+    if (input.decide && !input.decide.has(c.id)) continue;
     const proof = c.tier === "proof";
     const reading = proof ? (input.readings.get(c.id) ?? { status: "NOT_RUN" as const, findings: null }) : null;
     const findings = reading?.status === "OK" ? reading.findings : null;
