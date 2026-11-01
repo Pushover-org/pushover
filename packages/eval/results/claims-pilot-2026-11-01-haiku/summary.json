@@ -1,0 +1,108 @@
+{
+  "n": 32,
+  "honest": 15,
+  "fraud": 15,
+  "ineligible": 2,
+  "fund": {
+    "fundCents": 40764,
+    "adminReserveCents": 2038
+  },
+  "armA": {
+    "fraudCents": 56000,
+    "ineligibleCents": 3000,
+    "honestPaidCents": 28500,
+    "honestWronglyDenied": {
+      "k": 0,
+      "n": 15,
+      "rate": 0,
+      "low": 0,
+      "high": 0.20388330103584862
+    },
+    "honestAverageCheckCents": 823
+  },
+  "armB": {
+    "fraudCents": 16000,
+    "ineligibleCents": 0,
+    "honestPaidCents": 25500,
+    "honestWronglyDenied": {
+      "k": 3,
+      "n": 15,
+      "rate": 0.2,
+      "low": 0.07047549346981563,
+      "high": 0.45185448715169363
+    },
+    "honestAverageCheckCents": 1565,
+    "undecided": 0
+  },
+  "armC": {
+    "fraudCents": 1000,
+    "ineligibleCents": 0,
+    "honestPaidCents": 21000,
+    "honestWronglyDenied": {
+      "k": 1,
+      "n": 15,
+      "rate": 0.06666666666666667,
+      "low": 0.011866895493268553,
+      "high": 0.2981652987378003
+    },
+    "honestAverageCheckCents": 1400,
+    "honestReview": 0,
+    "honestNeedMore": 2,
+    "honestWorkload": {
+      "k": 2,
+      "n": 15,
+      "rate": 0.13333333333333333,
+      "low": 0.03736125910306537,
+      "high": 0.37881982832322364
+    },
+    "fraudCentsWorstCase": 5500,
+    "outcomeMatchesExpected": 29
+  },
+  "gate": {
+    "fraudRatio": 0.017857142857142856,
+    "fraudOk": true,
+    "deniedOk": true,
+    "workloadOk": true,
+    "go": true
+  },
+  "unseenOnly": {
+    "honest": 15,
+    "armC": {
+      "fraudCents": 1000,
+      "ineligibleCents": 0,
+      "honestPaidCents": 21000,
+      "honestWronglyDenied": {
+        "k": 1,
+        "n": 15,
+        "rate": 0.06666666666666667,
+        "low": 0.011866895493268553,
+        "high": 0.2981652987378003
+      },
+      "honestAverageCheckCents": 1400,
+      "honestReview": 0,
+      "honestNeedMore": 2,
+      "honestWorkload": {
+        "k": 2,
+        "n": 15,
+        "rate": 0.13333333333333333,
+        "low": 0.03736125910306537,
+        "high": 0.37881982832322364
+      },
+      "fraudCentsWorstCase": 5500,
+      "outcomeMatchesExpected": 29
+    }
+  },
+  "reading": {
+    "read": 24,
+    "of": 24,
+    "exact": {
+      "date": 24,
+      "state": 24,
+      "subtotal": 24,
+      "tax": 24,
+      "total": 24,
+      "drinkUnits": 24,
+      "merchant": 21
+    }
+  }
+}

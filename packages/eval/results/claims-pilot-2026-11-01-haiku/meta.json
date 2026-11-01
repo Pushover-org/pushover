@@ -1,0 +1,30 @@
+{
+  "runId": "claims-pilot-2026-11-01-haiku",
+  "model": "claude-haiku-5-5",
+  "corpus": "claims-v1",
+  "split": "pilot",
+  "claims": 32,
+  "decisionVersion": "decision-v1",
+  "config": {
+    "imageMaxDistance": 4,
+    "taxMarginPct": 2,
+    "template": {
+      "shingle": 3,
+      "threshold": 0.5,
+      "minOthers": 3
+    },
+    "velocity": {
+      "maxClaims": 5,
+      "hours": 24
+    }
+  },
+  "commit": "0cf6bf256efa9ec407812a9d0f2b1dbfcb946ae1",
+  "finished": "2026-11-01T17:47:38.478Z",
+  "costUsd": 0.04078,
+  "examiner": {
+    "OK": 24
+  },
+  "modelAlone": {
+    "OK": 32
+  }
+}
