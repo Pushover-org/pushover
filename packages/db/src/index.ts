@@ -3,5 +3,6 @@ export { migrate, MIGRATIONS_DIR } from "./migrate.ts";
 export { createPool, withTransaction, type Pool, type PoolClient, type Queryable } from "./pool.ts";
 export { getCustomer, upsertCustomer } from "./queries/customers.ts";
 export { assignOrder, countPoolCaptures, getOrder, insertPoolOrder, listOrdersForCustomer, type PoolOrderInput } from "./queries/orders.ts";
+export * from "./queries/claims.ts";
 export { getActivePolicy } from "./queries/policy.ts";
 export type * from "./types.ts";
