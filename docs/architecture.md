@@ -256,8 +256,16 @@ they differ:**
 - C8: a match with an approved claim → FAIL; with a claim still pending → UNKNOWN (REVIEW). Check
   and decide run one at a time per settlement (R6).
 
-**Reconciliation (`packages/distribute`):** buckets are mutually exclusive and include `unverified`.
-Spec §1.3's equation double-counts money that returns and then goes to cy-près.
+**Distribution (`packages/distribute`):**
+- Reconciliation buckets are mutually exclusive: fund = paid + unclaimed + in flight + unverified +
+  awaiting cy-près + cy-près sent + fees + held. Spec §1.3's equation double-counts money that
+  returns and then goes to cy-près, and had no place for unverified items. `held` comes from the plan
+  (reserve + fee reserve − fees), not "whatever is left", so a batch that differs from the plan shows
+  as a difference. A fee PayPal has not reported is counted as unknown, never assumed.
+- Allocation runs in BigInt: entitlement × fund can pass what a JavaScript number holds exactly.
+- A share that rounds to zero stays listed and is left out of the batch: PayPal cannot send $0.00.
+- Batch IDs derive from settlement and round. PayPal refuses a repeat only for 30 days, so R6's
+  unique constraint is what refuses it for good.
 
 **Gate wording:** spec §5.4's "honest wrongly denied ≤ 10%" is the measured rate on the pilot slice,
 not the Wilson upper bound. Wilson intervals are still reported (§5.3).

@@ -265,6 +265,21 @@ PayPal's 30-day rule. Unclaimed items now waiting to return, all $1.00:
 (2026-11-01, about Dec 1). These land at the start of judging (Dec 1–15) and can feed a real
 cy-près batch.
 
+### The fee at real claim sizes (`scripts/payouts/fee-check.ts`, 2026-11-01)
+
+Until now the $0.25 fee had only been seen on $1.00 items. Batch `GS2WKU3SB63TQ`:
+
+```
+batch SUCCESS amount 340.00 fees 0.75
+  15.00 SUCCESS fee 0.25
+  75.00 SUCCESS fee 0.25
+  250.00 SUCCESS fee 0.25
+```
+
+Flat in the sandbox, from $1 to $250. This says nothing about live fees. `packages/distribute`
+reserves a fee per item for sizing and takes actual fees from PayPal. Whether the fee comes back
+when an unclaimed item returns is still unknown; the first returns are due about Nov 30.
+
 ## Spec corrections found while building
 
 - `refund_request.custom_id` is `maxLength 127`, pattern `^.*$`

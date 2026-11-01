@@ -36,8 +36,8 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | R2 Payouts client + sandbox test; retry cancel | done |
 | R3 `packages/claims`: settlement config, reason codes, decision table v1 | done |
 | R4 `packages/checks`: C1–C12, cited tax table | done |
-| R5 `packages/distribute`: allocation, batch builder, reconciliation | next |
-| R6 Migration 0004 + queries | |
+| R5 `packages/distribute`: allocation, batch builder, reconciliation | done |
+| R6 Migration 0004 + queries | next |
 | R7 `packages/examiner` (needs ≥ 1 real receipt photo from the owner) | |
 | R8–R14 Corpus, eval + pilot gate, web, worker, deploy, full run, submission | |
 
@@ -90,10 +90,13 @@ Corrections to the spec are in `docs/architecture.md`.
   planted bugs each failed tests. `data/tax-rates.json` has 55 state rows and 155 city rows, one
   source per row. `packages/checks/scripts/measure-phash.ts` measured C6 on the real receipts.
 
+- **R5 evidence (2026-11-01):** `packages/distribute` 32 tests. Sum invariant property at 3,000 cases
+  (Σ payouts + leftover = net fund exactly); planted bugs failed tests (below). Sandbox fee at $15,
+  $75 and $250: flat $0.25 (batch `GS2WKU3SB63TQ`, `docs/sandbox-findings.md`).
+
 ## Next action
 
-- R5: `packages/distribute`: allocation, batch builder, reconciliation (spec §4.5, corrections in
-  `docs/architecture.md`).
+- R6: migration 0004 and queries, DB tests on real Postgres. Leave the old Pushover tables alone.
 
 ## Pushover history (kept for the record)
 
