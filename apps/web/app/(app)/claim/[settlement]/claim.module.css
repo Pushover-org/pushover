@@ -1,0 +1,178 @@
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: start;
+}
+.intro {
+  position: sticky;
+  top: 84px;
+  display: grid;
+  gap: 18px;
+}
+.intro h1 {
+  font-size: clamp(2.8rem, 1.6rem + 4vw, 5.2rem);
+  line-height: 0.92;
+}
+.lede {
+  font-size: var(--step-1);
+  color: var(--ink-2);
+  line-height: 1.5;
+  max-width: 46ch;
+}
+.terms {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 0;
+  border-top: 1px solid var(--ink);
+}
+.terms > div {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--hair);
+}
+.terms > div:last-child {
+  grid-column: 1 / -1;
+}
+.terms dt {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.terms dd {
+  margin: 4px 0 0;
+}
+.terms b {
+  font-size: 22px;
+  color: var(--green);
+}
+.how ol {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+.formCard {
+  display: grid;
+  border-radius: 18px;
+  border: 1px solid var(--hair-2);
+  background: var(--card);
+  box-shadow: 0 30px 60px -40px rgb(21 20 15 / 0.35);
+  overflow: hidden;
+}
+.step {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 16px;
+  padding: clamp(18px, 3vw, 28px);
+}
+.step + .step {
+  border-top: 1px solid var(--hair);
+}
+.step[data-locked="true"] {
+  opacity: 0.55;
+}
+.stepNo {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  font-size: 14px;
+}
+.step[data-done="true"] .stepNo {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--on-green);
+}
+.stepBody {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.stepBody h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1;
+  margin-top: 2px;
+}
+.muted {
+  color: var(--ink-2);
+  font-size: 14.5px;
+}
+.hint {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.err {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--deny-wash);
+  color: var(--deny);
+  font-size: 14px;
+}
+/* PayPal's own wording for the button; our colours, not their logo. */
+.paypal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 26px;
+  width: fit-content;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--dur-micro) var(--ease), background var(--dur-micro) var(--ease);
+}
+.paypal:hover {
+  background: var(--green);
+}
+.paypal:active {
+  transform: scale(0.97);
+}
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+}
+.ok,
+.warn {
+  margin-left: 10px;
+  padding: 2px 9px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+}
+.ok {
+  background: var(--green-wash);
+  color: var(--green);
+}
+.warn {
+  background: var(--review-wash);
+  color: var(--review);
+}
+.link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  text-decoration: underline;
+  cursor: pointer;
+}
+@media (max-width: 960px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+  .intro {
+    position: static;
+  }
+}
