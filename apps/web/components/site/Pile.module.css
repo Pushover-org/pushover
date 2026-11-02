@@ -1,0 +1,378 @@
+.section {
+  position: relative;
+  height: 420vh;
+  border-top: 1px solid var(--hair);
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(24px, 5vw, 80px);
+  align-items: center;
+}
+
+/* Steps: all four sit in one grid cell; only the active one shows. */
+.steps {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+}
+.step {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity var(--dur-ui) var(--ease), transform var(--dur-ui) var(--ease);
+  pointer-events: none;
+}
+.step[data-active="true"] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.step h3 {
+  font-size: var(--step-3);
+  margin: 10px 0 18px;
+}
+.step p {
+  color: var(--ink-2);
+  font-size: var(--step-1);
+  line-height: 1.45;
+  max-width: 34ch;
+}
+.step b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.stepNo {
+  color: var(--green);
+  font-size: 13px;
+}
+
+.board {
+  position: relative;
+}
+
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.card {
+  --d: calc(var(--i) * 28ms);
+  position: relative;
+  aspect-ratio: 0.78;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--hair);
+  padding: 8px 8px 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  box-shadow: 0 1px 0 var(--hair);
+  transition:
+    opacity 0.7s var(--ease) var(--d),
+    transform 0.7s var(--ease) var(--d),
+    border-color 0.4s var(--ease) var(--d),
+    filter 0.7s var(--ease) var(--d);
+}
+/* Before the section arrives, the cards lie in a messy pile; then they deal into the grid. */
+.section:not([data-arrived="true"]) .card {
+  opacity: 0;
+  transform: translate(var(--px), var(--py)) rotate(var(--pr)) scale(0.9);
+}
+/* Faint ruled lines: a paper form. */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 34% 8px 26%;
+  background: repeating-linear-gradient(180deg, var(--hair) 0 1px, transparent 1px 7px);
+  opacity: 0.7;
+}
+.id {
+  font-size: 10px;
+  color: var(--ink-3);
+}
+.grp {
+  position: relative;
+  font-size: clamp(9.5px, 0.9vw, 12px);
+  font-weight: 500;
+  line-height: 1.15;
+}
+.read {
+  position: relative;
+  font-family: var(--font-num);
+  font-size: 9px;
+  color: var(--green);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.4s var(--ease) calc(var(--d) * 1.4), transform 0.4s var(--ease) calc(var(--d) * 1.4);
+}
+.card[data-tier="no_proof"] .read {
+  color: var(--ink-3);
+}
+
+/* The stamp: rubber-stamp ink, rotated, roughened by the #ink filter. */
+.stamp {
+  position: absolute;
+  left: 50%;
+  top: 76%;
+  font-family: var(--font-num);
+  font-size: clamp(7px, 0.66vw, 9.5px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 3px 6px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  filter: url(#ink);
+  mix-blend-mode: multiply;
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(-9deg) scale(2.2);
+  transition: opacity 0.25s var(--ease) var(--d), transform 0.35s var(--ease) var(--d);
+}
+.card[data-outcome="APPROVE"] .stamp {
+  color: var(--approve);
+}
+.card[data-outcome="DENY"] .stamp {
+  color: var(--deny);
+}
+.card[data-outcome="REVIEW"] .stamp {
+  color: var(--review);
+}
+.card[data-outcome="NEED_MORE"] .stamp {
+  color: var(--more);
+}
+
+/* The scan line sweeps the board while the examiner reads (step 1). */
+.scan {
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  top: 0;
+  height: 2px;
+  background: var(--green);
+  box-shadow: 0 0 0 6px var(--green-wash);
+  opacity: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.section[data-step="1"] .scan {
+  animation: scan 1.6s var(--ease) forwards;
+}
+@keyframes scan {
+  0% {
+    opacity: 0.9;
+    transform: translateY(0);
+  }
+  90% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(var(--scan-h, 420px));
+  }
+}
+
+.section:not([data-step="0"]) .read {
+  opacity: 1;
+  transform: none;
+}
+.section[data-step="2"] .stamp,
+.section[data-step="3"] .stamp {
+  opacity: 0.88;
+  transform: translate(-50%, -50%) rotate(-9deg) scale(1);
+}
+.section[data-step="2"] .read,
+.section[data-step="3"] .read {
+  opacity: 0;
+}
+.section[data-step="3"] .card:not([data-outcome="APPROVE"]) {
+  opacity: 0.32;
+  transform: scale(0.9) translateY(6px);
+  filter: grayscale(0.6);
+}
+.section[data-step="3"] .card[data-outcome="APPROVE"] {
+  border-color: var(--green);
+  transform: translateY(-3px);
+}
+
+/* The ledger under the board. */
+.ledger {
+  margin-top: 20px;
+  display: grid;
+  gap: 12px;
+}
+.tally {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+}
+.tallyItem {
+  display: grid;
+  padding: 10px 0;
+}
+.tallyItem + .tallyItem {
+  padding-left: 14px;
+  border-left: 1px solid var(--hair);
+}
+.tallyNum {
+  font-size: var(--step-2);
+  line-height: 1;
+}
+.tallyItem[data-outcome="APPROVE"] .tallyNum {
+  color: var(--approve);
+}
+.tallyItem[data-outcome="DENY"] .tallyNum {
+  color: var(--deny);
+}
+.tallyItem[data-outcome="REVIEW"] .tallyNum {
+  color: var(--review);
+}
+.tallyItem[data-outcome="NEED_MORE"] .tallyNum {
+  color: var(--more);
+}
+
+.bar {
+  display: flex;
+  height: 16px;
+  gap: 2px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.slice {
+  flex-basis: 0;
+  min-width: 0;
+  transition: flex-grow 1s var(--ease);
+}
+.slice[data-truth="honest"],
+.barLegend i[data-truth="honest"] {
+  background: var(--green);
+}
+.slice[data-truth="fraud"],
+.barLegend i[data-truth="fraud"] {
+  background: repeating-linear-gradient(135deg, var(--deny) 0 3px, rgb(163 50 31 / 0.55) 3px 6px);
+}
+.slice[data-truth="ineligible"],
+.barLegend i[data-truth="ineligible"] {
+  background: var(--review);
+}
+.barLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.barLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.barLegend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.barTotal {
+  margin-left: auto;
+}
+
+.miniCheck {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px dashed var(--green);
+  border-radius: 8px;
+  background: var(--green-wash);
+}
+.miniAmount {
+  font-family: var(--font-num);
+  font-size: var(--step-2);
+  color: var(--green);
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .section {
+    height: 380vh;
+  }
+  .sticky {
+    align-items: flex-start;
+    padding-top: 72px;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .step h3 {
+    font-size: var(--step-2);
+    margin: 4px 0 8px;
+  }
+  .step p {
+    font-size: 14.5px;
+    max-width: none;
+  }
+  .steps {
+    margin-top: 6px;
+  }
+  .cards {
+    gap: 5px;
+  }
+  .card {
+    aspect-ratio: 0.9;
+    padding: 4px 5px;
+    border-radius: 5px;
+  }
+  .grp,
+  .read,
+  .card::before {
+    display: none;
+  }
+  .id {
+    font-size: 8px;
+  }
+  .stamp {
+    top: 64%;
+    font-size: 6.5px;
+    padding: 2px 3px;
+    border-width: 1.5px;
+  }
+  .ledger {
+    margin-top: 12px;
+    gap: 8px;
+  }
+  .tallyItem {
+    padding: 6px 0;
+  }
+  .tallyItem + .tallyItem {
+    padding-left: 8px;
+  }
+  .tallyNum {
+    font-size: var(--step-1);
+  }
+  .miniCheck {
+    padding: 8px 12px;
+  }
+  .miniAmount {
+    font-size: var(--step-1);
+  }
+}

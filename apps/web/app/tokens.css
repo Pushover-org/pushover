@@ -1,0 +1,60 @@
+/* Court Ledger tokens (docs/design-direction.md). Components use these, never raw colours. */
+:root {
+  --paper: #f4f1e8;
+  --paper-2: #ece8dc;
+  --paper-3: #e2ddcd;
+  --card: #fbfaf5;
+  --ink: #15140f;
+  --ink-2: rgb(21 20 15 / 0.64);
+  --ink-3: rgb(21 20 15 / 0.44);
+  --hair: rgb(21 20 15 / 0.12);
+  --hair-2: rgb(21 20 15 / 0.2);
+
+  --green: #0d5c46;
+  --green-hi: #127a5d;
+  --green-wash: rgb(13 92 70 / 0.08);
+  --on-green: #f4f1e8;
+
+  /* State inks: state only, never decoration. */
+  --approve: var(--green);
+  --deny: #a3321f;
+  --review: #9a6a00;
+  --more: #2b4c8c;
+  --deny-wash: rgb(163 50 31 / 0.08);
+  --review-wash: rgb(154 106 0 / 0.1);
+  --more-wash: rgb(43 76 140 / 0.08);
+
+  --font-display: var(--font-instrument), "Times New Roman", serif;
+  --font-ui: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-num: var(--font-geist-mono), ui-monospace, monospace;
+
+  --step--1: clamp(0.8rem, 0.78rem + 0.1vw, 0.86rem);
+  --step-0: clamp(0.98rem, 0.95rem + 0.15vw, 1.06rem);
+  --step-1: clamp(1.2rem, 1.1rem + 0.45vw, 1.45rem);
+  --step-2: clamp(1.6rem, 1.35rem + 1.1vw, 2.3rem);
+  --step-3: clamp(2.2rem, 1.6rem + 2.6vw, 3.9rem);
+  --step-4: clamp(2.9rem, 1.8rem + 5vw, 6.6rem);
+  --step-5: clamp(3.4rem, 1.6rem + 8vw, 9.5rem);
+
+  --r-pill: 999px;
+  --r-card: 14px;
+  --r-input: 10px;
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 16px;
+  --s-4: 24px;
+  --s-5: 32px;
+  --s-6: 48px;
+  --s-7: 64px;
+  --s-8: 96px;
+  --s-9: 144px;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-micro: 0.2s;
+  --dur-ui: 0.6s;
+  --dur-hero: 1.2s;
+
+  --shadow-paper: 0 1px 0 var(--hair-2), 0 2px 0 -1px var(--paper-3), 0 18px 40px -24px rgb(21 20 15 / 0.35);
+  --max: 1240px;
+}

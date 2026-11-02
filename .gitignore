@@ -27,3 +27,8 @@ blob-report/
 # Eval transcripts include sandbox card last-4 and expiry from PayPal order data;
 # kept local until the owner decides how to publish them (docs/progress.md).
 packages/eval/results/*/transcripts.jsonl
+
+# Next.js generated files (apps/web)
+apps/web/AGENTS.md
+apps/web/next-env.d.ts
+*.tsbuildinfo

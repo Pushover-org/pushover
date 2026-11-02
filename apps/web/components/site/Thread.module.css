@@ -1,0 +1,33 @@
+.thread {
+  position: fixed;
+  left: clamp(10px, 1.6vw, 22px);
+  top: 84px;
+  bottom: 24px;
+  width: 1.5px;
+  background: var(--hair);
+  z-index: 40;
+  pointer-events: none;
+}
+.fill {
+  position: absolute;
+  inset: 0;
+  background: var(--green);
+  transform-origin: top;
+  transform: scaleY(var(--p, 0));
+}
+.dot {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--p, 0) * 100%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 5px var(--green-wash);
+  transform: translate(-50%, -50%);
+}
+@media (max-width: 900px) {
+  .thread {
+    display: none;
+  }
+}
