@@ -93,8 +93,11 @@ export interface DeskDecision {
   checks: CheckResult[];
 }
 
-/** Checks and decides a claim under the settlement lock, so two copies filed together can't both pass C8. */
-export async function decideClaim(desk: Desk, claimId: string): Promise<DeskDecision | null> {
+/**
+ * Checks and decides a claim under the settlement lock, so two copies filed together can't both
+ * pass C8. With `recheck`, an approved claim is checked again and recorded only if it now fails.
+ */
+export async function decideClaim(desk: Desk, claimId: string, opt: { recheck?: boolean } = {}): Promise<DeskDecision | null> {
   const stored = await latestFindings(desk.pool, claimId);
   const parsed = stored?.status === "OK" ? FindingsSchema.safeParse(stored.findings) : null;
   const findings: Findings | null = parsed?.success ? parsed.data : null;
@@ -104,7 +107,8 @@ export async function decideClaim(desk: Desk, claimId: string): Promise<DeskDeci
 
   return withSettlementLock(desk.pool, desk.settlement.id, async (tx) => {
     const c = await getClaim(tx, claimId);
-    if (!c || !["SUBMITTED", "EXAMINED", "NEED_MORE"].includes(c.status)) return null;
+    const open = opt.recheck ? ["APPROVE"] : ["SUBMITTED", "EXAMINED", "NEED_MORE"];
+    if (!c || !open.includes(c.status)) return null;
     const proof = c.tier === "proof";
     const lookup = async <T>(q: () => Promise<T>): Promise<T | null> => q().catch(() => null);
     const { checks, unitsEvidenced: units } = runChecks(
@@ -123,6 +127,7 @@ export async function decideClaim(desk: Desk, claimId: string): Promise<DeskDeci
       // As in the eval's arm C: a no-proof claim has nothing to read, and the table knows it.
       examiner: proof ? { status, ...(findings ? { confidence: findings.confidence } : {}) } : { status: "NOT_RUN" },
     });
+    if (opt.recheck && decision.outcome === "APPROVE") return { decision, checks };
     await recordDecision(tx, { claimId: c.id, from: c.status, decision, checks, decidedBy: "system" });
     return { decision, checks };
   });

@@ -329,9 +329,15 @@ importers:
       '@pushover/db':
         specifier: workspace:*
         version: link:../db
+      '@pushover/distribute':
+        specifier: workspace:*
+        version: link:../distribute
       '@pushover/examiner':
         specifier: workspace:*
         version: link:../examiner
+      '@pushover/paypal':
+        specifier: workspace:*
+        version: link:../paypal
     devDependencies:
       '@anthropic-ai/sdk':
         specifier: 1.3.0

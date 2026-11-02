@@ -13,7 +13,9 @@
     "@pushover/checks": "workspace:*",
     "@pushover/claims": "workspace:*",
     "@pushover/db": "workspace:*",
-    "@pushover/examiner": "workspace:*"
+    "@pushover/distribute": "workspace:*",
+    "@pushover/examiner": "workspace:*",
+    "@pushover/paypal": "workspace:*"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "1.3.0",

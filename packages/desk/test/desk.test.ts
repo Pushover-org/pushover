@@ -5,7 +5,8 @@ import type { ExamineResult } from "@pushover/examiner";
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DATABASE_URL, freshDatabase } from "../../db/test/testdb.ts";
-import { ClaimRejectedError, decideClaim, fileClaim, reviewClaim, submitClaim, type Desk, type FileClaimInput } from "../src/index.ts";
+import { fakePayPal, json, makeClient } from "../../paypal/test/fake.ts";
+import { ClaimRejectedError, decideClaim, distribute, fileClaim, planDistribution, readBack, recheckApproved, reviewClaim, submitClaim, type Desk, type FileClaimInput } from "../src/index.ts";
 
 const S = parseSettlement({
   id: "desk-test", name: "Desk Test Settlement (fictional demo)", demo: true, currency: "USD", fundCents: 200_000, adminReserveCents: 10_000,
@@ -107,5 +108,57 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
   it("a decided claim is not decided again", async () => {
     const { claim: c } = await submitClaim(desk(), claim());
     expect(await decideClaim(desk(), c.id)).toBeNull();
+  });
+
+  describe("Distribute and read back", () => {
+    it("re-checks approved claims: a bot cluster that formed later is pulled back to a person", async () => {
+      const template = "I purchased several soft drinks at a restaurant during the settlement period and I request my payment under penalty of perjury.";
+      const early = await submitClaim(desk(), claim({ declaration: `${template} Thank you.` }));
+      expect(early.result?.decision.outcome).toBe("APPROVE");
+      for (let i = 0; i < 4; i++) await fileClaim(desk(), claim({ declaration: `${template} Regards ${i}.` }));
+      const moved = await recheckApproved(desk());
+      expect(moved).toContainEqual({ claimId: early.claim.id, outcome: "REVIEW", reason: "TEMPLATE_CLUSTER" });
+      expect((await getClaim(pool, early.claim.id))?.status).toBe("REVIEW");
+    });
+
+    it("pays a PayPal-verified claimant by payer ID and anyone else by email, writing the batch before sending it", async () => {
+      const plan = await planDistribution(desk(), { capCents: 5000 });
+      expect(plan.fundCents).toBe(5000);
+      const ppId = plan.payees.find((p) => p.payerId);
+      expect(ppId).toBeUndefined(); // the one PayPal-account claim above is still unread, not approved
+      const pp = fakePayPal([(call) => {
+        const body = JSON.parse(call.body ?? "{}") as { sender_batch_header: { sender_batch_id: string }; items: { recipient_type: string }[] };
+        return json(201, { batch_header: { payout_batch_id: "PB1", batch_status: "PENDING", sender_batch_header: body.sender_batch_header } });
+      }]);
+      const { client } = makeClient(pp.fetch);
+      const before = await pool.query("SELECT count(*)::int AS n FROM payout_batches");
+      const out = await distribute(desk(), client, plan, "test-analyst");
+      expect(out.batches).toHaveLength(1);
+      expect(out.batches[0]).toMatchObject({ paypalBatchId: "PB1", status: "PENDING", duplicate: false });
+      const after = await pool.query("SELECT count(*)::int AS n FROM payout_batches");
+      expect(after.rows[0].n - before.rows[0].n).toBe(1);
+      const sentTotal = out.batches[0]?.cents ?? 0;
+      expect(sentTotal).toBeLessThanOrEqual(5000);
+      const { rows } = await pool.query("SELECT DISTINCT status FROM claims WHERE id IN (SELECT claim_id FROM payout_items)");
+      expect(rows.map((r) => r.status)).toEqual(["SCHEDULED"]);
+    });
+
+    it("reads every item back and moves each claim to what PayPal reports", async () => {
+      const { rows: items } = await pool.query<{ batch_id: string; sender_item_id: string }>("SELECT batch_id, sender_item_id FROM payout_items ORDER BY id");
+      const batchId = Number(items[0]?.batch_id);
+      const statuses = ["SUCCESS", "UNCLAIMED", "FAILED"];
+      const pp = fakePayPal([json(200, {
+        batch_header: { payout_batch_id: "PB1", batch_status: "SUCCESS", fees: { currency: "USD", value: "0.75" }, sender_batch_header: {} },
+        items: items.map((it, i) => ({ payout_item_id: `IT${i}`, payout_batch_id: "PB1", transaction_status: statuses[i % 3], payout_item_fee: { currency: "USD", value: "0.25" },
+          payout_item: { sender_item_id: it.sender_item_id, receiver: "x", amount: { currency: "USD", value: "1.00" } } })),
+        total_pages: 1,
+      })]);
+      const { client } = makeClient(pp.fetch);
+      const r = await readBack(desk(), client, batchId);
+      expect(r.status).toBe("SUCCESS");
+      expect(Object.keys(r.outcomes).sort()).toEqual(["FAILED", "PAID", "UNCLAIMED"].filter((o, i) => i < items.length));
+      const first = await getClaim(pool, items[0]?.sender_item_id ?? "");
+      expect(first?.status).toBe("PAID");
+    });
   });
 });
