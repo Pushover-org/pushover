@@ -1,0 +1,21 @@
+{
+  "name": "@pushover/desk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@pushover/checks": "workspace:*",
+    "@pushover/claims": "workspace:*",
+    "@pushover/db": "workspace:*",
+    "@pushover/examiner": "workspace:*"
+  },
+  "devDependencies": {
+    "sharp": "0.35.5"
+  }
+}

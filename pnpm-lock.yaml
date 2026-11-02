@@ -312,6 +312,25 @@ importers:
         specifier: 0.35.5
         version: 0.35.5(@types/node@26.6.6)
 
+  packages/desk:
+    dependencies:
+      '@pushover/checks':
+        specifier: workspace:*
+        version: link:../checks
+      '@pushover/claims':
+        specifier: workspace:*
+        version: link:../claims
+      '@pushover/db':
+        specifier: workspace:*
+        version: link:../db
+      '@pushover/examiner':
+        specifier: workspace:*
+        version: link:../examiner
+    devDependencies:
+      sharp:
+        specifier: 0.35.5
+        version: 0.35.5(@types/node@26.6.6)
+
   packages/distribute:
     dependencies:
       '@pushover/paypal':
