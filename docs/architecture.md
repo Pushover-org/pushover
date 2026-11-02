@@ -328,3 +328,16 @@ not the Wilson upper bound. Wilson intervals are still reported (§5.3).
 - Examiner model after the pilot (2026-11-01): Haiku 5.5 read all 24 pilot receipts exactly on
   date, state, subtotal, tax, total and drinks, as Sonnet 5.5 did, so Haiku stays the main model.
 
+
+## Claimant identity: Log in with PayPal (owner decision 2026-11-02)
+
+The perfect fake (a faultless receipt) passes every document check, so the money is tied to a
+person instead: every claim is filed after Log in with PayPal, and the PayPal account is the
+claimant's identity.
+- One PayPal `payer_id` = one claim per settlement (verified returned by userinfo, see
+  `docs/sandbox-findings.md`; it is not in the published schema, so a missing one fails closed).
+- `verified_account` and a confirmed email are recorded on the claim; an unverified account goes
+  to REVIEW, never straight to APPROVE.
+- The access token is used once for userinfo and discarded: it carries the app's full scope list.
+- About 5% of approved proof claims are picked at random for audit before payout (R11).
+- claims-v1 stays frozen; claims-v2 (R13) adds a perfect-fake group to measure what's left.

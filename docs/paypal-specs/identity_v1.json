@@ -1,0 +1,776 @@
+{
+  "openapi": "3.2.0",
+  "info": {
+    "title": "Identity",
+    "description": "Use the Identity API to access the PayPal-supported identity protocols and show <a href=\"https://openid.net/connect/\">OpenID Connect</a> user profile information for <a href=\"https://openid.net/specs/openid-connect-basic-1_0.html#StandardClaims\">standard claims</a>. For more information, see <a href=\"/docs/integration/direct/identity/\">Log In with PayPal</a>.",
+    "version": "1.0"
+  },
+  "paths": {
+    "/v1/identity/openidconnect/userinfo": {
+      "get": {
+        "summary": "Show user profile details",
+        "description": "Shows <a href=\"https://openid.net/connect/\">OpenID Connect</a> user profile information for <a href=\"https://openid.net/specs/openid-connect-basic-1_0.html#StandardClaims\">standard claims</a>. The attributes that are returned depend on the scopes associated with the client ID.",
+        "operationId": "userinfo.get",
+        "responses": {
+          "200": {
+            "description": "A successful request returns the HTTP `200 OK` status code and a JSON response body that shows OpenID Connect user profile information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/userinfo"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The error response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "openidconnect"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "openidconnect",
+      "description": "Use the `/openidconnect/userinfo` resource to show user profile details for the OpenID Connect schema."
+    }
+  ],
+  "externalDocs": {
+    "url": "/docs/integration/direct/identity/"
+  },
+  "servers": [
+    {
+      "url": "https://api-m.sandbox.paypal.com",
+      "description": "PayPal API Sandbox"
+    }
+  ],
+  "components": {
+    "responses": {
+      "default": {
+        "description": "The default response.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/error_default"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "address": {
+        "type": "object",
+        "title": "Address",
+        "description": "The preferred address of the user.",
+        "readOnly": true,
+        "properties": {
+          "street_address": {
+            "type": "string",
+            "description": "The full street address. Can include the house number and street name.",
+            "readOnly": true
+          },
+          "locality": {
+            "type": "string",
+            "description": "The city or locality.",
+            "readOnly": true
+          },
+          "region": {
+            "type": "string",
+            "description": "The state, province, prefecture, or region.",
+            "readOnly": true
+          },
+          "postal_code": {
+            "type": "string",
+            "description": "The zip code or postal code.",
+            "readOnly": true
+          },
+          "country": {
+            "type": "string",
+            "description": "The country.",
+            "readOnly": true
+          }
+        }
+      },
+      "error": {
+        "type": "object",
+        "title": "Error",
+        "description": "The error information.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The human-readable, unique name of the error.",
+            "readOnly": true
+          },
+          "debug_id": {
+            "type": "string",
+            "description": "The PayPal internal ID. Used for correlation purposes.",
+            "readOnly": true
+          },
+          "message": {
+            "type": "string",
+            "description": "The message that describes the error.",
+            "readOnly": true
+          },
+          "information_link": {
+            "type": "string",
+            "description": "The URI to detailed information related to this error for the developer.",
+            "readOnly": true
+          },
+          "details": {
+            "$ref": "#/components/schemas/error_details_list"
+          }
+        },
+        "required": [
+          "name",
+          "message",
+          "information_link"
+        ]
+      },
+      "error_400": {
+        "type": "object",
+        "title": "Bad Request Error",
+        "description": "Request is not well-formed, syntactically incorrect, or violates schema.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "INVALID_REQUEST"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "enum": [
+              "Request is not well-formed, syntactically incorrect, or violates schema."
+            ]
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/error_details"
+            }
+          },
+          "debug_id": {
+            "type": "string",
+            "description": "The PayPal internal ID. Used for correlation purposes."
+          },
+          "links": {
+            "description": "An array of request-related [HATEOAS links](https://en.wikipedia.org/wiki/HATEOAS).",
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/error_link_description"
+            }
+          }
+        }
+      },
+      "error_401": {
+        "type": "object",
+        "title": "Unauthorized Error",
+        "description": "Authentication failed due to missing Authorization header, or invalid authentication credentials.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "AUTHENTICATION_FAILURE"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "enum": [
+              "Authentication failed due to missing authorization header, or invalid authentication credentials."
+            ]
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/error_details"
+            }
+          },
+          "debug_id": {
+            "type": "string",
+            "description": "The PayPal internal ID. Used for correlation purposes."
+          },
+          "links": {
+            "description": "An array of request-related [HATEOAS links](https://en.wikipedia.org/wiki/HATEOAS).",
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/error_link_description"
+            }
+          }
+        }
+      },
+      "error_403": {
+        "type": "object",
+        "title": "Not Authorized Error",
+        "description": "The client is not authorized to access this resource, although it may have valid credentials. ",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "NOT_AUTHORIZED"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "enum": [
+              "Authorization failed due to insufficient permissions."
+            ]
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/error_details"
+            }
+          },
+          "debug_id": {
+            "type": "string",
+            "description": "The PayPal internal ID. Used for correlation purposes."
+          },
+          "links": {
+            "description": "An array of request-related [HATEOAS links](https://en.wikipedia.org/wiki/HATEOAS).",
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/error_link_description"
+            }
+          }
+        }
+      },
+      "error_404": {
+        "type": "object",
+        "title": "Not found Error",
+        "description": "The server has not found anything matching the request URI. This either means that the URI is incorrect or the resource is not available.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "RESOURCE_NOT_FOUND"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "enum": [
+              "The specified resource does not exist."
+            ]
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/error_details"
+            }
+          },
+          "debug_id": {
+            "type": "string",
+            "description": "The PayPal internal ID. Used for correlation purposes."
+          },
+          "links": {
+            "description": "An array of request-related [HATEOAS links](https://en.wikipedia.org/wiki/HATEOAS).",
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/error_link_description"
+            }
+          }
+        }
+      },
+      "error_409": {
+        "type": "object",
+        "title": "Resource Conflict Error",
+        "description": "The server has detected a conflict while processing this request.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "RESOURCE_CONFLICT"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "enum": [
+              "The server has detected a conflict while processing this request."
+            ]
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/error_details"
+            }
+          },
+          "debug_id": {
+            "type": "string",
+            "description": "The PayPal internal ID. Used for correlation purposes."
+          },
+          "links": {
+            "description": "An array of request-related [HATEOAS links](https://en.wikipedia.org/wiki/HATEOAS).",
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/error_link_description"
+            }
+          }
+        }
+      },
+      "error_415": {
+        "type": "object",
+        "title": "Unsupported Media Type Error",
+        "description": "The server does not support the request payload's media type.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "UNSUPPORTED_MEDIA_TYPE"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "enum": [
+              "The server does not support the request payload's media type."
+            ]
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/error_details"
+            }
+          },
+          "debug_id": {
+            "type": "string",
+            "description": "The PayPal internal ID. Used for correlation purposes."
+          },
+          "links": {
+            "description": "An array of request-related [HATEOAS links](https://en.wikipedia.org/wiki/HATEOAS).",
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/error_link_description"
+            }
+          }
+        }
+      },
+      "error_422": {
+        "type": "object",
+        "title": "Unprocessable Entity Error",
+        "description": "The requested action cannot be performed and may require interaction with APIs or processes outside of the current request. This is distinct from a 500 response in that there are no systemic problems limiting the API from performing the request.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "UNPROCESSABLE_ENTITY"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "enum": [
+              "The requested action could not be performed, semantically incorrect, or failed business validation."
+            ]
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/error_details"
+            }
+          },
+          "debug_id": {
+            "type": "string",
+            "description": "The PayPal internal ID. Used for correlation purposes."
+          },
+          "links": {
+            "description": "An array of request-related [HATEOAS links](https://en.wikipedia.org/wiki/HATEOAS).",
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/error_link_description"
+            }
+          }
+        }
+      },
+      "error_500": {
+        "type": "object",
+        "title": "Internal Server Error",
+        "description": "This is either a system or application error, and generally indicates that although the client appeared to provide a correct request, something unexpected has gone wrong on the server.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "INTERNAL_SERVER_ERROR"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "enum": [
+              "An internal server error occurred."
+            ]
+          },
+          "debug_id": {
+            "type": "string",
+            "description": "The PayPal internal ID. Used for correlation purposes."
+          },
+          "links": {
+            "description": "An array of request-related [HATEOAS links](https://en.wikipedia.org/wiki/HATEOAS).",
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/error_link_description"
+            }
+          }
+        },
+        "examples": [
+          {
+            "name": "INTERNAL_SERVER_ERROR",
+            "message": "An internal server error occurred.",
+            "debug_id": "90957fca61718",
+            "links": [
+              {
+                "href": "https://developer.paypal.com/api/orders/v2/#error-INTERNAL_SERVER_ERROR",
+                "rel": "information_link"
+              }
+            ]
+          }
+        ]
+      },
+      "error_503": {
+        "type": "object",
+        "title": "Service Unavailable Error",
+        "description": "The server is temporarily unable to handle the request, for example, because of planned maintenance or downtime.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "SERVICE_UNAVAILABLE"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "enum": [
+              "Service Unavailable."
+            ]
+          },
+          "debug_id": {
+            "type": "string",
+            "description": "The PayPal internal ID. Used for correlation purposes."
+          },
+          "links": {
+            "description": "An array of request-related [HATEOAS links](https://en.wikipedia.org/wiki/HATEOAS).",
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/error_link_description"
+            }
+          }
+        },
+        "examples": [
+          {
+            "name": "SERVICE_UNAVAILABLE",
+            "message": "Service Unavailable.",
+            "debug_id": "90957fca61718",
+            "information_link": "https://developer.paypal.com/docs/api/orders/v2/#error-SERVICE_UNAVAILABLE"
+          }
+        ]
+      },
+      "error_default": {
+        "description": "The default error response.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/error_400"
+          },
+          {
+            "$ref": "#/components/schemas/error_401"
+          },
+          {
+            "$ref": "#/components/schemas/error_403"
+          },
+          {
+            "$ref": "#/components/schemas/error_404"
+          },
+          {
+            "$ref": "#/components/schemas/error_409"
+          },
+          {
+            "$ref": "#/components/schemas/error_415"
+          },
+          {
+            "$ref": "#/components/schemas/error_422"
+          },
+          {
+            "$ref": "#/components/schemas/error_500"
+          },
+          {
+            "$ref": "#/components/schemas/error_503"
+          }
+        ]
+      },
+      "error_details": {
+        "title": "Error Details",
+        "type": "object",
+        "description": "The error details. Required for client-side `4XX` errors.",
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "The field that caused the error. If this field is in the body, set this value to the field's JSON pointer value. Required for client-side errors."
+          },
+          "value": {
+            "type": "string",
+            "description": "The value of the field that caused the error."
+          },
+          "location": {
+            "$ref": "#/components/schemas/error_location"
+          },
+          "issue": {
+            "type": "string",
+            "description": "The unique, fine-grained application-level error code."
+          },
+          "description": {
+            "type": "string",
+            "description": "The human-readable description for an issue. The description can change over the lifetime of an API, so clients must not depend on this value."
+          }
+        },
+        "required": [
+          "issue"
+        ]
+      },
+      "error_details-2": {
+        "type": "object",
+        "title": "Error Details",
+        "description": "The error details. Required for client-side `4XX` errors.",
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "The name of the field that caused the error."
+          },
+          "issue": {
+            "type": "string",
+            "description": "The reason for the error."
+          }
+        },
+        "required": [
+          "field",
+          "issue"
+        ]
+      },
+      "error_details_list": {
+        "type": "array",
+        "description": "An array of additional details for the error.",
+        "readOnly": true,
+        "items": {
+          "$ref": "#/components/schemas/error_details-2"
+        }
+      },
+      "error_link_description": {
+        "title": "Link Description",
+        "description": "The request-related [HATEOAS link](/api/rest/responses/#hateoas-links) information.",
+        "type": "object",
+        "required": [
+          "href",
+          "rel"
+        ],
+        "properties": {
+          "href": {
+            "description": "The complete target URL. To make the related call, combine the method with this [URI Template-formatted](https://tools.ietf.org/html/rfc6570) link. For pre-processing, include the `$`, `(`, and `)` characters. The `href` is the key HATEOAS component that links a completed call with a subsequent call.",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 20000,
+            "pattern": "^.*$"
+          },
+          "rel": {
+            "description": "The [link relation type](https://tools.ietf.org/html/rfc5988#section-4), which serves as an ID for a link that unambiguously describes the semantics of the link. See [Link Relations](https://www.iana.org/assignments/link-relations/link-relations.xhtml).",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 100,
+            "pattern": "^.*$"
+          },
+          "method": {
+            "description": "The HTTP method required to make the related call.",
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 6,
+            "pattern": "^[A-Z]*$",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "PATCH"
+            ]
+          }
+        }
+      },
+      "error_location": {
+        "type": "string",
+        "description": "The location of the field that caused the error. Value is `body`, `path`, or `query`.",
+        "enum": [
+          "body",
+          "path",
+          "query"
+        ],
+        "default": "body"
+      },
+      "userinfo": {
+        "description": "The [OpenID Connect](https://openid.net/connect/) user profile information for [standard claims](https://openid.net/specs/openid-connect-basic-1_0.html#StandardClaims). The details correspond to the scopes of the access token.",
+        "title": "User Information",
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The user ID of the user.",
+            "readOnly": true
+          },
+          "sub": {
+            "type": "string",
+            "description": "The subject ID for the end user at the issuer.",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "The full name of the user.",
+            "readOnly": true
+          },
+          "given_name": {
+            "type": "string",
+            "description": "The given, or first, name of the user.",
+            "readOnly": true
+          },
+          "family_name": {
+            "type": "string",
+            "description": "The surname or family name of the user. Also known as the last name. Use also to store multiple surnames including the matronymic, or mother's, surname.",
+            "readOnly": true
+          },
+          "middle_name": {
+            "type": "string",
+            "description": "The middle name of the user. Use also to store multiple middle names including the patronymic, or father's, middle name.",
+            "readOnly": true
+          },
+          "picture": {
+            "type": "string",
+            "description": "The URL of the profile picture of the user.",
+            "readOnly": true
+          },
+          "email": {
+            "type": "string",
+            "description": "The internationalized email address.",
+            "readOnly": true
+          },
+          "email_verified": {
+            "type": "boolean",
+            "description": "Indicates whether the user's email address is verified.",
+            "readOnly": true
+          },
+          "gender": {
+            "type": "string",
+            "description": "The user's gender.",
+            "readOnly": true
+          },
+          "birthdate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The user's birthday, in `YYYY-MM-DD` format. See [Internet date and time format](https://tools.ietf.org/html/rfc3339#section-5.6). The year MAY be `0000`, which indicates its omission. To represent only the year, use `YYYY` format.",
+            "readOnly": true
+          },
+          "zoneinfo": {
+            "type": "string",
+            "description": "The time zone of the user.",
+            "readOnly": true
+          },
+          "locale": {
+            "type": "string",
+            "description": "The locale of the user.",
+            "readOnly": true
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "The preferred telephone number of the user.",
+            "readOnly": true
+          },
+          "address": {
+            "$ref": "#/components/schemas/address"
+          },
+          "verified_account": {
+            "type": "boolean",
+            "description": "Indicates whether the account is verified.",
+            "readOnly": true
+          },
+          "account_type": {
+            "type": "string",
+            "description": "The account type.",
+            "readOnly": true,
+            "enum": [
+              "PERSONAL",
+              "BUSINESS",
+              "PREMIER"
+            ],
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PERSONAL"
+                ],
+                "description": "Personal account."
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "BUSINESS"
+                ],
+                "description": "Business account."
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "PREMIER"
+                ],
+                "description": "Premier account."
+              }
+            ]
+          },
+          "age_range": {
+            "type": "string",
+            "description": "The account holder's age range.",
+            "readOnly": true
+          }
+        }
+      }
+    },
+    "parameters": {}
+  },
+  "x-errors": [
+    {
+      "name": "INTERNAL_SERVER_ERROR",
+      "message": "Internal server error.",
+      "description": "An internal server error occurred. Check the response for error messages."
+    },
+    {
+      "name": "INVALID_CLIENT",
+      "message": "Invalid client credentials.",
+      "description": "The <code>Authentication</code> header contains invalid client credentials. Set the correct base64-encoded <code><var>client_id</var>:<var>secret</var></code> in the header."
+    },
+    {
+      "name": "INVALID_REQUEST",
+      "message": "Invalid request.",
+      "description": "The parameter is not valid. Check for typos and send the correct input parameter."
+    },
+    {
+      "name": "INVALID_TOKEN",
+      "message": "Invalid access token.",
+      "description": "The bearer token contains an incorrect access token. Send a valid access token as the bearer token."
+    }
+  ]
+}

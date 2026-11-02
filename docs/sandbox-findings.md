@@ -284,3 +284,28 @@ when an unclaimed item returns is still unknown; the first returns are due about
 
 - `refund_request.custom_id` is `maxLength 127`, pattern `^.*$`
   (`docs/paypal-specs/payments_payment_v2.json`). The build spec said 255. The client enforces 127.
+
+## Rightful Share: Log in with PayPal (claimant identity, 2026-11-02)
+
+Spec: `docs/paypal-specs/identity_v1.json`. Script: `scripts/identity/try-login.ts`. Enabled on
+the `pushover-guarded` sandbox app with Return URL `https://example.com/rightfulshare/paypal-callback`,
+"Account verification status" and "PayPal account ID (payer ID)" ticked, and logins from
+unconfirmed emails **not** allowed. Logged in as po-buyer1 (Dana Reyes). Play money.
+
+- Authorize at `https://www.sandbox.paypal.com/connect` with `flowEntry=static`, `response_type=code`,
+  scopes `openid profile email address https://uri.paypal.com/services/paypalattributes`; the code
+  came back on the Return URL with the same `state`.
+- `POST /v1/oauth2/token` with `grant_type=authorization_code` and Basic auth: 200. **The token
+  carries the app's whole scope list** (payments, refunds, vault, reporting…), not only the scopes
+  asked for, so it must be used once for userinfo and then dropped: never stored or logged.
+- `GET /v1/identity/openidconnect/userinfo?schema=openid`: 200 with `user_id`, `sub` (same value,
+  93 chars), `name`, `email`, `verified`, **`payer_id`** (13 chars), `address`
+  {street_address, locality, region, postal_code, country}, **`verified_account: true`**,
+  `email_verified: true`.
+- `GET /v1/identity/oauth2/userinfo?schema=paypalv1.1`: 200, the same fields, with `emails`
+  [{value, primary, confirmed}] in place of `email`/`email_verified`/`verified`.
+- **`payer_id` is not in the published schema** (`identity_v1.json` has no such property) but is
+  returned when the payer-ID attribute is enabled. The claim form must treat it as required and
+  fail closed if it is missing.
+- Not yet tested: whether a Payouts item can be sent with `recipient_type: PAYPAL_ID` to this
+  `payer_id`, and what an unverified account returns.
