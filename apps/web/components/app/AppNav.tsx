@@ -1,0 +1,42 @@
+"use client";
+import { usePathname } from "next/navigation";
+import s from "./AppNav.module.css";
+
+const S = "acme-restaurant-beverage";
+const LINKS = [
+  { href: "/demo", label: "Live demo" },
+  { href: `/claim/${S}`, label: "File a claim" },
+  { href: `/admin/${S}`, label: "Claims desk" },
+  { href: `/admin/${S}/money`, label: "Money" },
+  { href: `/report/${S}`, label: "Court report" },
+];
+
+export function AppNav() {
+  const path = usePathname();
+  const active = (href: string) => (href === `/admin/${S}` ? path === href || path.startsWith(`${href}/claim`) : path.startsWith(href));
+  return (
+    <header className={s.bar}>
+      <a href="#main" className="sr-only">
+        Skip to content
+      </a>
+      <div className={s.inner}>
+        <a href="/" className={s.brand} aria-label="Rightful Share, home">
+          <span className={s.mark} aria-hidden>
+            <span />
+          </span>
+          <span className={s.word}>Rightful Share</span>
+        </a>
+        <span className={s.case}>
+          <span className={s.dot} aria-hidden /> Acme Restaurant Beverage <em>(fictional demo)</em>
+        </span>
+        <nav aria-label="Product" className={s.links}>
+          {LINKS.map((l) => (
+            <a key={l.href} href={l.href} aria-current={active(l.href) ? "page" : undefined}>
+              {l.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
+}

@@ -17,7 +17,16 @@ export const viewport: Viewport = { themeColor: "#f4f1e8" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${instrument.variable}`}>
-      <body>{children}</body>
+      <body>
+        {/* Roughens rubber-stamp borders and text, like ink on paper. */}
+        <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
+          <filter id="ink">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" />
+            <feDisplacementMap in="SourceGraphic" scale="2.2" />
+          </filter>
+        </svg>
+        {children}
+      </body>
     </html>
   );
 }

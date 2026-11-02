@@ -199,6 +199,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: 1.3.0
+        version: 1.3.0(zod@4.6.7)
       '@gsap/react':
         specifier: 2.1.2
         version: 2.1.2(gsap@3.15.0)(react@19.3.1)
@@ -214,6 +217,9 @@ importers:
       '@pushover/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@pushover/desk':
+        specifier: workspace:*
+        version: link:../../packages/desk
       '@pushover/distribute':
         specifier: workspace:*
         version: link:../../packages/distribute

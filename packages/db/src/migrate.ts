@@ -1,9 +1,12 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Pool } from "./pool.ts";
 
-export const MIGRATIONS_DIR = fileURLToPath(new URL("../migrations/", import.meta.url));
+// A plain join, not new URL("../migrations/", import.meta.url): bundlers (Next) try to resolve that
+// form as an asset, and a folder is not one.
+export const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 
 /** Any fixed number; only one migrator may run at a time (web preDeploy can overlap). */
 const LOCK_KEY = 4_417_0001;

@@ -10,11 +10,13 @@
     "typecheck": "next typegen && tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.3.0",
     "@gsap/react": "2.1.2",
     "@number-flow/react": "0.6.2",
     "@pushover/checks": "workspace:*",
     "@pushover/claims": "workspace:*",
     "@pushover/db": "workspace:*",
+    "@pushover/desk": "workspace:*",
     "@pushover/distribute": "workspace:*",
     "@pushover/examiner": "workspace:*",
     "@pushover/paypal": "workspace:*",

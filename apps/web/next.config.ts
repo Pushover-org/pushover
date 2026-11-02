@@ -7,7 +7,7 @@ if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 // The workspace packages ship TypeScript source (exports → src/index.ts), so Next compiles them.
 const config: NextConfig = {
-  transpilePackages: ["@pushover/checks", "@pushover/claims", "@pushover/db", "@pushover/distribute", "@pushover/examiner", "@pushover/paypal"],
+  transpilePackages: ["@pushover/checks", "@pushover/claims", "@pushover/db", "@pushover/desk", "@pushover/distribute", "@pushover/examiner", "@pushover/paypal"],
   serverExternalPackages: ["sharp", "pg"],
   poweredByHeader: false,
 };

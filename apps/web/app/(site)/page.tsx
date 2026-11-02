@@ -33,12 +33,6 @@ export default function Landing() {
   return (
     <>
       <SmoothScroll />
-      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
-        <filter id="ink">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" />
-          <feDisplacementMap in="SourceGraphic" scale="2.2" />
-        </filter>
-      </svg>
       <Nav />
       <Thread />
 
