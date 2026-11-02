@@ -1,0 +1,27 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-radius: var(--r-card);
+  border: 1.5px solid var(--review);
+  background: var(--review-wash);
+}
+.bar strong {
+  font-size: 16px;
+}
+.bar p {
+  margin-top: 4px;
+  max-width: 70ch;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.err {
+  color: var(--deny) !important;
+}
+.btns {
+  display: flex;
+  gap: 10px;
+}

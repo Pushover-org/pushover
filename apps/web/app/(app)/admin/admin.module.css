@@ -1,0 +1,42 @@
+.page {
+  display: grid;
+  gap: 28px;
+}
+.head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 24px 40px;
+  align-items: end;
+}
+.h1 {
+  margin-top: 10px;
+  font-size: clamp(2.2rem, 1.4rem + 2.8vw, 3.8rem);
+  line-height: 0.95;
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  margin: 0;
+}
+.facts > div {
+  padding: 0 18px;
+  border-left: 1px solid var(--hair);
+}
+.facts dd {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+@media (max-width: 1100px) {
+  .head {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .facts > div:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .head :global(.pill) {
+    justify-self: start;
+  }
+}

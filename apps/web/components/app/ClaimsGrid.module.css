@@ -1,0 +1,177 @@
+.wrap {
+  display: grid;
+  gap: 14px;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hair-2);
+  background: transparent;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: background var(--dur-micro) var(--ease), color var(--dur-micro) var(--ease);
+}
+.filter span {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.filter:hover {
+  background: var(--paper-2);
+}
+.filter[aria-selected="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.filter[aria-selected="true"] span {
+  color: rgb(244 241 232 / 0.6);
+}
+.search input {
+  width: min(320px, 80vw);
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: var(--r-input);
+  border: 1px solid var(--hair-2);
+  background: var(--card);
+  font: inherit;
+  font-size: 14px;
+}
+.grid {
+  overflow-x: auto;
+}
+.grid :global(.ag-root-wrapper) {
+  min-width: 1180px;
+}
+.row {
+  cursor: pointer;
+}
+.thumb {
+  display: block;
+  width: 56px;
+  height: 44px;
+  margin-top: 6px;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 4px;
+  border: 1px solid var(--hair-2);
+  filter: saturate(0.8);
+}
+.noThumb {
+  font-family: var(--font-num);
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+.claim {
+  display: grid;
+  line-height: 1.25;
+  padding-top: 9px;
+}
+.claim b {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.claim small {
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reason {
+  display: grid;
+  line-height: 1.3;
+  padding-top: 10px;
+}
+.reason small {
+  font-size: 11.5px;
+  color: var(--green);
+}
+.checks {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.fail,
+.unknown,
+.allPass {
+  font-family: var(--font-num);
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  line-height: 1.6;
+}
+.fail {
+  background: var(--deny-wash);
+  color: var(--deny);
+}
+.unknown {
+  background: var(--review-wash);
+  color: var(--review);
+}
+.allPass {
+  color: var(--approve);
+}
+.vs {
+  display: grid;
+  line-height: 1.25;
+  padding-top: 10px;
+  font-family: var(--font-num);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.vs[data-disagree="true"] {
+  color: var(--ink-2);
+  text-decoration: line-through;
+}
+.vs b {
+  display: inline-block;
+  width: fit-content;
+  font-weight: 600;
+  color: var(--deny);
+  text-decoration: none;
+}
+.amount b {
+  color: var(--green);
+}
+.amount s {
+  color: var(--ink-3);
+}
+.label {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--paper-2);
+}
+.label[data-truth="fraud"] {
+  background: var(--deny-wash);
+  color: var(--deny);
+}
+.label[data-truth="honest"] {
+  background: var(--green-wash);
+  color: var(--approve);
+}
+.label[data-truth="ineligible"] {
+  background: var(--review-wash);
+  color: var(--review);
+}
+.dim {
+  color: var(--ink-3);
+}
