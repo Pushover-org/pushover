@@ -1,6 +1,6 @@
 # Progress (hand-off between machines and sessions)
 
-Last updated: 2026-11-01 (night, original laptop).
+Last updated: 2026-11-02 (original laptop).
 
 ## The project: Rightful Share (pivot from Pushover, 2026-10-31)
 
@@ -41,7 +41,7 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | R7 `packages/examiner` (one dataset receipt + one rendered fake) | done |
 | R8 Corpus scripts, manifest and labels committed before any run | done |
 | R9 Eval runner, three arms, pilot gate | done: **GO** on both models |
-| R10 `apps/web` (AG Grid admin) | next |
+| R10 `apps/web` (AG Grid admin) | in progress: all five screens built; e2e and live PayPal login left |
 | R11–R14 Worker, deploy, full run, submission | |
 
 - **R1 evidence (2026-11-01):** tag `pushover-final` → `b613415`. `pnpm lint` exit 0,
@@ -49,6 +49,19 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
   examiner and oracle bans). The lockfile no longer contains `@paypal/agent-toolkit`.
 
 ## In progress
+
+- **R10 (2026-11-02), built and committed:**
+  - Landing page (Court Ledger direction, `docs/design-direction.md`), `/demo`, `/claim/[s]` with Log in with PayPal, the claims desk on AG Grid with the claim page and review, `/admin/[s]/money` with Distribute and read-back, and `/report/[s]` with CSV.
+  - `packages/desk` files, reads, checks and decides claims on the database; 11 tests on real Postgres, including a planted bug.
+  - Migration 0005 records the PayPal account (one account = one claim) and pays by payer ID.
+  - `pnpm demo:seed` loads the 57 dev and pilot claims into a fresh database. The pilot matches R9 on 28 of 32; the 4 differences are explained under Open below.
+  - `pnpm test` 726 passing.
+- **Left in R10:**
+  - Playwright e2e (happy path, one deny, one review) against its own database.
+  - A real Log in with PayPal from the app. The owner must add the app's callback as a Return URL.
+  - The first real Distribute from the app (Nov 5 milestone).
+- **Local run:** `DATABASE_URL=<…>/rightfulshare pnpm --filter @pushover/web dev` (port 3100), with `SESSION_SECRET` set.
+
 
 - **R2 evidence (2026-11-01):** `pnpm test` 95/95 (20 Payouts unit tests on a recorded sandbox
   batch and PayPal's real duplicate error); `pnpm test:sandbox` PASS (batch `FHT9WYQD2RX9G`:
@@ -64,6 +77,11 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
   over at R8 the same evening and continues in order.
 
 ## Open for the owner / notes for later steps
+
+- **C6 false positive on rendered receipts (found 2026-11-02, not changed):** two different honest renders, r-007 (c-115) and r-012 (c-054), hash within distance 4, because every render shares one layout. In the demo database c-115 is denied DUPLICATE_IMAGE; R9 never compared them, since c-054 is in the dev slice. Real receipts from the same store's POS could collide the same way. Options for the owner:
+  - keep pre-registered C6 as is and report it in R13;
+  - make a C6 match without matching receipt details a REVIEW rather than a DENY (a table change, so v2, decided before R13).
+- **Demo C7 differs from the eval:** within 57 claims, 3 bot-farm (F5) claims have clusters of 1–2 and are approved; across all 157 they cluster. The cluster re-check before Distribute catches a cluster that forms later.
 
 - **Payouts behaviour to remember (R2):** a reused `sender_batch_id` is refused with 400 even with
   the same key; `createPayoutBatch` returns the original batch as `duplicate: true`. Unclaimed
