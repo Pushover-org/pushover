@@ -334,10 +334,13 @@ not the Wilson upper bound. Wilson intervals are still reported (§5.3).
 The perfect fake (a faultless receipt) passes every document check, so the money is tied to a
 person instead: every claim is filed after Log in with PayPal, and the PayPal account is the
 claimant's identity.
-- One PayPal `payer_id` = one claim per settlement (verified returned by userinfo, see
+- One PayPal `payer_id` = one claim per settlement (userinfo returns it, see
   `docs/sandbox-findings.md`; it is not in the published schema, so a missing one fails closed).
 - `verified_account` and a confirmed email are recorded on the claim; an unverified account goes
   to REVIEW, never straight to APPROVE.
 - The access token is used once for userinfo and discarded: it carries the app's full scope list.
+- Payouts go to that `payer_id` with `recipient_type: PAYPAL_ID` (sandbox: SUCCESS), not to an
+  email, so the money reaches the account that filed. A bad ID fails only on read-back
+  (`RECEIVER_ACCOUNT_INVALID`), so reconciliation must read every item.
 - About 5% of approved proof claims are picked at random for audit before payout (R11).
 - claims-v1 stays frozen; claims-v2 (R13) adds a perfect-fake group to measure what's left.

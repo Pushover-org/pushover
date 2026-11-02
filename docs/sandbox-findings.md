@@ -307,5 +307,13 @@ unconfirmed emails **not** allowed. Logged in as po-buyer1 (Dana Reyes). Play mo
 - **`payer_id` is not in the published schema** (`identity_v1.json` has no such property) but is
   returned when the payer-ID attribute is enabled. The claim form must treat it as required and
   fail closed if it is missing.
-- Not yet tested: whether a Payouts item can be sent with `recipient_type: PAYPAL_ID` to this
-  `payer_id`, and what an unverified account returns.
+- A second login the same day returned the **same `payer_id`** (stable across logins).
+- **Payouts to the `payer_id`** (`scripts/identity/pay-payer-id.ts`, $1.00 each, one item per
+  batch, `recipient_type: PAYPAL_ID`):
+  - Real `payer_id`: batch `89M2ZCBWVWU82`, item `9ZJXXN2QS8KBS` **`SUCCESS`**, fee $0.25; the
+    item reads back with `recipient_type` `PAYPAL_ID` and the same receiver.
+  - Made-up 13-character ID: batch `8SHCXHSRQ7FVJ` **`DENIED`**, item `WJXQ54EN77J3J` `FAILED`,
+    `RECEIVER_ACCOUNT_INVALID`, fee $0.00, and the item's receiver reads back as zeros. The
+    create call itself returned 201; the failure only shows on read-back.
+  - So a claim can be paid to exactly the account that logged in, with no email to swap.
+- Not yet tested: what an unverified account returns.

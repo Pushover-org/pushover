@@ -3,11 +3,15 @@
 //   1. node --env-file-if-exists=.env.local scripts/identity/try-login.ts url
 //      Prints the login link. Open it, log in as a sandbox buyer, and copy the address you land on.
 //   2. node --env-file-if-exists=.env.local scripts/identity/try-login.ts code '<that address>'
-//      Exchanges the code and prints which fields each userinfo path returns. Tokens are never printed.
+//      Exchanges the code and prints which fields each userinfo path returns. Tokens are never printed;
+//      the payer_id is saved to PAYER_ID_FILE for pay-payer-id.ts.
 // Needs Log in with PayPal enabled on the guarded sandbox app, with RETURN_URL as its Return URL.
 import { randomBytes } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { paypalCredentials } from "../../packages/paypal/src/env.ts";
 
+/** Git-ignored; scripts/identity/pay-payer-id.ts pays this account. */
+export const PAYER_ID_FILE = ".data/identity/payer-id.txt";
 const RETURN_URL = "https://example.com/rightfulshare/paypal-callback";
 const SCOPES = "openid profile email address https://uri.paypal.com/services/paypalattributes";
 const env = paypalCredentials("guarded");
@@ -34,6 +38,10 @@ if (step === "url") {
     const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
     console.log(`\n${path}: HTTP ${r.status}`);
     // Objects (address, emails) are shown by their keys only: a real login's address is personal data.
+    if (typeof j.payer_id === "string") {
+      mkdirSync(".data/identity", { recursive: true });
+      writeFileSync(PAYER_ID_FILE, j.payer_id + "\n");
+    }
     for (const [k, v] of Object.entries(j)) console.log(`  ${k}: ${v && typeof v === "object" ? `{${Object.keys(Array.isArray(v) ? (v[0] ?? {}) : v).join(", ")}}` : String(mask(v))}`);
   }
 } else {
