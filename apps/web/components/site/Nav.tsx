@@ -25,7 +25,7 @@ export function Nav() {
         <nav aria-label="Main" className={styles.links}>
           <a href="/#pile">How it decides</a>
           <a href="/#numbers">The numbers</a>
-          <a href="/report/acme-beverage">Court report</a>
+          <a href="/report/acme-restaurant-beverage">Court report</a>
         </nav>
         <a href="/demo" className={`pill pill--green ${styles.cta}`}>
           Live demo

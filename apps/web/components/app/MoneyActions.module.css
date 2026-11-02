@@ -1,0 +1,19 @@
+.wrap {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+.inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.err {
+  color: var(--deny);
+  font-size: 14px;
+}
+.ok {
+  color: var(--green);
+  font-size: 14px;
+}

@@ -1,0 +1,40 @@
+.hold {
+  position: relative;
+  overflow: hidden;
+  min-height: 54px;
+  padding: 0 28px;
+  border-radius: var(--r-pill);
+  border: 0;
+  background: var(--green);
+  color: var(--on-green);
+  font-weight: 600;
+  font-size: 15.5px;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+}
+.hold:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.hold[data-holding="true"] .fill {
+  transform: scaleX(1);
+  transition: transform var(--hold) linear;
+}
+.text {
+  position: relative;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hold[data-holding="true"] .fill {
+    transition: none;
+    transform: scaleX(1);
+    opacity: 0.5;
+  }
+}

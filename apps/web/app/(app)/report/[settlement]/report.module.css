@@ -1,0 +1,90 @@
+.doc {
+  display: grid;
+  gap: 32px;
+}
+.caption {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  padding-bottom: 28px;
+  border-bottom: 3px double var(--ink);
+}
+.caption h1 {
+  font-size: clamp(2.4rem, 1.4rem + 3.4vw, 4.4rem);
+  line-height: 0.95;
+}
+.fict {
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px;
+}
+.block {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+.block > p {
+  font-size: 14.5px;
+  color: var(--ink-2);
+  max-width: 75ch;
+}
+.counts {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin: 0;
+  border-top: 1px solid var(--ink);
+}
+.counts > div {
+  padding: 12px 10px 12px 0;
+  border-bottom: 1px solid var(--hair);
+}
+.counts dt {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.counts dd {
+  margin: 4px 0 0;
+  font-size: 28px;
+}
+.counts [data-o="APPROVE"] dd {
+  color: var(--approve);
+}
+.counts [data-o="DENY"] dd {
+  color: var(--deny);
+}
+.counts [data-o="REVIEW"] dd {
+  color: var(--review);
+}
+.counts [data-o="NEED_MORE"] dd {
+  color: var(--more);
+}
+.fund {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+  border-top: 1px solid var(--ink);
+}
+.fund td {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hair);
+}
+.fund td:last-child {
+  text-align: right;
+}
+.total td {
+  border-top: 1.5px solid var(--ink);
+  border-bottom: 3px double var(--ink);
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+  .counts {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

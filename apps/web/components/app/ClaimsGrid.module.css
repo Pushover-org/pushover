@@ -175,3 +175,23 @@
 .dim {
   color: var(--ink-3);
 }
+.payPill {
+  display: inline-block;
+  padding: 1px 10px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-num);
+  font-size: 11.5px;
+  line-height: 1.7;
+}
+.payPill[data-s="ok"] {
+  background: var(--green-wash);
+  color: var(--approve);
+}
+.payPill[data-s="wait"] {
+  background: var(--review-wash);
+  color: var(--review);
+}
+.payPill[data-s="bad"] {
+  background: var(--deny-wash);
+  color: var(--deny);
+}

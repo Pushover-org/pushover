@@ -337,7 +337,7 @@ export default function Landing() {
                 <a className="pill pill--green" href="/demo">
                   Open the live demo
                 </a>
-                <a className="pill pill--quiet" href="/report/acme-beverage">
+                <a className="pill pill--quiet" href="/report/acme-restaurant-beverage">
                   Read the court report
                 </a>
               </div>
@@ -356,8 +356,8 @@ export default function Landing() {
           </div>
           <div className={s.footLinks}>
             <a href="/demo">Live demo</a>
-            <a href="/claim/acme-beverage">File a claim</a>
-            <a href="/report/acme-beverage">Court report</a>
+            <a href="/claim/acme-restaurant-beverage">File a claim</a>
+            <a href="/report/acme-restaurant-beverage">Court report</a>
             <a href={REPO}>Source (MIT)</a>
           </div>
           <p className={s.built}>Built with Claude, PayPal Payouts and Log in with PayPal, and AG Grid.</p>
