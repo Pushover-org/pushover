@@ -7,11 +7,8 @@ import type { Allocation } from "./allocate.ts";
 /** PayPal's limit per call (docs/paypal-specs/payments_payouts_batch_v1.json). */
 export const MAX_ITEMS_PER_BATCH = 15_000;
 
-export interface Payee {
-  claimId: string;
-  email: string;
-  wallet?: "PAYPAL" | "VENMO";
-}
+/** A claimant who logged in with PayPal is paid by payer ID; anyone else by email. */
+export type Payee = { claimId: string; wallet?: "PAYPAL" | "VENMO" } & ({ email: string; payerId?: never } | { payerId: string; email?: never });
 
 export interface ClaimBatchArgs {
   settlementId: string;
@@ -38,7 +35,8 @@ export function buildClaimBatches(a: ClaimBatchArgs): CreatePayoutBatchArgs[] {
     .map((p) => {
       const payee = emails.get(p.claimId);
       if (!payee) throw new Error(`no payee for claim ${p.claimId}`);
-      return { senderItemId: p.claimId, receiverEmail: payee.email, cents: p.payoutCents, ...(payee.wallet ? { recipientWallet: payee.wallet } : {}) };
+      const to = payee.payerId !== undefined ? { receiverPayerId: payee.payerId } : { receiverEmail: payee.email };
+      return { senderItemId: p.claimId, ...to, cents: p.payoutCents, ...(payee.wallet ? { recipientWallet: payee.wallet } : {}) };
     });
   if (items.length === 0) throw new Error("nothing to pay");
   const out: CreatePayoutBatchArgs[] = [];

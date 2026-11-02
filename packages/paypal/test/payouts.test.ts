@@ -37,6 +37,11 @@ describe("buildPayoutRequest", () => {
     });
   });
 
+  it("pays a logged-in claimant's PayPal account by payer ID (sandbox item 9ZJXXN2QS8KBS)", () => {
+    const req = buildPayoutRequest({ ...args, items: [{ senderItemId: "claim-1", receiverPayerId: "QYR5Z8XDVJNXQ", cents: 100 }] }) as { items: unknown[] };
+    expect(req.items).toEqual([{ recipient_type: "PAYPAL_ID", amount: { currency: "USD", value: "1.00" }, receiver: "QYR5Z8XDVJNXQ", sender_item_id: "claim-1" }]);
+  });
+
   it.each([
     ["no items", { ...args, items: [] }],
     ["a duplicate sender_item_id", { ...args, items: [args.items[0]!, args.items[0]!] }],
@@ -45,6 +50,8 @@ describe("buildPayoutRequest", () => {
     ["a sender_item_id over 63 characters", { ...args, items: [{ ...args.items[0]!, senderItemId: "x".repeat(64) }] }],
     ["a sender_batch_id with spaces", { ...args, senderBatchId: "rs demo" }],
     ["a receiver that is not an email", { ...args, items: [{ ...args.items[0]!, receiverEmail: "buyer2" }] }],
+    ["a payer ID in the wrong format", { ...args, items: [{ senderItemId: "claim-1", receiverPayerId: "ypz-not-an-id", cents: 100 }] }],
+    ["a payer ID with a letter PayPal never uses (I, O, 0, 1)", { ...args, items: [{ senderItemId: "claim-1", receiverPayerId: "ABCDEFGHIJKL1", cents: 100 }] }],
   ])("refuses %s before calling PayPal", (_label, bad) => {
     expect(() => buildPayoutRequest(bad)).toThrow();
   });

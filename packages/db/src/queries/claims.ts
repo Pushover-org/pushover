@@ -66,9 +66,12 @@ export interface NewClaim {
   declaration: string;
   ipKey: string | null;
   submittedAt?: Date;
+  /** Set when the claimant logged in with PayPal (migration 0005). */
+  paypal?: { payerId: string; verified: boolean; emailVerified: boolean | null } | null;
 }
 
-export interface ClaimRow extends Omit<NewClaim, "submittedAt"> {
+export interface ClaimRow extends Omit<NewClaim, "submittedAt" | "paypal"> {
+  paypal: { payerId: string; verified: boolean; emailVerified: boolean | null } | null;
   seq: number;
   status: ClaimState;
   submittedAt: Date;
@@ -77,17 +80,21 @@ export interface ClaimRow extends Omit<NewClaim, "submittedAt"> {
 interface RawClaim {
   id: string; settlement_id: string; seq: string; tier: "proof" | "no_proof"; units_claimed: number; claimant_name: string; payout_email: string;
   address_line: string; city: string; state: string; zip: string; declaration: string; ip_key: string | null; status: ClaimState; submitted_at: Date;
+  paypal_payer_id: string | null; paypal_verified: boolean | null; paypal_email_verified: boolean | null;
 }
 const claimFrom = (r: RawClaim): ClaimRow => ({
   id: r.id, settlementId: r.settlement_id, seq: toNumber(r.seq), tier: r.tier, unitsClaimed: r.units_claimed, name: r.claimant_name, email: r.payout_email,
   addressLine: r.address_line, city: r.city, state: r.state, zip: r.zip, declaration: r.declaration, ipKey: r.ip_key, status: r.status, submittedAt: r.submitted_at,
+  paypal: r.paypal_payer_id === null ? null : { payerId: r.paypal_payer_id, verified: r.paypal_verified === true, emailVerified: r.paypal_email_verified },
 });
 
 export async function insertClaim(db: Queryable, c: NewClaim): Promise<ClaimRow> {
   const { rows } = await db.query<RawClaim>(
-    `INSERT INTO claims (id, settlement_id, tier, units_claimed, claimant_name, payout_email, address_line, city, state, zip, declaration, ip_key, submitted_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13, now())) RETURNING *`,
-    [c.id, c.settlementId, c.tier, c.unitsClaimed, c.name, c.email, c.addressLine, c.city, c.state, c.zip, c.declaration, c.ipKey, c.submittedAt ?? null],
+    `INSERT INTO claims (id, settlement_id, tier, units_claimed, claimant_name, payout_email, address_line, city, state, zip, declaration, ip_key, submitted_at,
+       paypal_payer_id, paypal_verified, paypal_email_verified)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13, now()), $14, $15, $16) RETURNING *`,
+    [c.id, c.settlementId, c.tier, c.unitsClaimed, c.name, c.email, c.addressLine, c.city, c.state, c.zip, c.declaration, c.ipKey, c.submittedAt ?? null,
+      c.paypal?.payerId ?? null, c.paypal?.verified ?? null, c.paypal?.emailVerified ?? null],
   );
   return claimFrom(rows[0] as RawClaim);
 }
@@ -239,7 +246,7 @@ export interface PlannedBatch {
   round: number;
   part: number;
   senderBatchId: string;
-  items: { senderItemId: string; claimId: string | null; receiver: string; cents: number }[];
+  items: { senderItemId: string; claimId: string | null; receiver: string; cents: number; recipientType?: "EMAIL" | "PAYPAL_ID" }[];
 }
 
 /**
@@ -254,7 +261,7 @@ export async function planBatch(c: PoolClient, b: PlannedBatch): Promise<number>
   );
   const id = toNumber((rows[0] as { id: string }).id);
   for (const i of b.items) {
-    await c.query("INSERT INTO payout_items (batch_id, claim_id, sender_item_id, receiver, amount_cents) VALUES ($1, $2, $3, $4, $5)", [id, i.claimId, i.senderItemId, i.receiver, i.cents]);
+    await c.query("INSERT INTO payout_items (batch_id, claim_id, sender_item_id, receiver, amount_cents, recipient_type) VALUES ($1, $2, $3, $4, $5, $6)", [id, i.claimId, i.senderItemId, i.receiver, i.cents, i.recipientType ?? "EMAIL"]);
     if (i.claimId !== null) await moveClaim(c, i.claimId, "APPROVE", "SCHEDULED");
   }
   await appendAudit(c, { actor: "system", action: "batch_planned", subject: b.senderBatchId, detail: { batch_id: id, kind: b.kind, items: b.items.length, amount_cents: amount } });

@@ -21,6 +21,12 @@ describe("batch builder", () => {
       ],
     });
   });
+  it("pays a claimant who logged in with PayPal by payer ID, not email", () => {
+    const [b] = buildClaimBatches({ ...args, payees: [{ claimId: "c1", payerId: "QYR5Z8XDVJNXQ" }, payees[1]!] });
+    expect(buildPayoutRequest(b as never)).toMatchObject({
+      items: [{ recipient_type: "PAYPAL_ID", receiver: "QYR5Z8XDVJNXQ", sender_item_id: "c1" }, { recipient_type: "EMAIL", receiver: "b@example.com" }],
+    });
+  });
   it("the same input gives the same batch ID, so a retry cannot pay twice; a new round differs", () => {
     expect(buildClaimBatches(args)).toEqual(buildClaimBatches(args));
     expect(buildClaimBatches({ ...args, round: 2 })[0]?.senderBatchId).not.toBe(buildClaimBatches(args)[0]?.senderBatchId);

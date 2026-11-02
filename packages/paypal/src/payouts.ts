@@ -52,15 +52,23 @@ export interface PayoutBatch {
   items: PayoutItem[];
 }
 
-export interface PayoutItemInput {
+/**
+ * Who receives an item: an email, or a PayPal account by its payer ID (recipient_type PAYPAL_ID,
+ * verified in the sandbox 2026-11-02: docs/sandbox-findings.md → Log in with PayPal).
+ */
+export type PayoutReceiver = { receiverEmail: string; receiverPayerId?: never } | { receiverPayerId: string; receiverEmail?: never };
+
+/** PayPal's payer ID format, ppaas_payer_id_v3 (docs/paypal-specs/checkout_orders_v2.json). */
+export const PAYER_ID = /^[2-9A-HJ-NP-Z]{13}$/;
+
+export type PayoutItemInput = PayoutReceiver & {
   /** Our claim's ID; unique within the batch. */
   senderItemId: string;
-  receiverEmail: string;
   cents: number;
   note?: string;
   /** "PAYPAL" or "VENMO" (`recipient_wallet_enum`). Venmo receivers are not yet tried in sandbox. */
   recipientWallet?: "PAYPAL" | "VENMO";
-}
+};
 
 export interface CreatePayoutBatchArgs {
   /** Also the PayPal-Request-Id. PayPal rejects a sender_batch_id reused within 30 days. */
@@ -106,12 +114,14 @@ export function buildPayoutRequest(a: CreatePayoutBatchArgs): unknown {
     check(ID.test(i.senderItemId) && i.senderItemId.length <= LIMITS.senderItemId, `bad sender_item_id ${JSON.stringify(i.senderItemId)}`);
     check(!seen.has(i.senderItemId), `duplicate sender_item_id ${i.senderItemId}`);
     seen.add(i.senderItemId);
-    check(i.receiverEmail.includes("@") && i.receiverEmail.length <= LIMITS.receiver, `bad receiver for ${i.senderItemId}`);
+    const byId = i.receiverPayerId !== undefined;
+    if (byId) check(PAYER_ID.test(i.receiverPayerId), `bad payer ID for ${i.senderItemId}`);
+    else check(i.receiverEmail.includes("@") && i.receiverEmail.length <= LIMITS.receiver, `bad receiver for ${i.senderItemId}`);
     check((i.note ?? "").length <= LIMITS.note, `note too long for ${i.senderItemId}`);
     return {
-      recipient_type: "EMAIL",
+      recipient_type: byId ? "PAYPAL_ID" : "EMAIL",
       amount: { currency: "USD", value: centsToValue(i.cents) },
-      receiver: i.receiverEmail,
+      receiver: byId ? i.receiverPayerId : i.receiverEmail,
       sender_item_id: i.senderItemId,
       ...(i.note === undefined ? {} : { note: i.note }),
       ...(i.recipientWallet === undefined ? {} : { recipient_wallet: i.recipientWallet }),

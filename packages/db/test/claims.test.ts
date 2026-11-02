@@ -332,4 +332,33 @@ describe.skipIf(!DATABASE_URL)("claims schema on real Postgres", () => {
     expect(d).toMatchObject({ outcome: "APPROVE", units: 2, unitsClaimed: 5, entitlementCents: 3000 });
     expect(await latestDecision(pool, c.id)).toMatchObject({ units: 2, entitlementCents: 3000 });
   });
+
+  describe("PayPal identity (migration 0005)", () => {
+    const dana = { payerId: "QYR5Z8XDVJNXQ", verified: true, emailVerified: true };
+
+    it("stores the logged-in account and reads it back", async () => {
+      const c = await add({ paypal: dana });
+      expect((await getClaim(pool, c.id))?.paypal).toEqual(dana);
+      expect((await add()).paypal).toBeNull();
+    });
+
+    it("one PayPal account files one claim per settlement", async () => {
+      await add({ paypal: { ...dana, payerId: "ABCDEFGHJKLM2" } });
+      await expect(add({ paypal: { ...dana, payerId: "ABCDEFGHJKLM2" } })).rejects.toThrow(/claims_one_per_paypal_account/);
+    });
+
+    it("refuses a payer ID PayPal could not have issued", async () => {
+      await expect(add({ paypal: { ...dana, payerId: "not-an-id" } })).rejects.toThrow(/check constraint/);
+    });
+
+    it("a payout item records whether it pays an email or a PayPal account", async () => {
+      const c = await add({ paypal: { ...dana, payerId: "ZZZZZZZZZZZZ9" } });
+      await withSettlementLock(pool, S.id, (tx) => tx.query("UPDATE claims SET status = 'APPROVE' WHERE id = $1", [c.id]));
+      const batchId = await withTransaction(pool, (tx) =>
+        planBatch(tx, { settlementId: S.id, kind: "CLAIMS", round: 90, part: 1, senderBatchId: "rs-identity-r90-p1", items: [{ senderItemId: c.id, claimId: c.id, receiver: "ZZZZZZZZZZZZ9", cents: 100, recipientType: "PAYPAL_ID" }] }),
+      );
+      const { rows } = await pool.query("SELECT recipient_type FROM payout_items WHERE batch_id = $1", [batchId]);
+      expect(rows[0]?.recipient_type).toBe("PAYPAL_ID");
+    });
+  });
 });
