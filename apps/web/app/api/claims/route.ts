@@ -1,29 +1,14 @@
 // Files a claim from the claim form: the claimant must have logged in with PayPal. The desk reads
 // the receipt, runs the checks and decides; this route only collects and validates the input.
 import { randomBytes } from "node:crypto";
-import { US_STATES } from "@proofofclaim/claims";
 import { ClaimRejectedError, submitClaim } from "@proofofclaim/desk";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
-import { z } from "zod";
+import { ClaimFormSchema, MAX_IMAGE_BYTES } from "@/lib/api/schemas.ts";
 import { desk } from "@/lib/server/data.ts";
 import { IDENTITY_COOKIE, openIdentity } from "@/lib/server/paypal-login.ts";
 
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const DEVICE_COOKIE = "poc_device";
-
-const Form = z.object({
-  settlement: z.string().regex(/^[a-z0-9-]{1,64}$/),
-  tier: z.enum(["proof", "no_proof"]),
-  units: z.coerce.number().int().min(1).max(50),
-  name: z.string().trim().min(2).max(120),
-  addressLine: z.string().trim().min(3).max(200),
-  city: z.string().trim().max(100),
-  state: z.enum(US_STATES),
-  zip: z.string().trim().regex(/^\d{5}(-\d{4})?$/, "a 5-digit ZIP code"),
-  declaration: z.string().trim().min(20, "a declaration of at least 20 characters").max(2000),
-  sworn: z.literal("yes", { message: "the declaration must be sworn" }),
-});
 
 const fail = (error: string, status = 400) => NextResponse.json({ error }, { status });
 
@@ -33,7 +18,7 @@ export async function POST(req: NextRequest) {
 
   const data = await req.formData().catch(() => null);
   if (!data) return fail("The form could not be read.");
-  const parsed = Form.safeParse(Object.fromEntries([...data.entries()].filter(([, v]) => typeof v === "string")));
+  const parsed = ClaimFormSchema.safeParse(Object.fromEntries([...data.entries()].filter(([, v]) => typeof v === "string")));
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     return fail(`Please check ${issue?.path.join(".") || "the form"}: ${issue?.message ?? "invalid"}.`);
