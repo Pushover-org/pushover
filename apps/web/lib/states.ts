@@ -1,4 +1,4 @@
-/** US state names for the claim form, keyed by the codes in @pushover/claims US_STATES. */
+/** US state names for the claim form, keyed by the codes in @proofofclaim/claims US_STATES. */
 export const US_STATE_NAMES: Record<string, string> = {
   AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware", DC: "District of Columbia",
   FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine",

@@ -16,11 +16,11 @@ export function Nav() {
         Skip to content
       </a>
       <div className={`wrap ${styles.inner}`}>
-        <a href="/" className={styles.brand} aria-label="Rightful Share, home">
+        <a href="/" className={styles.brand} aria-label="Proof of Claim, home">
           <span className={styles.mark} aria-hidden>
             <span />
           </span>
-          Rightful Share
+          Proof of Claim
         </a>
         <nav aria-label="Main" className={styles.links}>
           <a href="/#pile">How it decides</a>

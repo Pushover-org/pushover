@@ -1,6 +1,6 @@
-// Rightful Share queries. Bigints arrive from pg as strings; toNumber refuses anything a
+// Proof of Claim queries. Bigints arrive from pg as strings; toNumber refuses anything a
 // JavaScript number could not hold exactly, because money must never round silently.
-import type { CheckResult, Decision, Findings, Settlement } from "@pushover/claims";
+import type { CheckResult, Decision, Findings, Settlement } from "@proofofclaim/claims";
 import type { Pool, PoolClient, Queryable } from "../pool.ts";
 import { withTransaction } from "../pool.ts";
 

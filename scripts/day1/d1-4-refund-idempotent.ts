@@ -2,7 +2,7 @@
 // Also records what PayPal does when the same key is reused with a different amount.
 // Moves $1.00 (capture) and $0.10–$0.30 (refunds) of play money on the guarded store.
 // Run: node --env-file-if-exists=.env.local scripts/day1/d1-4-refund-idempotent.ts
-import { PayPalClient, refundCapture } from "@pushover/paypal";
+import { PayPalClient, refundCapture } from "@proofofclaim/paypal";
 import { countingClient, describeError, freshCapture, refundsOnOrder } from "./common.ts";
 
 const { client } = countingClient("guarded");

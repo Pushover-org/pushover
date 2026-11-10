@@ -1,5 +1,5 @@
-import { CHECKS_FOR_TIER, decide, parseSettlement, type Findings } from "@pushover/claims";
-import { hashRotations, loadTaxTable, PROVISIONAL_CONFIG, runChecks } from "@pushover/checks";
+import { CHECKS_FOR_TIER, decide, parseSettlement, type Findings } from "@proofofclaim/claims";
+import { hashRotations, loadTaxTable, PROVISIONAL_CONFIG, runChecks } from "@proofofclaim/checks";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   allArrivals, allDeclarations, appendAudit, canMoveClaim, checkResultsOf, earlierIdentities, earlierImageHashes, earlierReceiptDetails, getClaim, getEvidence, getSettlementConfig,

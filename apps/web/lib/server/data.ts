@@ -2,12 +2,12 @@
 // use. Every number on a screen comes from the decisions, findings and checks stored here.
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
-import { CHECK_NAMES, FindingsSchema, parseSettlement, type CheckResult, type Findings, type Settlement } from "@pushover/claims";
-import { loadTaxTable, PROVISIONAL_CONFIG } from "@pushover/checks";
-import { createPool, getSettlementConfig, type Pool } from "@pushover/db";
-import type { Desk } from "@pushover/desk";
-import { allocate } from "@pushover/distribute";
-import { CostGuard, examine } from "@pushover/examiner";
+import { CHECK_NAMES, FindingsSchema, parseSettlement, type CheckResult, type Findings, type Settlement } from "@proofofclaim/claims";
+import { loadTaxTable, PROVISIONAL_CONFIG } from "@proofofclaim/checks";
+import { createPool, getSettlementConfig, type Pool } from "@proofofclaim/db";
+import type { Desk } from "@proofofclaim/desk";
+import { allocate } from "@proofofclaim/distribute";
+import { CostGuard, examine } from "@proofofclaim/examiner";
 
 export const DEMO_SETTLEMENT = "acme-restaurant-beverage";
 /** Passed explicitly: the package default (a URL relative to its source) does not survive bundling. */
@@ -15,11 +15,11 @@ const TAX_TABLE = path.resolve(process.cwd(), "../../data/tax-rates.json");
 /** PayPal's fee per payout item, as the sandbox charged it (docs/sandbox-findings.md). */
 export const FEE_PER_ITEM_CENTS = 25;
 
-const g = globalThis as unknown as { __rsPool?: Pool; __rsGuard?: CostGuard };
+const g = globalThis as unknown as { __pocPool?: Pool; __pocGuard?: CostGuard };
 
 export function pool(): Pool {
-  g.__rsPool ??= createPool();
-  return g.__rsPool;
+  g.__pocPool ??= createPool();
+  return g.__pocPool;
 }
 
 export async function settlement(id: string): Promise<Settlement | null> {
@@ -32,10 +32,10 @@ export async function desk(id: string): Promise<Desk | null> {
   const s = await settlement(id);
   if (!s) return null;
   // A daily-sized cap for the public demo; restarting the server resets it.
-  g.__rsGuard ??= new CostGuard(Number(process.env["DEMO_AI_BUDGET_USD"] ?? "1"), 0);
+  g.__pocGuard ??= new CostGuard(Number(process.env["DEMO_AI_BUDGET_USD"] ?? "1"), 0);
   const key = process.env["ANTHROPIC_API_KEY"];
   const client = key ? new Anthropic({ apiKey: key }) : null;
-  const guard = g.__rsGuard;
+  const guard = g.__pocGuard;
   return {
     pool: pool(), settlement: s, table: loadTaxTable(TAX_TABLE), config: PROVISIONAL_CONFIG, networkSecret: process.env["NETWORK_SECRET"] ?? "demo-network-secret",
     read: client ? (input) => examine({ client, model: process.env["PUSHOVER_MODEL"] ?? "claude-haiku-5-5", guard }, input) : null,

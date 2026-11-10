@@ -37,9 +37,9 @@ Nothing copies it.
 
 ## Import boundaries (ESLint `no-restricted-imports`, tested in `test/`)
 
-- `packages/examiner` may not import PayPal code (`@pushover/paypal`, `@paypal/*`, or a
+- `packages/examiner` may not import PayPal code (`@proofofclaim/paypal`, `@paypal/*`, or a
   relative path into `packages/paypal`). The model reports findings; it never decides a claim
-  and never pays (Rightful Share spec §0.1 rule 7).
+  and never pays (Proof of Claim spec §0.1 rule 7).
 - `packages/eval/src/oracle` may not import `claims`, `checks`, `distribute` or `examiner`.
   The oracle checks the corpus labels against the rules as written, independently of the code
   it checks (spec §5.1). The rest of `packages/eval` may import them: arm C runs the real
@@ -119,7 +119,7 @@ The baseline passes `temperature: 1` to `generateText`; everything else is PayPa
 `ai@4` otherwise sends temperature 0, which Haiku 5.5 and Sonnet 5.5 reject (D1-6 in
 `docs/sandbox-findings.md`). 1 is the API default, so both agents run at the model's default.
 
-## Decision table v1 (packages/claims, Rightful Share)
+## Decision table v1 (packages/claims, Proof of Claim)
 
 `decide()` is pure: no I/O, no clock, no model. Its input has no field for the examiner's own
 approve/deny recommendation, and a test fails if the word appears in the decision code. Rules,

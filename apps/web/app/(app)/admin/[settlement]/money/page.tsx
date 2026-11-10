@@ -1,4 +1,4 @@
-import { planDistribution } from "@pushover/desk";
+import { planDistribution } from "@proofofclaim/desk";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DistributeButton, ReadBackButton } from "@/components/app/MoneyActions.tsx";

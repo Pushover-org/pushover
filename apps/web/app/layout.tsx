@@ -7,7 +7,7 @@ import "./globals.css";
 const instrument = Instrument_Serif({ weight: "400", style: ["normal", "italic"], subsets: ["latin"], variable: "--font-instrument", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "Rightful Share: bots filed half the claims. Here's your real share.", template: "%s · Rightful Share" },
+  title: { default: "Proof of Claim: settlement claims, checked and paid", template: "%s · Proof of Claim" },
   description:
     "A claims desk for class-action settlements. AI reads the evidence, deterministic rules decide, PayPal Payouts pays the honest claimant, and leftover money goes to the court's chosen charity.",
 };

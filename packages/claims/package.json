@@ -1,5 +1,5 @@
 {
-  "name": "@pushover/claims",
+  "name": "@proofofclaim/claims",
   "version": "0.0.0",
   "private": true,
   "type": "module",

@@ -1,5 +1,5 @@
 {
-  "name": "@pushover/distribute",
+  "name": "@proofofclaim/distribute",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@pushover/paypal": "workspace:*"
+    "@proofofclaim/paypal": "workspace:*"
   },
   "devDependencies": {
     "fast-check": "4.10.2"

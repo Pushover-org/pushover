@@ -1,7 +1,7 @@
 // D1-9 (spec §3.9): PayPal-Mock-Response on a refund POST returns the mocked error.
 // The capture ID is bogus, so no money can move whatever happens.
 // Run: node --env-file-if-exists=.env.local scripts/day1/d1-9-mock-response.ts
-import { PayPalApiError, PayPalClient, refundCapture } from "@pushover/paypal";
+import { PayPalApiError, PayPalClient, refundCapture } from "@proofofclaim/paypal";
 import { countingClient, describeError } from "./common.ts";
 
 const { client } = countingClient("guarded");

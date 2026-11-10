@@ -1,5 +1,5 @@
 {
-  "name": "@pushover/checks",
+  "name": "@proofofclaim/checks",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@pushover/claims": "workspace:*",
+    "@proofofclaim/claims": "workspace:*",
     "sharp": "0.35.5",
     "sharp-phash": "2.2.0",
     "zod": "4.6.7"

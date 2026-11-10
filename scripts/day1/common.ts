@@ -7,7 +7,7 @@ import {
   type CardSource,
   type PayPalApp,
   type Refund,
-} from "@pushover/paypal";
+} from "@proofofclaim/paypal";
 
 /** A client for one sandbox app whose fetch counts OAuth token requests. */
 export function countingClient(app: PayPalApp): { client: PayPalClient; tokenRequests: () => number } {

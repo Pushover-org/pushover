@@ -2,7 +2,7 @@
 // then goes to cy-près is not counted twice (spec §1.3's equation did). `heldCents` is worked out
 // from the plan, not as "whatever is left", so a batch that differs from the plan shows up as a
 // difference instead of disappearing.
-import { payoutItemOutcome, valueToCents, type PayoutItem } from "@pushover/paypal";
+import { payoutItemOutcome, valueToCents, type PayoutItem } from "@proofofclaim/paypal";
 import type { Allocation } from "./allocate.ts";
 
 export interface CyPresTransfer {

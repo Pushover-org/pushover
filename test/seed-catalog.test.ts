@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { valueToCents } from "@pushover/paypal";
+import { valueToCents } from "@proofofclaim/paypal";
 import { JACKET, NORMAL_MAX_CENTS, NORMAL_MIN_CENTS, orderFor, taxFor, toPurchaseUnit } from "../scripts/seed/catalog.ts";
 
 const refs = Array.from({ length: 500 }, (_, i) => `PO-${10001 + i}`);

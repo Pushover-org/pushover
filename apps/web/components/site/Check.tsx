@@ -1,6 +1,6 @@
 "use client";
 // The signature object (docs/design-direction.md): an honest claimant's check. It opens at what
-// pay-everyone gives and rises to what Rightful Share gives, both measured in the R9 pilot.
+// pay-everyone gives and rises to what Proof of Claim gives, both measured in the R9 pilot.
 import NumberFlow from "@number-flow/react";
 import { useEffect, useRef, useState } from "react";
 import styles from "./Check.module.css";
@@ -85,7 +85,7 @@ export function Check({ fromCents, toCents, claims, bad, stopped }: { fromCents:
 
         <div className={styles.top}>
           <div>
-            <div className={styles.bank}>Rightful Share · Settlement Fund</div>
+            <div className={styles.bank}>Proof of Claim · Settlement Fund</div>
             <div className={styles.sub}>Acme Restaurant Beverage Settlement (fictional demo)</div>
           </div>
           <div className={styles.no}>

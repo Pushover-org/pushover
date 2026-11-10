@@ -1,4 +1,4 @@
-import { DECISION_VERSION } from "@pushover/claims";
+import { DECISION_VERSION } from "@proofofclaim/claims";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ReportGrid } from "@/components/app/ReportGrid.tsx";

@@ -1,4 +1,4 @@
-import { CHECKS_FOR_TIER, decide } from "@pushover/claims";
+import { CHECKS_FOR_TIER, decide } from "@proofofclaim/claims";
 import { describe, expect, it } from "vitest";
 import { PROVISIONAL_CONFIG, runChecks, type CheckContext, type ClaimFacts } from "../src/run.ts";
 import { loadTaxTable } from "../src/tax.ts";

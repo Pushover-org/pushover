@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
-import { buildPayoutRequest, type PayoutBatch, type PayoutItem, type PayoutItemStatus } from "@pushover/paypal";
+import { buildPayoutRequest, type PayoutBatch, type PayoutItem, type PayoutItemStatus } from "@proofofclaim/paypal";
 import { describe, expect, it } from "vitest";
 import { allocate } from "../src/allocate.ts";
 import { buildClaimBatches, buildCyPresBatch } from "../src/batch.ts";
@@ -13,7 +13,7 @@ const args = { settlementId: "acme-restaurant-beverage", round: 1, allocation: a
 describe("batch builder", () => {
   it("makes a batch PayPal's request builder accepts, with an ID from settlement and round", () => {
     const [b] = buildClaimBatches(args);
-    expect(b?.senderBatchId).toBe("rs-acme-restaurant-beverage-r1-p1");
+    expect(b?.senderBatchId).toBe("poc-acme-restaurant-beverage-r1-p1");
     expect(buildPayoutRequest(b as never)).toMatchObject({
       items: [
         { receiver: "a@example.com", amount: { currency: "USD", value: "15.00" }, sender_item_id: "c1" },
@@ -33,7 +33,7 @@ describe("batch builder", () => {
   });
   it("splits at the item limit, and loses nobody", () => {
     const bs = buildClaimBatches({ ...args, maxItems: 1 });
-    expect(bs.map((b) => b.senderBatchId)).toEqual(["rs-acme-restaurant-beverage-r1-p1", "rs-acme-restaurant-beverage-r1-p2"]);
+    expect(bs.map((b) => b.senderBatchId)).toEqual(["poc-acme-restaurant-beverage-r1-p1", "poc-acme-restaurant-beverage-r1-p2"]);
     expect(bs.flatMap((b) => b.items.map((i) => i.senderItemId))).toEqual(["c1", "c2"]);
   });
   it("leaves out a payout of zero: PayPal cannot send $0.00", () => {
@@ -48,7 +48,7 @@ describe("batch builder", () => {
   });
   it("cy-près is one payment, with its own ID", () => {
     const b = buildCyPresBatch({ settlementId: "s", round: 1, recipientEmail: "n@example.com", cents: 500, emailSubject: "s", emailMessage: "m" });
-    expect(b).toMatchObject({ senderBatchId: "rs-s-cypres-r1", items: [{ receiverEmail: "n@example.com", cents: 500 }] });
+    expect(b).toMatchObject({ senderBatchId: "poc-s-cypres-r1", items: [{ receiverEmail: "n@example.com", cents: 500 }] });
   });
 });
 

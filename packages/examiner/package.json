@@ -1,5 +1,5 @@
 {
-  "name": "@pushover/examiner",
+  "name": "@proofofclaim/examiner",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
-    "@pushover/claims": "workspace:*",
+    "@proofofclaim/claims": "workspace:*",
     "zod": "4.6.7"
   },
   "devDependencies": {

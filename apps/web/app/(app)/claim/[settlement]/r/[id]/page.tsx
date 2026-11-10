@@ -1,4 +1,4 @@
-import { DOCUMENT_REQUEST, REASONS, type CheckId, type ReasonCode } from "@pushover/claims";
+import { DOCUMENT_REQUEST, REASONS, type CheckId, type ReasonCode } from "@proofofclaim/claims";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";

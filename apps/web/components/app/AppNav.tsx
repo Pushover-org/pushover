@@ -20,11 +20,11 @@ export function AppNav() {
         Skip to content
       </a>
       <div className={s.inner}>
-        <a href="/" className={s.brand} aria-label="Rightful Share, home">
+        <a href="/" className={s.brand} aria-label="Proof of Claim, home">
           <span className={s.mark} aria-hidden>
             <span />
           </span>
-          <span className={s.word}>Rightful Share</span>
+          <span className={s.word}>Proof of Claim</span>
         </a>
         <span className={s.case}>
           <span className={s.dot} aria-hidden /> Acme Restaurant Beverage <em>(fictional demo)</em>

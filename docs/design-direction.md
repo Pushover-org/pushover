@@ -1,6 +1,6 @@
 # Design direction: Court Ledger (owner decision 2026-11-02)
 
-Rightful Share decides who gets paid from a court-supervised fund. The design problem is
+Proof of Claim decides who gets paid from a court-supervised fund. The design problem is
 **trust**: a judge, a class member and an analyst must all believe every dollar has a reason.
 So the product looks like a well-kept ledger and a court record, not an AI startup.
 
@@ -46,7 +46,7 @@ Re-read this file before building or changing any screen.
 **Signature moment: the check.**
 - A paper check made for an honest claimant, with a guilloche border, a MICR line and a
   hand-drawn signature.
-- Its amount starts at what pay-everyone gives ($8.23) and rises to what Rightful Share gives
+- Its amount starts at what pay-everyone gives ($8.23) and rises to what Proof of Claim gives
   ($14.00) as the bot claims are struck out. These are the measured R9 pilot numbers, n = 32.
 - It is the one object that tilts and catches the light.
 

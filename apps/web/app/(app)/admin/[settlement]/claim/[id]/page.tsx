@@ -1,4 +1,4 @@
-import { REASONS, type ReasonCode } from "@pushover/claims";
+import { REASONS, type ReasonCode } from "@proofofclaim/claims";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ReviewActions } from "@/components/app/ReviewActions.tsx";

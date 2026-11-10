@@ -1,4 +1,4 @@
-// Decision table v1 (Rightful Share spec §4.4, with the corrections in docs/architecture.md →
+// Decision table v1 (Proof of Claim spec §4.4, with the corrections in docs/architecture.md →
 // Decision table v1). Pure: no I/O, no clock, no model. The examiner's own approve/deny
 // recommendation is not an input, so it cannot influence a decision.
 import { CHECKS_FOR_TIER, type CheckId, type CheckOutcome, type CheckResult, type Tier } from "./checks.ts";

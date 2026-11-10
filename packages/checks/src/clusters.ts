@@ -1,7 +1,7 @@
 // C7 and C9 look at all claims together, not only earlier ones, so the first members of a
 // cluster are caught too. Run them again across all claims before Distribute. No model is used.
 import { createHmac } from "node:crypto";
-import type { CheckResult } from "@pushover/claims";
+import type { CheckResult } from "@proofofclaim/claims";
 
 export interface Declaration {
   claimId: string;

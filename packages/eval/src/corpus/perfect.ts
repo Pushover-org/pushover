@@ -1,7 +1,7 @@
 // What a perfect reader would report for a receipt: its truth, in the examiner's findings shape.
 // Used to test the pipeline against the oracle with reading errors taken out, and as the
 // reference that real readings are scored against.
-import { FindingsSchema, US_STATES, type Findings, type UsState } from "@pushover/claims";
+import { FindingsSchema, US_STATES, type Findings, type UsState } from "@proofofclaim/claims";
 import type { ReceiptTruth } from "./schema.ts";
 
 const PRODUCT_ID = "restaurant-drink";

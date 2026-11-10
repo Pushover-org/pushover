@@ -4,13 +4,13 @@
 //
 // The model only reads. Code decides (decision table v1) and nothing here calls PayPal.
 import { createHash, randomBytes } from "node:crypto";
-import { decide, FindingsSchema, type CheckResult, type Decision, type ExaminerStatus, type Findings, type Settlement } from "@pushover/claims";
-import { hashRotations, ipPrefixKey, runChecks, unitsEvidenced, type CheckConfig, type TaxTable } from "@pushover/checks";
+import { decide, FindingsSchema, type CheckResult, type Decision, type ExaminerStatus, type Findings, type Settlement } from "@proofofclaim/claims";
+import { hashRotations, ipPrefixKey, runChecks, unitsEvidenced, type CheckConfig, type TaxTable } from "@proofofclaim/checks";
 import {
   allArrivals, allDeclarations, earlierIdentities, earlierImageHashes, earlierReceiptDetails, getClaim, getEvidence, insertClaim, insertEvidence, insertFindings,
   latestDecision, latestFindings, moveClaim, recordAnalystDecision, recordDecision, withSettlementLock, withTransaction, type ClaimRow, type Pool,
-} from "@pushover/db";
-import { sniffImageType, type ExamineInput, type ExamineResult } from "@pushover/examiner";
+} from "@proofofclaim/db";
+import { sniffImageType, type ExamineInput, type ExamineResult } from "@proofofclaim/examiner";
 
 export interface Desk {
   pool: Pool;
@@ -49,7 +49,7 @@ export class ClaimRejectedError extends Error {
   }
 }
 
-const newClaimId = () => `rs-${randomBytes(6).toString("hex")}`;
+const newClaimId = () => `poc-${randomBytes(6).toString("hex")}`;
 
 export async function fileClaim(desk: Desk, f: FileClaimInput): Promise<ClaimRow> {
   if (f.tier === "proof" && !f.image) throw new ClaimRejectedError("A claim with proof needs a photo of the receipt.");

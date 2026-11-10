@@ -1,7 +1,7 @@
 // Files a claim from the claim form: the claimant must have logged in with PayPal. The desk reads
 // the receipt, runs the checks and decides; this route only collects and validates the input.
-import { US_STATES } from "@pushover/claims";
-import { ClaimRejectedError, submitClaim } from "@pushover/desk";
+import { US_STATES } from "@proofofclaim/claims";
+import { ClaimRejectedError, submitClaim } from "@proofofclaim/desk";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";

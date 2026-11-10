@@ -3,7 +3,7 @@
 // Uses raw fetch on purpose: packages/paypal refuses a POST without a key.
 // Moves $1.00 (capture) and up to $0.20 (refunds) of play money on the baseline store.
 // Run: node --env-file-if-exists=.env.local scripts/day1/d1-5-refund-no-key.ts
-import { paypalCredentials } from "@pushover/paypal";
+import { paypalCredentials } from "@proofofclaim/paypal";
 import { countingClient, freshCapture, refundsOnOrder } from "./common.ts";
 
 const { client } = countingClient("baseline");

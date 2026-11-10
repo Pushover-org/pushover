@@ -1,7 +1,7 @@
 // Turns an allocation into PayPal batches. The batch ID derives from the settlement and the
 // round, so a retry can never create a second batch while PayPal remembers the ID. PayPal only
 // remembers it for 30 days, so the database must also refuse a repeat for good (R6).
-import { createPayoutBatch, type CreatePayoutBatchArgs, type CreatePayoutBatchResult, type PayoutItemInput, type PayPalClient } from "@pushover/paypal";
+import { createPayoutBatch, type CreatePayoutBatchArgs, type CreatePayoutBatchResult, type PayoutItemInput, type PayPalClient } from "@proofofclaim/paypal";
 import type { Allocation } from "./allocate.ts";
 
 /** PayPal's limit per call (docs/paypal-specs/payments_payouts_batch_v1.json). */
@@ -41,7 +41,7 @@ export function buildClaimBatches(a: ClaimBatchArgs): CreatePayoutBatchArgs[] {
   if (items.length === 0) throw new Error("nothing to pay");
   const out: CreatePayoutBatchArgs[] = [];
   for (let i = 0, part = 1; i < items.length; i += max, part++) {
-    out.push({ senderBatchId: `rs-${a.settlementId}-r${a.round}-p${part}`, emailSubject: a.emailSubject, emailMessage: a.emailMessage, items: items.slice(i, i + max) });
+    out.push({ senderBatchId: `poc-${a.settlementId}-r${a.round}-p${part}`, emailSubject: a.emailSubject, emailMessage: a.emailMessage, items: items.slice(i, i + max) });
   }
   return out;
 }
@@ -49,7 +49,7 @@ export function buildClaimBatches(a: ClaimBatchArgs): CreatePayoutBatchArgs[] {
 export function buildCyPresBatch(a: { settlementId: string; round: number; recipientEmail: string; cents: number; emailSubject: string; emailMessage: string }): CreatePayoutBatchArgs {
   assertRound(a.round);
   return {
-    senderBatchId: `rs-${a.settlementId}-cypres-r${a.round}`,
+    senderBatchId: `poc-${a.settlementId}-cypres-r${a.round}`,
     emailSubject: a.emailSubject,
     emailMessage: a.emailMessage,
     items: [{ senderItemId: `cypres-r${a.round}`, receiverEmail: a.recipientEmail, cents: a.cents }],

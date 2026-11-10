@@ -1,11 +1,11 @@
 // node --env-file-if-exists=.env.local scripts/payouts/fee-check.ts
 // Is the Payouts fee flat, or does it grow with the amount? So far it has only been seen on $1.00
 // items. Sends three play-money items at different sizes and prints the fee PayPal reports.
-import { createPayoutBatch, getPayoutBatch, limiterFromEnv, paypalClientFromEnv } from "@pushover/paypal";
+import { createPayoutBatch, getPayoutBatch, limiterFromEnv, paypalClientFromEnv } from "@proofofclaim/paypal";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const pp = paypalClientFromEnv("guarded", limiterFromEnv());
-const id = `rs-fee-check-${Date.now()}`;
+const id = `poc-fee-check-${Date.now()}`;
 const amounts = [1500, 7500, 25000];
 const made = await createPayoutBatch(pp, {
   senderBatchId: id,

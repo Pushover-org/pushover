@@ -1,9 +1,9 @@
 // Distribute and read back (spec §1.3 steps 7–8). Code alone calls PayPal; the model is not
 // involved. The batch is written to the database BEFORE PayPal is called, so a crash after the
 // call leaves a record to reconcile, never money nobody knows about.
-import { allocate, buildClaimBatches, sendBatch, type Allocation, type Payee } from "@pushover/distribute";
-import { canMoveClaim, getClaim, listClaims, markBatchSent, moveClaim, planBatch, recordItemRead, withTransaction, type ClaimState } from "@pushover/db";
-import { getPayoutBatch, payoutItemOutcome, valueToCents, type PayPalClient } from "@pushover/paypal";
+import { allocate, buildClaimBatches, sendBatch, type Allocation, type Payee } from "@proofofclaim/distribute";
+import { canMoveClaim, getClaim, listClaims, markBatchSent, moveClaim, planBatch, recordItemRead, withTransaction, type ClaimState } from "@proofofclaim/db";
+import { getPayoutBatch, payoutItemOutcome, valueToCents, type PayPalClient } from "@proofofclaim/paypal";
 import { decideClaim } from "./desk.ts";
 import type { Desk } from "./desk.ts";
 

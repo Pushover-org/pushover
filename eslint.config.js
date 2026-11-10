@@ -16,8 +16,8 @@ export default tseslint.config(
     files: ["**/test/**", "**/sandbox/**"],
     rules: { "@typescript-eslint/no-non-null-assertion": "off" },
   },
-  // The model never moves money and never decides a claim (Rightful Share spec §0.1 rule 7).
-  // The examiner reports findings only: no @pushover/paypal, no @paypal/* SDKs, no relative
+  // The model never moves money and never decides a claim (Proof of Claim spec §0.1 rule 7).
+  // The examiner reports findings only: no @proofofclaim/paypal, no @paypal/* SDKs, no relative
   // path into packages/paypal.
   {
     files: ["packages/examiner/**"],

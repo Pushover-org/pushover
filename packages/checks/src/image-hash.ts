@@ -2,7 +2,7 @@
 // so a claim is compared in all four.
 import sharp from "sharp";
 import phashModule from "sharp-phash";
-import type { CheckResult } from "@pushover/claims";
+import type { CheckResult } from "@proofofclaim/claims";
 
 // The package is CommonJS and its types declare an ES default, so under Node's ESM loading the
 // types and the runtime disagree. At runtime the default import is the function itself.

@@ -1,4 +1,4 @@
-import { REASONS, type ReasonCode } from "@pushover/claims";
+import { REASONS, type ReasonCode } from "@proofofclaim/claims";
 import type { Metadata } from "next";
 import { CountUp } from "@/components/app/CountUp.tsx";
 import { Stamp } from "@/components/app/Stamp.tsx";

@@ -6,10 +6,10 @@
 //   pnpm demo:seed
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import Anthropic from "@anthropic-ai/sdk";
-import { parseSettlement } from "@pushover/claims";
-import { loadTaxTable, PROVISIONAL_CONFIG } from "@pushover/checks";
-import { createPool, getSettlementConfig, insertSettlement } from "@pushover/db";
-import { CostGuard, examine, type ExamineResult } from "@pushover/examiner";
+import { parseSettlement } from "@proofofclaim/claims";
+import { loadTaxTable, PROVISIONAL_CONFIG } from "@proofofclaim/checks";
+import { createPool, getSettlementConfig, insertSettlement } from "@proofofclaim/db";
+import { CostGuard, examine, type ExamineResult } from "@proofofclaim/examiner";
 import { decideClaim, fileClaim, readEvidence, type Desk } from "../src/index.ts";
 
 const CORPUS = new URL("../../eval/corpus/claims-v1/", import.meta.url);

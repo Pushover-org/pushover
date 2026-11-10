@@ -190,7 +190,7 @@ Findings:
   TRANSACTION_DISPUTED) therefore do not consume a real capture.
 - Mocked refund errors are `422 UNPROCESSABLE_ENTITY` with the code in `details[0].issue`.
 
-## Rightful Share: Payouts (R2)
+## Proof of Claim: Payouts (R2)
 
 Spec: `docs/paypal-specs/payments_payouts_batch_v1.json`. Fund account: the `pushover-guarded`
 app (merchant `po-merchant-guarded-3h8w@business.example.com`). Play money.
@@ -285,7 +285,7 @@ when an unclaimed item returns is still unknown; the first returns are due about
 - `refund_request.custom_id` is `maxLength 127`, pattern `^.*$`
   (`docs/paypal-specs/payments_payment_v2.json`). The build spec said 255. The client enforces 127.
 
-## Rightful Share: Log in with PayPal (claimant identity, 2026-11-02)
+## Proof of Claim: Log in with PayPal (claimant identity, 2026-11-02)
 
 Spec: `docs/paypal-specs/identity_v1.json`. Script: `scripts/identity/try-login.ts`. Enabled on
 the `pushover-guarded` sandbox app with Return URL `https://example.com/rightfulshare/paypal-callback`,

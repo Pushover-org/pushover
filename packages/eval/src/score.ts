@@ -1,6 +1,6 @@
 // Scoring for the claims eval (spec §5.3) and the pre-registered gate (docs/methodology.md →
 // claims-v1). Pure: it takes each claim's three arm outcomes and returns the numbers.
-import { allocate } from "@pushover/distribute";
+import { allocate } from "@proofofclaim/distribute";
 import type { Claim, ReceiptTruth } from "./corpus/schema.ts";
 
 export interface SettlementTerms {

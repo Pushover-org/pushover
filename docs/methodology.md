@@ -1,6 +1,6 @@
 # Methodology
 
-## Rightful Share: limits of the real receipts (ExpressExpense SRD)
+## Proof of Claim: limits of the real receipts (ExpressExpense SRD)
 
 Real receipts come from a public dataset (`docs/architecture.md`). What that means for any result
 measured on them:
@@ -14,7 +14,7 @@ measured on them:
   may be better than on receipts it has never seen.
 - **The honest label means "real receipt", not "a real claimant".** Nobody filed these as claims.
 
-## Rightful Share: claims-v1, pre-registered (R8, 2026-11-01)
+## Proof of Claim: claims-v1, pre-registered (R8, 2026-11-01)
 
 The claim set is `packages/eval/corpus/claims-v1/` (README there). It and this section are
 committed before any eval run. Nothing below changes after a run; a new set is a new folder.
@@ -76,7 +76,7 @@ results are reported for all claims and for unseen claims only.
   intervals reported (n is small). Otherwise **NO-GO**: stop and report the numbers to the owner.
 - C7 and C9 run across all 157 claims' declarations and arrivals; only pilot claims are read.
 
-## Rightful Share: pilot gate on claims-v1 — GO on both models (R9, 2026-11-01)
+## Proof of Claim: pilot gate on claims-v1 — GO on both models (R9, 2026-11-01)
 
 Runs `claims-pilot-2026-11-01-haiku` and `-sonnet` (`packages/eval/results/`), code at commit
 `0cf6bf2`, 32 pilot claims (15 honest, 15 fraud, 2 ineligible), check settings unchanged from
@@ -86,7 +86,7 @@ Runs `claims-pilot-2026-11-01-haiku` and `-sonnet` (`packages/eval/results/`), c
 |---|---|---|
 | Fraud paid, A pay everyone | $560.00 | $560.00 |
 | Fraud paid, B model alone | $160.00 | $160.00 |
-| Fraud paid, C Rightful Share (worst case) | **$10.00** ($55.00) | **$10.00** ($55.00) |
+| Fraud paid, C Proof of Claim (worst case) | **$10.00** ($55.00) | **$10.00** ($55.00) |
 | Ineligible paid, A / B / C | $30 / $0 / $0 | $30 / $15 / $0 |
 | Honest wrongly denied, B | 3/15 (20.0%, CI 7.0–45.2%) | 1/15 (6.7%, CI 1.2–29.8%) |
 | Honest wrongly denied, C | **1/15** (6.7%, CI 1.2–29.8%) | **1/15** (6.7%, CI 1.2–29.8%) |

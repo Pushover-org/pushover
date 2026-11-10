@@ -4,7 +4,7 @@
 // sends all of them to a person.
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { FindingsSchema, type ExaminerStatus, type Findings } from "@pushover/claims";
+import { FindingsSchema, type ExaminerStatus, type Findings } from "@proofofclaim/claims";
 import { costUsd } from "./cost.ts";
 import { BudgetExceededError, CostGuard } from "./guard.ts";
 

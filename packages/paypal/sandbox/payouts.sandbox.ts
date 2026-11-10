@@ -13,12 +13,12 @@ describe.skipIf(!hasCreds)("Payouts against the PayPal sandbox", () => {
   const pp = paypalClientFromEnv("guarded", limiterFromEnv());
   const stamp = Date.now();
   const args = {
-    senderBatchId: `rs-sandbox-${stamp}`,
-    emailSubject: "Rightful Share sandbox test",
+    senderBatchId: `poc-sandbox-${stamp}`,
+    emailSubject: "Proof of Claim sandbox test",
     emailMessage: "Sandbox test payout (play money).",
     items: [
       { senderItemId: "claim-paid", receiverEmail: "po-buyer4-3h8w@personal.example.com", cents: 100 },
-      { senderItemId: "claim-unclaimed", receiverEmail: `rs-unregistered-${stamp}@example.com`, cents: 100 },
+      { senderItemId: "claim-unclaimed", receiverEmail: `poc-unregistered-${stamp}@example.com`, cents: 100 },
     ],
   };
 

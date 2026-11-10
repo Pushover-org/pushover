@@ -1,6 +1,6 @@
 // D1-2 (spec §3.9): OAuth works, the token is cached, and a 404 on a bogus order is parsed.
 // Run: node --env-file-if-exists=.env.local scripts/day1/d1-2-oauth-404.ts
-import { getOrder, PayPalApiError } from "@pushover/paypal";
+import { getOrder, PayPalApiError } from "@proofofclaim/paypal";
 import { countingClient, describeError } from "./common.ts";
 
 let pass = true;

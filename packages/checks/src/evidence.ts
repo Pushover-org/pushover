@@ -1,6 +1,6 @@
 // Checks on what the examiner read: C1, C2, C3, C5, C10, C11, C12. Each is pure. The code
 // recomputes everything; a value the model reports is only ever an input.
-import { type CheckId, type CheckResult, type Findings, type LineItem, type Settlement } from "@pushover/claims";
+import { type CheckId, type CheckResult, type Findings, type LineItem, type Settlement } from "@proofofclaim/claims";
 
 const result = (id: CheckId, r: CheckResult["result"], detail: string): CheckResult => ({ id, result: r, detail });
 

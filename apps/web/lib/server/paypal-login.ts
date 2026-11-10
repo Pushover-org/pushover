@@ -2,12 +2,12 @@
 // docs/sandbox-findings.md). The access token is used once to read userinfo and then dropped:
 // it carries the app's whole scope list, so it is never stored or logged.
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { paypalCredentials } from "@pushover/paypal";
+import { paypalCredentials } from "@proofofclaim/paypal";
 import { z } from "zod";
 
 const SCOPES = "openid profile email address https://uri.paypal.com/services/paypalattributes";
-export const STATE_COOKIE = "rs_login_state";
-export const IDENTITY_COOKIE = "rs_identity";
+export const STATE_COOKIE = "poc_login_state";
+export const IDENTITY_COOKIE = "poc_identity";
 
 /** The URL PayPal sends the claimant back to; it must match the app's Return URL in the dashboard. */
 export function returnUrl(origin: string): string {
@@ -68,13 +68,13 @@ export async function identityFromCode(code: string): Promise<Identity> {
 }
 
 // The identity rides in a signed, httpOnly cookie for the length of one claim.
-const g = globalThis as unknown as { __rsSessionKey?: string };
+const g = globalThis as unknown as { __pocSessionKey?: string };
 function key(): string {
   const k = process.env["SESSION_SECRET"];
   if (k) return k;
   if (process.env["NODE_ENV"] === "production") throw new Error("missing environment variable SESSION_SECRET");
-  g.__rsSessionKey ??= randomBytes(32).toString("hex");
-  return g.__rsSessionKey;
+  g.__pocSessionKey ??= randomBytes(32).toString("hex");
+  return g.__pocSessionKey;
 }
 
 export function sealIdentity(i: Identity): string {

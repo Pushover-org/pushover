@@ -2,11 +2,14 @@
 
 Last updated: 2026-11-02 (original laptop).
 
-## The project: Rightful Share (pivot from Pushover, 2026-10-31)
+## The project: Proof of Claim (pivot from Pushover, 2026-10-31)
+
+Renamed to **Proof of Claim** on 2026-11-10 (owner decision; package scope `@proofofclaim/*`). Commits
+before that date use the working name.
 
 Pushover stopped at its pre-registered NO-GO: 0 of 33 attacks leaked on both Haiku 5.5 and
 Sonnet 5.5 (`docs/research-findings.md`, `docs/methodology.md`). This repo now builds
-**Rightful Share** per `../RIGHTFULSHARE-BUILD-SPEC.md` (build order §6, steps R0–R14):
+**Proof of Claim** per `../RIGHTFULSHARE-BUILD-SPEC.md` (build order §6, steps R0–R14):
 a claims desk for class-action settlements. The AI reports findings about claim evidence,
 deterministic code decides and computes amounts, and PayPal Payouts pays approved claimants,
 with unclaimed money going to the court's chosen nonprofit (cy-près).
@@ -18,7 +21,7 @@ Owner decisions (2026-11-01):
 - Commit as we go; ask before every push.
 - Pushover's agent code is retired by tag + delete: tag `pushover-final` marks the last
   Pushover commit.
-- Package scope stays `@pushover/*`; a later single-commit rename is allowed.
+- Package scope was `@proofofclaim/*`; renamed to `@proofofclaim/*` in one commit on 2026-11-10.
 - Admin screens are built on **AG Grid** (sponsor prize target, spec §4.7). The **AG Studio**
   trial starts **on or after Nov 3**, never before.
 - Models unchanged: main `claude-haiku-5-5`, comparison `claude-sonnet-5-5`; the examiner
@@ -27,7 +30,7 @@ Owner decisions (2026-11-01):
 Dates (IST): R0–R7 by Nov 3; a minimal version (/demo plus one real Payouts batch) submitted
 by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 
-## Rightful Share steps
+## Proof of Claim steps
 
 | Step | Status |
 |---|---|
@@ -60,13 +63,13 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
   - Playwright e2e (happy path, one deny, one review) against its own database.
   - A real Log in with PayPal from the app. The owner must add the app's callback as a Return URL.
   - The first real Distribute from the app (Nov 5 milestone).
-- **Local run:** `DATABASE_URL=<…>/rightfulshare pnpm --filter @pushover/web dev` (port 3100), with `SESSION_SECRET` set.
+- **Local run:** `DATABASE_URL=<…>/proofofclaim pnpm --filter @proofofclaim/web dev` (port 3100), with `SESSION_SECRET` set.
 
 
 - **R2 evidence (2026-11-01):** `pnpm test` 95/95 (20 Payouts unit tests on a recorded sandbox
   batch and PayPal's real duplicate error); `pnpm test:sandbox` PASS (batch `FHT9WYQD2RX9G`:
   one SUCCESS, one UNCLAIMED, duplicate handled). Early cancel: third 500, not used.
-  Details in `docs/sandbox-findings.md` → Rightful Share: Payouts.
+  Details in `docs/sandbox-findings.md` → Proof of Claim: Payouts.
 
 - **R3 evidence (2026-11-01):** `pnpm test` 158/158; `packages/claims` 63 tests (every rule,
   rule-order interactions, settlement validation, a 5,000-case property test). A planted bug
@@ -130,7 +133,7 @@ Corrections to the spec are in `docs/architecture.md`.
   gate: `docs/methodology.md` → claims-v1.
 
 - **R9 evidence (2026-11-01):** pilot gate GO on Haiku 5.5 and Sonnet 5.5 (fraud paid: pay
-  everyone $560, model alone $160, Rightful Share $10; honest denied 1/15; workload 2/15). Cost
+  everyone $560, model alone $160, Proof of Claim $10; honest denied 1/15; workload 2/15). Cost
   $0.04 + $0.46. `pnpm test` 710/710. Numbers: `docs/methodology.md` → pilot gate on claims-v1.
 
 ## Next action

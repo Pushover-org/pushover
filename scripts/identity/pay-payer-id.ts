@@ -4,14 +4,14 @@
 //   node --env-file-if-exists=.env.local scripts/identity/pay-payer-id.ts
 import { readFileSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
-import { getPayoutBatch, limiterFromEnv, paypalClientFromEnv, type PayoutBatch } from "@pushover/paypal";
+import { getPayoutBatch, limiterFromEnv, paypalClientFromEnv, type PayoutBatch } from "@proofofclaim/paypal";
 
 const payerId = readFileSync(".data/identity/payer-id.txt", "utf8").trim();
 const pp = paypalClientFromEnv("guarded", limiterFromEnv(), { maxAttempts: 1 });
 const mask = (s: string) => `${s.slice(0, 3)}…${s.slice(-2)}`;
 
 async function payOne(label: string, receiver: string): Promise<void> {
-  const id = `rs-payer-id-${label}-${Date.now()}`;
+  const id = `poc-payer-id-${label}-${Date.now()}`;
   const body = {
     sender_batch_header: { sender_batch_id: id, email_subject: "PAYPAL_ID test (sandbox)", email_message: "Sandbox play money." },
     items: [{ recipient_type: "PAYPAL_ID", amount: { currency: "USD", value: "1.00" }, receiver, sender_item_id: `${label}-1` }],

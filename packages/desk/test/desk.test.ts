@@ -1,7 +1,7 @@
-import { parseSettlement, type Findings } from "@pushover/claims";
-import { loadTaxTable, PROVISIONAL_CONFIG } from "@pushover/checks";
-import { getClaim, latestDecision, latestFindings, type Pool } from "@pushover/db";
-import type { ExamineResult } from "@pushover/examiner";
+import { parseSettlement, type Findings } from "@proofofclaim/claims";
+import { loadTaxTable, PROVISIONAL_CONFIG } from "@proofofclaim/checks";
+import { getClaim, latestDecision, latestFindings, type Pool } from "@proofofclaim/db";
+import type { ExamineResult } from "@proofofclaim/examiner";
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DATABASE_URL, freshDatabase } from "../../db/test/testdb.ts";

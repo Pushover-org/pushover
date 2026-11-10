@@ -1,6 +1,6 @@
 "use server";
 // A person's review of a claim held for REVIEW. Recorded as a new, append-only decision.
-import { ClaimRejectedError, reviewClaim } from "@pushover/desk";
+import { ClaimRejectedError, reviewClaim } from "@proofofclaim/desk";
 import { revalidatePath } from "next/cache";
 import { desk } from "@/lib/server/data.ts";
 

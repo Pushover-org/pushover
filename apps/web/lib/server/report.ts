@@ -1,6 +1,6 @@
 // The public court report: every claim's decision, reason and amount, with personal data masked
 // (spec §4.7). Nothing here identifies a claimant: initials, state, and the claim ID only.
-import { REASONS, type ReasonCode } from "@pushover/claims";
+import { REASONS, type ReasonCode } from "@proofofclaim/claims";
 import { initials } from "../labels.ts";
 import { claimViews, type ClaimView } from "./data.ts";
 

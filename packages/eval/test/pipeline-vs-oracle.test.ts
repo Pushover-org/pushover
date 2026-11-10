@@ -5,8 +5,8 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { parseSettlement } from "@pushover/claims";
-import { loadTaxTable, PROVISIONAL_CONFIG } from "@pushover/checks";
+import { parseSettlement } from "@proofofclaim/claims";
+import { loadTaxTable, PROVISIONAL_CONFIG } from "@proofofclaim/checks";
 import { perfectFindings } from "../src/corpus/perfect.ts";
 import { ClaimSchema, readJsonl, ReceiptTruthSchema } from "../src/corpus/schema.ts";
 import { RULES } from "../src/oracle/expected.ts";

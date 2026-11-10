@@ -1,6 +1,6 @@
 # Developer setup (fresh machine)
 
-Rightful Share (formerly Pushover) is built by one person from two laptops, one at a time. Every commit is
+Proof of Claim (formerly Pushover) is built by one person from two laptops, one at a time. Every commit is
 authored as **laxmikhengare**. `docs/progress.md` says which step is next.
 
 ## What GitHub does not have
@@ -15,7 +15,7 @@ The owner hands these over directly, never through git, chat or email:
 | `research/03-pick-after-pushover-nogo.md` | `../research/` | Why the project pivoted. |
 | `.env.local` | repo root | Secrets: PayPal sandbox apps, Anthropic key, sandbox test card. **Send through a password manager or another encrypted channel.** |
 
-The Pushover seed manifest and database snapshot are no longer needed: Rightful Share uses
+The Pushover seed manifest and database snapshot are no longer needed: Proof of Claim uses
 Payouts, not the seeded orders.
 
 ## 1. Tools

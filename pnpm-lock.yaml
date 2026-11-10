@@ -172,10 +172,10 @@ importers:
       '@playwright/test':
         specifier: 1.64.1
         version: 1.64.1
-      '@pushover/db':
+      '@proofofclaim/db':
         specifier: workspace:*
         version: link:packages/db
-      '@pushover/paypal':
+      '@proofofclaim/paypal':
         specifier: workspace:*
         version: link:packages/paypal
       '@types/node':
@@ -208,25 +208,25 @@ importers:
       '@number-flow/react':
         specifier: 0.6.2
         version: 0.6.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@pushover/checks':
+      '@proofofclaim/checks':
         specifier: workspace:*
         version: link:../../packages/checks
-      '@pushover/claims':
+      '@proofofclaim/claims':
         specifier: workspace:*
         version: link:../../packages/claims
-      '@pushover/db':
+      '@proofofclaim/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@pushover/desk':
+      '@proofofclaim/desk':
         specifier: workspace:*
         version: link:../../packages/desk
-      '@pushover/distribute':
+      '@proofofclaim/distribute':
         specifier: workspace:*
         version: link:../../packages/distribute
-      '@pushover/examiner':
+      '@proofofclaim/examiner':
         specifier: workspace:*
         version: link:../../packages/examiner
-      '@pushover/paypal':
+      '@proofofclaim/paypal':
         specifier: workspace:*
         version: link:../../packages/paypal
       ag-grid-community:
@@ -272,7 +272,7 @@ importers:
 
   packages/checks:
     dependencies:
-      '@pushover/claims':
+      '@proofofclaim/claims':
         specifier: workspace:*
         version: link:../claims
       sharp:
@@ -301,14 +301,14 @@ importers:
 
   packages/db:
     dependencies:
-      '@pushover/claims':
+      '@proofofclaim/claims':
         specifier: workspace:*
         version: link:../claims
       pg:
         specifier: 8.23.1
         version: 8.23.1
     devDependencies:
-      '@pushover/checks':
+      '@proofofclaim/checks':
         specifier: workspace:*
         version: link:../checks
       '@types/pg':
@@ -320,22 +320,22 @@ importers:
 
   packages/desk:
     dependencies:
-      '@pushover/checks':
+      '@proofofclaim/checks':
         specifier: workspace:*
         version: link:../checks
-      '@pushover/claims':
+      '@proofofclaim/claims':
         specifier: workspace:*
         version: link:../claims
-      '@pushover/db':
+      '@proofofclaim/db':
         specifier: workspace:*
         version: link:../db
-      '@pushover/distribute':
+      '@proofofclaim/distribute':
         specifier: workspace:*
         version: link:../distribute
-      '@pushover/examiner':
+      '@proofofclaim/examiner':
         specifier: workspace:*
         version: link:../examiner
-      '@pushover/paypal':
+      '@proofofclaim/paypal':
         specifier: workspace:*
         version: link:../paypal
     devDependencies:
@@ -348,7 +348,7 @@ importers:
 
   packages/distribute:
     dependencies:
-      '@pushover/paypal':
+      '@proofofclaim/paypal':
         specifier: workspace:*
         version: link:../paypal
     devDependencies:
@@ -361,16 +361,16 @@ importers:
       '@anthropic-ai/sdk':
         specifier: 1.3.0
         version: 1.3.0(zod@4.6.7)
-      '@pushover/checks':
+      '@proofofclaim/checks':
         specifier: workspace:*
         version: link:../checks
-      '@pushover/claims':
+      '@proofofclaim/claims':
         specifier: workspace:*
         version: link:../claims
-      '@pushover/distribute':
+      '@proofofclaim/distribute':
         specifier: workspace:*
         version: link:../distribute
-      '@pushover/examiner':
+      '@proofofclaim/examiner':
         specifier: workspace:*
         version: link:../examiner
       sharp:
@@ -385,7 +385,7 @@ importers:
       '@anthropic-ai/sdk':
         specifier: 1.3.0
         version: 1.3.0(zod@4.6.7)
-      '@pushover/claims':
+      '@proofofclaim/claims':
         specifier: workspace:*
         version: link:../claims
       zod:

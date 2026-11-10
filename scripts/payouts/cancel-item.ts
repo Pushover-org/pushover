@@ -1,7 +1,7 @@
 // One attempt (no automatic retries) to cancel an UNCLAIMED payout item, then a read-back.
 // A cancel returns the money to the fund early; otherwise PayPal returns it after 30 days.
 //   node --env-file-if-exists=.env.local scripts/payouts/cancel-item.ts <payout_item_id>
-import { cancelPayoutItem, getPayoutItem, limiterFromEnv, paypalClientFromEnv } from "@pushover/paypal";
+import { cancelPayoutItem, getPayoutItem, limiterFromEnv, paypalClientFromEnv } from "@proofofclaim/paypal";
 
 const [itemId] = process.argv.slice(2);
 if (!itemId) throw new Error("usage: cancel-item.ts <payout_item_id>");

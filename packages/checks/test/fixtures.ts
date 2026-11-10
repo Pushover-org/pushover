@@ -1,4 +1,4 @@
-import { parseSettlement, type Findings, type LineItem } from "@pushover/claims";
+import { parseSettlement, type Findings, type LineItem } from "@proofofclaim/claims";
 
 export const SETTLEMENT = parseSettlement({
   id: "acme-restaurant-beverage",

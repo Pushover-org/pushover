@@ -1,5 +1,5 @@
 // C8: one claim per person, address and payout email.
-import type { CheckResult } from "@pushover/claims";
+import type { CheckResult } from "@proofofclaim/claims";
 
 export interface Identity {
   name: string;

@@ -1,5 +1,5 @@
 // Northwind Goods, the demo store (policy text: spec §5.4). Pure: same order ref, same order.
-import { centsToValue, type CreatePurchaseUnit } from "@pushover/paypal";
+import { centsToValue, type CreatePurchaseUnit } from "@proofofclaim/paypal";
 
 export interface Product {
   sku: string;

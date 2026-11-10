@@ -1,6 +1,6 @@
 // Runs every check that applies to a claim. Pure: everything from the database and the image
 // arrives as an argument, and a failed lookup is passed as null, which gives UNKNOWN, never PASS.
-import { CHECKS_FOR_TIER, type CheckId, type CheckResult, type Findings, type Settlement, type Tier } from "@pushover/claims";
+import { CHECKS_FOR_TIER, type CheckId, type CheckResult, type Findings, type Settlement, type Tier } from "@proofofclaim/claims";
 import { checkTemplate, checkVelocity, templateClusters, type Arrival, type Declaration, type TemplateConfig, type VelocityConfig } from "./clusters.ts";
 import { checkArithmetic, checkClassPeriod, checkGeography, checkQualifyingProduct, checkRepeatDetails, checkUnitsCap, checkVisualAnomaly, unitsEvidenced, type ReceiptDetails } from "./evidence.ts";
 import { checkIdentity, type EarlierIdentity, type Identity } from "./identity.ts";

@@ -1,7 +1,7 @@
 "use server";
 // Distribute and read back. Code alone calls PayPal; the model is not involved anywhere here.
-import { distribute, planDistribution, readBack, recheckApproved } from "@pushover/desk";
-import { limiterFromEnv, paypalClientFromEnv } from "@pushover/paypal";
+import { distribute, planDistribution, readBack, recheckApproved } from "@proofofclaim/desk";
+import { limiterFromEnv, paypalClientFromEnv } from "@proofofclaim/paypal";
 import { revalidatePath } from "next/cache";
 import { desk } from "@/lib/server/data.ts";
 import { DEMO_DAILY_CAP_CENTS, money } from "@/lib/server/money.ts";

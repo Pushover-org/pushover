@@ -1,7 +1,7 @@
 // D1-3 (spec §3.9, §3.6 Path A): create an order paid by a sandbox card, capture it,
 // and get a capture ID back with no buyer clicking Approve. Moves $1.00 of play money per app.
 // Run: node --env-file-if-exists=.env.local scripts/day1/d1-3-card-seed.ts
-import { captureOrder, createOrder, PayPalClient, type Order } from "@pushover/paypal";
+import { captureOrder, createOrder, PayPalClient, type Order } from "@proofofclaim/paypal";
 import { countingClient, describeError, sandboxCard } from "./common.ts";
 
 function summary(o: Order) {

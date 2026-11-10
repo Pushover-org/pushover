@@ -1,4 +1,4 @@
-import { CHECK_IDS, CHECK_NAMES } from "@pushover/claims";
+import { CHECK_IDS, CHECK_NAMES } from "@proofofclaim/claims";
 import { Check } from "@/components/site/Check.tsx";
 import { Nav } from "@/components/site/Nav.tsx";
 import { Pile } from "@/components/site/Pile.tsx";
@@ -52,7 +52,7 @@ export default function Landing() {
                 </span>
               </h1>
               <p className={s.lede}>
-                Rightful Share reads every claim&apos;s evidence with AI, lets plain rules (not the model) decide, pays honest claimants straight to their PayPal account, and
+                Proof of Claim reads every claim&apos;s evidence with AI, lets plain rules (not the model) decide, pays honest claimants straight to their PayPal account, and
                 gives leftover money to the court&apos;s chosen charity. Every dollar comes with a written reason.
               </p>
               <div className={s.ctas}>
@@ -67,7 +67,7 @@ export default function Landing() {
             <div className={s.heroCheck}>
               <Check fromCents={armA.honestAverageCheckCents} toCents={armC.honestAverageCheckCents} claims={summary.n} bad={bad.length} stopped={stopped} />
               <p className={s.checkNote}>
-                Measured, not mocked: the average honest check in our pilot of {summary.n} labelled claims, when every claim is paid vs. when Rightful Share decides.
+                Measured, not mocked: the average honest check in our pilot of {summary.n} labelled claims, when every claim is paid vs. when Proof of Claim decides.
               </p>
             </div>
           </div>
@@ -101,7 +101,7 @@ export default function Landing() {
                 <span className="label">Claim</span>
                 <span className="label">What it was</span>
                 <span className="label">Model alone</span>
-                <span className="label">Rightful Share</span>
+                <span className="label">Proof of Claim</span>
               </div>
               {fooled.map((c) => (
                 <div key={c.id} className={s.versusRow} data-outcome={c.outcome}>
@@ -220,12 +220,12 @@ export default function Landing() {
             <Reveal className={s.arms}>
               <Arm name="Pay everyone" tag="A" note="Today's default for small no-receipt claims." fraud={armA.fraudCents} denied={armA.honestWronglyDenied} check={armA.honestAverageCheckCents} />
               <Arm name="Model alone" tag="B" note="The AI is asked: approve or deny?" fraud={armB.fraudCents} denied={armB.honestWronglyDenied} check={armB.honestAverageCheckCents} />
-              <Arm name="Rightful Share" tag="C" note="Findings → checks → rules → a person for reviews." fraud={armC.fraudCents} denied={armC.honestWronglyDenied} check={armC.honestAverageCheckCents} lead />
+              <Arm name="Proof of Claim" tag="C" note="Findings → checks → rules → a person for reviews." fraud={armC.fraudCents} denied={armC.honestWronglyDenied} check={armC.honestAverageCheckCents} lead />
             </Reveal>
             <Reveal>
               <p className={s.footnote}>
-                Model alone gives a bigger average check than ours because it wrongly denies {armB.honestWronglyDenied.k} honest people, so fewer share the fund. Rightful
-                Share sends {armC.honestWorkload.k} of {armC.honestWorkload.n} honest claims back for one more document. Even if a person approved every claim sent for
+                Model alone gives a bigger average check than ours because it wrongly denies {armB.honestWronglyDenied.k} honest people, so fewer share the fund. Proof of
+                Claim sends {armC.honestWorkload.k} of {armC.honestWorkload.n} honest claims back for one more document. Even if a person approved every claim sent for
                 review, fraud paid would be {$(armC.fraudCentsWorstCase, 0)}. The full 100-claim held-out run comes next; these are pilot numbers.
               </p>
             </Reveal>
@@ -350,7 +350,7 @@ export default function Landing() {
         <div className={`wrap ${s.footGrid}`}>
           <div>
             <div className={s.brand}>
-              <span className={s.dot} /> Rightful Share
+              <span className={s.dot} /> Proof of Claim
             </div>
             <p>The demo settlement, company and nonprofit are fictional. Payments run in PayPal&apos;s sandbox with play money.</p>
           </div>

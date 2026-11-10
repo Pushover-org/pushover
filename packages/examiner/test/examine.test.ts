@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import Anthropic from "@anthropic-ai/sdk";
-import type { Findings } from "@pushover/claims";
+import type { Findings } from "@proofofclaim/claims";
 import { describe, expect, it, vi } from "vitest";
 import { examine, readResponse, sniffImageType, SYSTEM_PROMPT, type ExaminerDeps } from "../src/examine.ts";
 import { BudgetExceededError, CostGuard } from "../src/guard.ts";

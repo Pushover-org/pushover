@@ -6,7 +6,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
-import { BudgetExceededError, CostGuard, costUsd, sniffImageType } from "@pushover/examiner";
+import { BudgetExceededError, CostGuard, costUsd, sniffImageType } from "@proofofclaim/examiner";
 import type { Claim } from "./corpus/schema.ts";
 
 const MAX_TOKENS = 4000;

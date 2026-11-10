@@ -2,7 +2,7 @@
 // 0.0001%, so 8.875% is 88750 and no float touches a comparison of money.
 import { readFileSync } from "node:fs";
 import { z } from "zod";
-import type { CheckResult, Findings } from "@pushover/claims";
+import type { CheckResult, Findings } from "@proofofclaim/claims";
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const pct = z.number().min(0).max(25);

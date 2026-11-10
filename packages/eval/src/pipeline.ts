@@ -1,8 +1,8 @@
 // Arm C (spec §1.4): findings → checks → decision table, claim by claim in filing order, the way
 // the live system runs them (one at a time per settlement, R6). The eval runner (R9) feeds it the
 // examiner's real readings; test/pipeline-vs-oracle.test.ts feeds it perfect ones.
-import { decide, type CheckResult, type Decision, type ExaminerStatus, type Findings, type Settlement } from "@pushover/claims";
-import { ipPrefixKey, runChecks, type CheckConfig, type EarlierIdentity, type ImageHash, type ReceiptDetails, type TaxTable } from "@pushover/checks";
+import { decide, type CheckResult, type Decision, type ExaminerStatus, type Findings, type Settlement } from "@proofofclaim/claims";
+import { ipPrefixKey, runChecks, type CheckConfig, type EarlierIdentity, type ImageHash, type ReceiptDetails, type TaxTable } from "@proofofclaim/checks";
 import type { Claim } from "./corpus/schema.ts";
 
 export interface Reading {

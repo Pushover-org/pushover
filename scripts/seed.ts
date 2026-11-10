@@ -8,7 +8,7 @@
 // returns the original order (PayPal keeps keys for 6 hours) instead of charging again.
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { createOrder, limiterFromEnv, paypalClientFromEnv, valueToCents, type PayPalApp } from "@pushover/paypal";
+import { createOrder, limiterFromEnv, paypalClientFromEnv, valueToCents, type PayPalApp } from "@proofofclaim/paypal";
 import { orderFor, toPurchaseUnit, type StoreItem } from "./seed/catalog.ts";
 import { sandboxCard } from "./day1/common.ts";
 

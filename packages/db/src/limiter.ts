@@ -11,7 +11,7 @@ export interface PgRateLimiterOptions {
 /**
  * The sliding-window limiter from packages/paypal, kept in Postgres so the web and
  * worker services (which may share an egress IP, spec §4.7.1) never exceed the sandbox
- * limit together. Satisfies @pushover/paypal's RateLimiter interface.
+ * limit together. Satisfies @proofofclaim/paypal's RateLimiter interface.
  */
 export class PgRateLimiter {
   private readonly pool: Pool;

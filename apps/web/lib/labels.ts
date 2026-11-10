@@ -3,7 +3,7 @@ import type { Outcome } from "./pilot-shared.ts";
 
 export const OUTCOME_LABEL: Record<Outcome, string> = { APPROVE: "Approved", DENY: "Denied", NEED_MORE: "Need more", REVIEW: "Review" };
 
-/** What a reason code means, in a few words. The full sentence is REASONS in @pushover/claims. */
+/** What a reason code means, in a few words. The full sentence is REASONS in @proofofclaim/claims. */
 export const REASON_SHORT: Record<string, string> = {
   APPROVED_PROOF: "Receipt checks out",
   APPROVED_NO_PROOF: "Flat no-receipt payment",

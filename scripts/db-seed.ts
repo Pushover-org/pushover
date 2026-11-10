@@ -2,7 +2,7 @@
 // into the store database. Safe to re-run: customers upsert, stored captures are skipped.
 //   node --env-file-if-exists=.env.local scripts/db-seed.ts
 import { existsSync, readFileSync } from "node:fs";
-import { countPoolCaptures, createPool, insertPoolOrder, upsertCustomer, type Merchant } from "@pushover/db";
+import { countPoolCaptures, createPool, insertPoolOrder, upsertCustomer, type Merchant } from "@proofofclaim/db";
 import type { SeededCapture } from "./seed.ts";
 
 /** Demo personas, one per sandbox buyer (spec §3.0). The same IDs exist in both stores. */
