@@ -35,7 +35,12 @@ export default async function Groups({ params }: { params: Promise<{ settlement:
             counts towards joining such a core. Held is not denied: a person clears or denies each group, and the AI investigator only recommends.
           </p>
         </div>
-        <DetectButton settlementId={S.id} />
+        <div className={s.headActions}>
+          <a className="pill pill--quiet" href={`/admin/${S.id}/groups/timeline`}>
+            Timeline
+          </a>
+          <DetectButton settlementId={S.id} />
+        </div>
       </header>
       {groups.some((g) => g.status === "HELD") ? (
         <div className={s.bulk}>

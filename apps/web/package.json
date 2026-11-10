@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
+    "@bryntum/core-enterprise": "8.0.0",
+    "@bryntum/scheduler-enterprise": "8.0.0",
+    "@bryntum/scheduler-react-enterprise": "8.0.0",
     "@gsap/react": "2.1.2",
     "@number-flow/react": "0.6.2",
     "@proofofclaim/checks": "workspace:*",

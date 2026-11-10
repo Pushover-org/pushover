@@ -93,3 +93,41 @@
   font-size: 14px;
   color: var(--ink-2);
 }
+.timeline {
+  border: 1px solid var(--hair-2);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  background: var(--card);
+  min-height: 160px;
+}
+.headActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.timelineHead h1 {
+  margin-top: 10px;
+  font-size: clamp(2rem, 1.3rem + 2.4vw, 3.4rem);
+  line-height: 0.98;
+}
+.timeline :global(.poc-legend) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+  padding: 4px 176px 4px 6px;
+  min-height: 36px;
+  align-items: center;
+}
+.timeline :global(.poc-legend) span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.timeline :global(.poc-legend) i {
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+}
