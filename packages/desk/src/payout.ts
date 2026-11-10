@@ -9,6 +9,7 @@ import {
 } from "@proofofclaim/db";
 import { getPayoutBatch, payoutItemOutcome, valueToCents, type PayPalClient } from "@proofofclaim/paypal";
 import { decideClaim } from "./desk.ts";
+import { openPayerId } from "./payer-id.ts";
 import type { Desk } from "./desk.ts";
 
 /** PayPal's fee per payout item, as the sandbox charged it. Reserved per item; actual fees come from PayPal. */
@@ -37,6 +38,10 @@ export interface DistributionPlan {
   fundCents: number;
   /** Approved claims left for a later round because this round's cap was reached. */
   deferred: number;
+  /** Approved claims from PayPal accounts that aren't verified: paid once the claimant logs in verified (P2). */
+  waitingVerification: number;
+  /** How each payee appears on the record: the email, or the PayPal account's pseudonym. Never a payer ID. */
+  receivers: Record<string, string>;
 }
 
 /** States of a claim that already has its share in a payout (or had one come back). */
@@ -52,8 +57,10 @@ const ALREADY_SENT = ["SCHEDULED", "PAID", "UNCLAIMED", "UNVERIFIED", "RETURNED"
  */
 export async function planDistribution(desk: Desk, opt: { capCents?: number } = {}): Promise<DistributionPlan> {
   const s = desk.settlement;
-  const { rows } = await desk.pool.query<{ id: string; status: string; payout_email: string; paypal_payer_id: string | null; entitlement_cents: number }>(
-    `SELECT c.id, c.status, c.payout_email, c.paypal_payer_id, d.entitlement_cents FROM claims c
+  const { rows } = await desk.pool.query<{
+    id: string; status: string; payout_email: string; paypal_pseudonym: string | null; paypal_payer_sealed: Buffer | null; paypal_verified: boolean | null; entitlement_cents: number;
+  }>(
+    `SELECT c.id, c.status, c.payout_email, c.paypal_pseudonym, c.paypal_payer_sealed, c.paypal_verified, d.entitlement_cents FROM claims c
      JOIN LATERAL (SELECT entitlement_cents FROM decisions x WHERE x.claim_id = c.id AND x.outcome = 'APPROVE' ORDER BY x.id DESC LIMIT 1) d ON true
      WHERE c.settlement_id = $1 AND (c.status = 'APPROVE' OR c.status = ANY($2)) ORDER BY c.seq`,
     [s.id, ALREADY_SENT],
@@ -65,9 +72,12 @@ export async function planDistribution(desk: Desk, opt: { capCents?: number } = 
   });
   const share = new Map(whole.payouts.map((p) => [p.claimId, p]));
   const approved = rows.filter((a) => a.status === "APPROVE");
+  // An unverified PayPal account keeps its share in the allocation but isn't paid yet.
+  const waiting = approved.filter((a) => a.paypal_verified === false);
+  const payable = approved.filter((a) => a.paypal_verified !== false);
   const payNow: Allocation["payouts"] = [];
   let total = 0;
-  for (const a of approved) {
+  for (const a of payable) {
     const p = share.get(a.id);
     if (!p || p.payoutCents === 0) continue;
     if (opt.capCents !== undefined && total + p.payoutCents > opt.capCents) break;
@@ -76,8 +86,21 @@ export async function planDistribution(desk: Desk, opt: { capCents?: number } = 
   }
   const paid = new Set(payNow.map((p) => p.claimId));
   const allocation: Allocation = { ...whole, payouts: payNow, reservedFeesCents: payNow.length * FEE_PER_ITEM_CENTS };
-  const payees: Payee[] = approved.filter((a) => paid.has(a.id)).map((a) => (a.paypal_payer_id ? { claimId: a.id, payerId: a.paypal_payer_id } : { claimId: a.id, email: a.payout_email }));
-  return { round: (r[0]?.round ?? 0) + 1, allocation, payees, fundCents: s.fundCents, deferred: approved.length - payNow.length };
+  const payees: Payee[] = [];
+  const receivers: Record<string, string> = {};
+  for (const a of payable.filter((x) => paid.has(x.id))) {
+    if (a.paypal_payer_sealed && a.paypal_pseudonym) {
+      if (!desk.keys) throw new Error("paying a PayPal account needs PAYER_SEAL_KEY and PAYER_PSEUDONYM_KEY");
+      payees.push({ claimId: a.id, payerId: openPayerId(desk.keys, s.id, a.id, a.paypal_payer_sealed) });
+      receivers[a.id] = `pseudonym:${a.paypal_pseudonym}`;
+    } else {
+      payees.push({ claimId: a.id, email: a.payout_email });
+      receivers[a.id] = a.payout_email;
+    }
+  }
+  return {
+    round: (r[0]?.round ?? 0) + 1, allocation, payees, fundCents: s.fundCents, deferred: payable.length - payNow.length, waitingVerification: waiting.length, receivers,
+  };
 }
 
 export interface DistributionResult {
@@ -95,8 +118,8 @@ export class MoneyRefusedError extends Error {
 
 /** What a proposal fixes: every payee, amount and receiver. The approver's plan must hash the same. */
 export function planDigest(settlementId: string, plan: DistributionPlan): { hash: Buffer; summary: PlanSummary } {
-  const receiver = new Map(plan.payees.map((p) => [p.claimId, p.payerId ? `PAYPAL_ID:${p.payerId}` : `EMAIL:${p.email ?? ""}`]));
-  const items = plan.allocation.payouts.filter((p) => p.payoutCents > 0).map((p) => ({ claimId: p.claimId, cents: p.payoutCents, receiver: receiver.get(p.claimId) ?? "" }));
+  // The proposal stores this summary: pseudonyms and emails only, never a payer ID.
+  const items = plan.allocation.payouts.filter((p) => p.payoutCents > 0).map((p) => ({ claimId: p.claimId, cents: p.payoutCents, receiver: plan.receivers[p.claimId] ?? "" }));
   const summary: PlanSummary = {
     settlementId, kind: "CLAIMS", round: plan.round, fundCents: plan.fundCents, totalCents: items.reduce((t, i) => t + i.cents, 0),
     reservedFeesCents: plan.allocation.reservedFeesCents, scaled: plan.allocation.scaled, items,
@@ -182,7 +205,7 @@ async function distribute(desk: Desk, pp: PayPalClient, plan: DistributionPlan, 
         settlementId: s.id, kind: "CLAIMS", round: plan.round, part: i + 1, senderBatchId: b.senderBatchId, proposalId: who.proposalId,
         items: b.items.map((it) => ({
           senderItemId: it.senderItemId, claimId: it.senderItemId, cents: it.cents,
-          receiver: it.receiverPayerId ?? it.receiverEmail ?? "", recipientType: it.receiverPayerId ? "PAYPAL_ID" : "EMAIL",
+          receiver: plan.receivers[it.senderItemId] ?? it.receiverEmail ?? "", recipientType: it.receiverPayerId ? "PAYPAL_ID" : "EMAIL",
         })),
       });
       await tx.query("INSERT INTO audit_log (actor, action, subject, detail) VALUES ($1, 'distribute', $2, $3)", [

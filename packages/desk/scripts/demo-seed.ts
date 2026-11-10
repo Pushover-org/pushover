@@ -50,6 +50,7 @@ const client = new Anthropic();
 let current = "";
 const desk: Desk = {
   pool, settlement, table: loadTaxTable(), config: PROVISIONAL_CONFIG, networkSecret: process.env["NETWORK_SECRET"] ?? "demo-network-secret",
+  keys: null, // the corpus claimants never log in with PayPal
   read: async (input) => {
     const hit = cached.get(current);
     if (hit) return hit;

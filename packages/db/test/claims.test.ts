@@ -2,7 +2,7 @@ import { CHECKS_FOR_TIER, decide, parseSettlement, type Findings } from "@proofo
 import { hashRotations, loadTaxTable, PROVISIONAL_CONFIG, runChecks } from "@proofofclaim/checks";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  allArrivals, allDeclarations, analystForLogin, appendAudit, canMoveClaim, decideProposal, deleteSession, getProposal, insertAnalyst, insertProposal, insertSession, openProposal,
+  allArrivals, allDeclarations, analystForLogin, appendAudit, canMoveClaim, claimIdByPseudonym, claimIdByStatusToken, setStatusTokenHash, updatePaypalVerified, decideProposal, deleteSession, getProposal, insertAnalyst, insertProposal, insertSession, openProposal,
   recentFailedLogins, sessionAnalyst, type Analyst, checkResultsOf, earlierIdentities, earlierImageHashes, earlierReceiptDetails, getClaim, getEvidence, getSettlementConfig,
   insertClaim, insertEvidence, insertFindings, insertSettlement, latestDecision, latestFindings, listClaims, markBatchSent, moveClaim, payoutItemsOf, planBatch, recordAnalystDecision,
   recordCyPres, recordDecision, recordItemRead, withSettlementLock, type ClaimRow, type NewClaim, type Pool,
@@ -348,33 +348,51 @@ describe.skipIf(!DATABASE_URL)("claims schema on real Postgres", () => {
     expect(await latestDecision(pool, c.id)).toMatchObject({ units: 2, entitlementCents: 3000 });
   });
 
-  describe("PayPal identity (migration 0005)", () => {
-    const dana = { payerId: "QYR5Z8XDVJNXQ", verified: true, emailVerified: true };
+  describe("PayPal identity, sealed (migrations 0005, 0007)", () => {
+    const hex = (c: string) => c.repeat(64);
+    const dana = { pseudonym: hex("a"), sealed: Buffer.alloc(41, 1), verified: true, emailVerified: true };
 
-    it("stores the logged-in account and reads it back", async () => {
+    it("stores the account's pseudonym and sealed payer ID, and reads them back", async () => {
       const c = await add({ paypal: dana });
       expect((await getClaim(pool, c.id))?.paypal).toEqual(dana);
       expect((await add()).paypal).toBeNull();
+      const { rows } = await pool.query("SELECT count(*)::int AS n FROM information_schema.columns WHERE table_name = 'claims' AND column_name = 'paypal_payer_id'");
+      expect(rows[0].n).toBe(0); // no plain payer ID column any more
     });
 
-    it("one PayPal account files one claim per settlement", async () => {
-      await add({ paypal: { ...dana, payerId: "ABCDEFGHJKLM2" } });
-      await expect(add({ paypal: { ...dana, payerId: "ABCDEFGHJKLM2" } })).rejects.toThrow(/claims_one_per_paypal_account/);
+    it("one PayPal account (one pseudonym) files one claim per settlement", async () => {
+      await add({ paypal: { ...dana, pseudonym: hex("b") } });
+      await expect(add({ paypal: { ...dana, pseudonym: hex("b") } })).rejects.toThrow(/claims_one_per_paypal_account/);
     });
 
-    it("refuses a payer ID PayPal could not have issued", async () => {
-      await expect(add({ paypal: { ...dana, payerId: "not-an-id" } })).rejects.toThrow(/check constraint/);
+    it("refuses a pseudonym that isn't one, and a pseudonym without its sealed payer ID", async () => {
+      await expect(add({ paypal: { ...dana, pseudonym: "QYR5Z8XDVJNXQ" } })).rejects.toThrow(/check constraint/);
+      await expect(pool.query("UPDATE claims SET paypal_payer_sealed = NULL WHERE paypal_pseudonym = $1", [hex("a")])).rejects.toThrow(/claims_paypal_fields_together/);
     });
 
-    it("a payout item records whether it pays an email or a PayPal account", async () => {
-      const c = await add({ paypal: { ...dana, payerId: "ZZZZZZZZZZZZ9" } });
+    it("a payout to a PayPal account records the pseudonym, never a payer ID", async () => {
+      const c = await add({ paypal: { ...dana, pseudonym: hex("c") } });
       await withSettlementLock(pool, S.id, (tx) => tx.query("UPDATE claims SET status = 'APPROVE' WHERE id = $1", [c.id]));
       const proposalId = await approvedProposal();
-      const batchId = await withTransaction(pool, (tx) =>
-        planBatch(tx, { settlementId: S.id, kind: "CLAIMS", round: 90, part: 1, senderBatchId: "rs-identity-r90-p1", proposalId, items: [{ senderItemId: c.id, claimId: c.id, receiver: "ZZZZZZZZZZZZ9", cents: 100, recipientType: "PAYPAL_ID" }] }),
-      );
-      const { rows } = await pool.query("SELECT recipient_type FROM payout_items WHERE batch_id = $1", [batchId]);
-      expect(rows[0]?.recipient_type).toBe("PAYPAL_ID");
+      const item = (receiver: string) => ({ senderItemId: c.id, claimId: c.id, receiver, cents: 100, recipientType: "PAYPAL_ID" as const });
+      const batch = (receiver: string, id: string) => ({ settlementId: S.id, kind: "CLAIMS" as const, round: 90, part: 1, senderBatchId: id, proposalId, items: [item(receiver)] });
+      await expect(withTransaction(pool, (tx) => planBatch(tx, batch("ZZZZZZZZZZZZ9", "rs-identity-plain")))).rejects.toThrow(/payout_items_paypal_id_is_pseudonym/);
+      const batchId = await withTransaction(pool, (tx) => planBatch(tx, batch(`pseudonym:${hex("c")}`, "rs-identity-r90-p1")));
+      const { rows } = await pool.query("SELECT recipient_type, receiver FROM payout_items WHERE batch_id = $1", [batchId]);
+      expect(rows[0]).toEqual({ recipient_type: "PAYPAL_ID", receiver: `pseudonym:${hex("c")}` });
+    });
+
+    it("finds a claim by its status-link hash or its pseudonym, and a new link replaces the old", async () => {
+      const first = Buffer.alloc(32, 4);
+      const c = await add({ paypal: { ...dana, pseudonym: hex("d") }, statusTokenHash: first });
+      expect(await claimIdByStatusToken(pool, first)).toBe(c.id);
+      expect(await claimIdByPseudonym(pool, S.id, hex("d"))).toBe(c.id);
+      expect(await claimIdByPseudonym(pool, "other-settlement", hex("d"))).toBeNull();
+      await setStatusTokenHash(pool, c.id, Buffer.alloc(32, 5));
+      expect(await claimIdByStatusToken(pool, first)).toBeNull();
+      expect(await claimIdByStatusToken(pool, Buffer.alloc(32, 5))).toBe(c.id);
+      await updatePaypalVerified(pool, c.id, { verified: false, emailVerified: null });
+      expect((await getClaim(pool, c.id))?.paypal?.verified).toBe(false);
     });
   });
 

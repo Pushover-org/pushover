@@ -66,12 +66,17 @@ export interface NewClaim {
   declaration: string;
   ipKey: string | null;
   submittedAt?: Date;
-  /** Set when the claimant logged in with PayPal (migration 0005). */
-  paypal?: { payerId: string; verified: boolean; emailVerified: boolean | null } | null;
+  /**
+   * Set when the claimant logged in with PayPal (migrations 0005, 0007). The payer ID itself is
+   * never stored in plain text: packages/desk passes its per-settlement pseudonym and its sealed form.
+   */
+  paypal?: { pseudonym: string; sealed: Buffer; verified: boolean; emailVerified: boolean | null } | null;
+  /** SHA-256 of the claimant's private status-link token (migration 0007). */
+  statusTokenHash?: Buffer | null;
 }
 
-export interface ClaimRow extends Omit<NewClaim, "submittedAt" | "paypal"> {
-  paypal: { payerId: string; verified: boolean; emailVerified: boolean | null } | null;
+export interface ClaimRow extends Omit<NewClaim, "submittedAt" | "paypal" | "statusTokenHash"> {
+  paypal: { pseudonym: string; sealed: Buffer; verified: boolean; emailVerified: boolean | null } | null;
   seq: number;
   status: ClaimState;
   submittedAt: Date;
@@ -80,23 +85,48 @@ export interface ClaimRow extends Omit<NewClaim, "submittedAt" | "paypal"> {
 interface RawClaim {
   id: string; settlement_id: string; seq: string; tier: "proof" | "no_proof"; units_claimed: number; claimant_name: string; payout_email: string;
   address_line: string; city: string; state: string; zip: string; declaration: string; ip_key: string | null; status: ClaimState; submitted_at: Date;
-  paypal_payer_id: string | null; paypal_verified: boolean | null; paypal_email_verified: boolean | null;
+  paypal_pseudonym: string | null; paypal_payer_sealed: Buffer | null; paypal_verified: boolean | null; paypal_email_verified: boolean | null;
 }
 const claimFrom = (r: RawClaim): ClaimRow => ({
   id: r.id, settlementId: r.settlement_id, seq: toNumber(r.seq), tier: r.tier, unitsClaimed: r.units_claimed, name: r.claimant_name, email: r.payout_email,
   addressLine: r.address_line, city: r.city, state: r.state, zip: r.zip, declaration: r.declaration, ipKey: r.ip_key, status: r.status, submittedAt: r.submitted_at,
-  paypal: r.paypal_payer_id === null ? null : { payerId: r.paypal_payer_id, verified: r.paypal_verified === true, emailVerified: r.paypal_email_verified },
+  paypal: r.paypal_pseudonym === null || r.paypal_payer_sealed === null ? null
+    : { pseudonym: r.paypal_pseudonym, sealed: r.paypal_payer_sealed, verified: r.paypal_verified === true, emailVerified: r.paypal_email_verified },
 });
 
 export async function insertClaim(db: Queryable, c: NewClaim): Promise<ClaimRow> {
   const { rows } = await db.query<RawClaim>(
     `INSERT INTO claims (id, settlement_id, tier, units_claimed, claimant_name, payout_email, address_line, city, state, zip, declaration, ip_key, submitted_at,
-       paypal_payer_id, paypal_verified, paypal_email_verified)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13, now()), $14, $15, $16) RETURNING *`,
+       paypal_pseudonym, paypal_payer_sealed, paypal_verified, paypal_email_verified, status_token_hash)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13, now()), $14, $15, $16, $17, $18) RETURNING *`,
     [c.id, c.settlementId, c.tier, c.unitsClaimed, c.name, c.email, c.addressLine, c.city, c.state, c.zip, c.declaration, c.ipKey, c.submittedAt ?? null,
-      c.paypal?.payerId ?? null, c.paypal?.verified ?? null, c.paypal?.emailVerified ?? null],
+      c.paypal?.pseudonym ?? null, c.paypal?.sealed ?? null, c.paypal?.verified ?? null, c.paypal?.emailVerified ?? null, c.statusTokenHash ?? null],
   );
   return claimFrom(rows[0] as RawClaim);
+}
+
+/** The claim behind a private status link, found by the SHA-256 of its token. */
+export async function claimIdByStatusToken(db: Queryable, tokenHash: Buffer): Promise<string | null> {
+  const { rows } = await db.query<{ id: string }>("SELECT id FROM claims WHERE status_token_hash = $1", [tokenHash]);
+  return rows[0]?.id ?? null;
+}
+
+/** Replaces a claim's status link; the old one stops working. */
+export async function setStatusTokenHash(db: Queryable, claimId: string, tokenHash: Buffer): Promise<void> {
+  const res = await db.query("UPDATE claims SET status_token_hash = $2 WHERE id = $1", [claimId, tokenHash]);
+  if (res.rowCount !== 1) throw new Error(`no claim ${claimId}`);
+}
+
+/** The claim this PayPal account filed in a settlement, by its pseudonym. */
+export async function claimIdByPseudonym(db: Queryable, settlementId: string, pseudonym: string): Promise<string | null> {
+  const { rows } = await db.query<{ id: string }>("SELECT id FROM claims WHERE settlement_id = $1 AND paypal_pseudonym = $2", [settlementId, pseudonym]);
+  return rows[0]?.id ?? null;
+}
+
+/** Records what PayPal says now about the account's verification, read at a fresh login. */
+export async function updatePaypalVerified(db: Queryable, claimId: string, a: { verified: boolean; emailVerified: boolean | null }): Promise<void> {
+  await db.query("UPDATE claims SET paypal_verified = $2, paypal_email_verified = $3 WHERE id = $1 AND paypal_pseudonym IS NOT NULL", [claimId, a.verified, a.emailVerified]);
+  await appendAudit(db, { actor: "claimant", action: "paypal_reverified", subject: claimId, detail: { verified: a.verified } });
 }
 
 export async function getClaim(db: Queryable, id: string): Promise<ClaimRow | null> {

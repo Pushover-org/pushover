@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DATABASE_URL, freshDatabase } from "../../db/test/testdb.ts";
 import { fakePayPal, json, makeClient } from "../../paypal/test/fake.ts";
 import {
-  analystFromToken, approveAndDistribute, cancelProposal, ClaimRejectedError, decideClaim, fileClaim, hashPassword, login, logout, MoneyRefusedError, openProposal, planDistribution,
+  analystFromToken, approveAndDistribute, cancelProposal, claimantReturns, claimByStatusToken, ClaimRejectedError, pseudonymOf, decideClaim, fileClaim, hashPassword, login, logout, MoneyRefusedError, openProposal, planDistribution,
   proposeDistribution, readBack, recheckApproved, reviewClaim, setAnalyst, submitClaim, verifyPassword, type Desk, type FileClaimInput,
 } from "../src/index.ts";
 import type { Analyst } from "@proofofclaim/db";
@@ -32,6 +32,8 @@ async function photo(seed: number): Promise<Uint8Array> {
   return sharp(raw, { raw: { width: 64, height: 64, channels: 1 } }).jpeg().toBuffer();
 }
 
+const KEYS = { seal: Buffer.alloc(32, 1), pseudonym: Buffer.alloc(32, 2) };
+
 let n = 0;
 const claim = (over: Partial<FileClaimInput> = {}): FileClaimInput => {
   n++;
@@ -47,7 +49,7 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
   let reads = 0;
   let reading: (() => ExamineResult) | null = null;
   const desk = (): Desk => ({
-    pool, settlement: S, table: loadTaxTable(), config: PROVISIONAL_CONFIG, networkSecret: "desk-test",
+    pool, settlement: S, table: loadTaxTable(), config: PROVISIONAL_CONFIG, networkSecret: "desk-test", keys: KEYS,
     read: async () => {
       reads++;
       return reading ? reading() : { status: "OK", findings: findings(), model: "fake", stopReason: "end_turn", inputTokens: 0, outputTokens: 0, costUsd: 0, error: null };
@@ -102,6 +104,8 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
     const paypal = { payerId: "QYR5Z8XDVJNXQ", verified: true, emailVerified: true };
     await fileClaim(desk(), claim({ paypal }));
     await expect(fileClaim(desk(), claim({ paypal }))).rejects.toBeInstanceOf(ClaimRejectedError);
+    // A desk without the identity keys can't take a PayPal claim at all.
+    await expect(fileClaim({ ...desk(), keys: null }, claim({ paypal: { ...paypal, payerId: "DEFGHJKLMNPQ5" } }))).rejects.toThrow("PAYER_SEAL_KEY");
   });
 
   it("refuses a proof claim without a photo, and a file that isn't an image", async () => {
@@ -239,6 +243,52 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       expect(Object.keys(r.outcomes).sort()).toEqual([...new Set(items.map((_, i) => outcomeOf[statuses[i % 3] ?? ""]))].sort());
       const first = await getClaim(pool, items[0]?.sender_item_id ?? "");
       expect(first?.status).toBe("PAID");
+    });
+  });
+
+  describe("claimant privacy (P2, P4–P6)", () => {
+    const row = async (id: string) => (await pool.query("SELECT row_to_json(c)::text AS j FROM claims c WHERE id = $1", [id])).rows[0]?.j as string;
+
+    it("pays a PayPal claimant at their account, while the claim, the plan and the proposal hold only the pseudonym", async () => {
+      const payerId = "ABCDEFGHJKLM2";
+      const { claim: c, result } = await submitClaim(desk(), claim({ paypal: { payerId, verified: true, emailVerified: true }, declaration: "A root beer float at a drive-in on Route 66 near Barstow, July 2016, with my cousins." }));
+      expect(result?.decision.outcome).toBe("APPROVE");
+      expect(await row(c.id)).not.toContain(payerId);
+      const plan = await planDistribution(desk());
+      expect(plan.payees).toContainEqual({ claimId: c.id, payerId });
+      expect(plan.receivers[c.id]).toBe(`pseudonym:${pseudonymOf(KEYS, S.id, payerId)}`);
+      const pia = await setAnalyst(pool, { email: "pia@example.com", name: "Pia", role: "analyst", password: "correct horse battery" }, "test");
+      const { proposal } = await proposeDistribution(desk(), pia);
+      expect(JSON.stringify(proposal.plan)).not.toContain(payerId);
+      expect(JSON.stringify(proposal.plan)).toContain(pseudonymOf(KEYS, S.id, payerId));
+      await cancelProposal(desk(), pia, proposal.id);
+    }, 30_000);
+
+    it("an approved claim from an unverified PayPal account waits, and is paid once its owner logs in verified", async () => {
+      const payerId = "BCDEFGHJKLMN3";
+      const { claim: c, statusToken } = await submitClaim(desk(), claim({ paypal: { payerId, verified: false, emailVerified: null }, declaration: "Hot cocoa twice at a ski lodge cafe in Mammoth Lakes over New Year 2018." }));
+      expect((await getClaim(pool, c.id))?.status).toBe("APPROVE");
+      const before = await planDistribution(desk());
+      expect(before.waitingVerification).toBe(1);
+      expect(before.payees.map((p) => p.claimId)).not.toContain(c.id);
+      const back = await claimantReturns(desk(), { payerId, verified: true, emailVerified: true });
+      expect(back?.claimId).toBe(c.id);
+      const after = await planDistribution(desk());
+      expect(after.waitingVerification).toBe(0);
+      expect(after.payees).toContainEqual({ claimId: c.id, payerId });
+      // Logging in again issues a new private link and retires the old one.
+      expect(await claimByStatusToken(desk(), statusToken)).toBeNull();
+      expect(await claimByStatusToken(desk(), back?.statusToken ?? "")).toBe(c.id);
+      expect(await claimantReturns(desk(), { payerId: "CDEFGHJKLMNP4", verified: true, emailVerified: true })).toBeNull();
+    });
+
+    it("a status link finds only its own claim", async () => {
+      const { claim: c, statusToken } = await submitClaim(desk(), claim({ declaration: "Iced coffee at a bakery counter in Buffalo, a Saturday in October 2017." }));
+      expect(statusToken).toMatch(/^[A-Za-z0-9_-]{32}$/);
+      expect(await claimByStatusToken(desk(), statusToken)).toBe(c.id);
+      expect(await claimByStatusToken(desk(), "A".repeat(32))).toBeNull();
+      expect(await claimByStatusToken(desk(), "../../etc/passwd")).toBeNull();
+      expect(await row(c.id)).not.toContain(statusToken);
     });
   });
 

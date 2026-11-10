@@ -7,10 +7,11 @@ import { createHash, randomBytes } from "node:crypto";
 import { decide, DECISION_VERSION, FindingsSchema, type CheckResult, type Decision, type ExaminerStatus, type Findings, type Settlement } from "@proofofclaim/claims";
 import { hashRotations, ipPrefixKey, runChecks, unitsEvidenced, type CheckConfig, type TaxTable } from "@proofofclaim/checks";
 import {
-  allArrivals, allDeclarations, checkResultsOf, earlierIdentities, earlierImageHashes, earlierReceiptDetails, getClaim, getEvidence, insertClaim, insertEvidence, insertFindings,
+  allArrivals, allDeclarations, checkResultsOf, claimIdByPseudonym, claimIdByStatusToken, setStatusTokenHash, updatePaypalVerified, earlierIdentities, earlierImageHashes, earlierReceiptDetails, getClaim, getEvidence, insertClaim, insertEvidence, insertFindings,
   latestDecision, latestFindings, moveClaim, recordAnalystDecision, recordDecision, withSettlementLock, withTransaction, type ClaimRow, type Pool, type PoolClient,
 } from "@proofofclaim/db";
 import { sniffImageType, type ExamineInput, type ExamineResult } from "@proofofclaim/examiner";
+import { pseudonymOf, sealPayerId, type IdentityKeys } from "./payer-id.ts";
 
 export interface Desk {
   pool: Pool;
@@ -21,6 +22,8 @@ export interface Desk {
   networkSecret: string;
   /** Reads one piece of evidence. Null when no examiner is configured: proof claims then go to a person. */
   read: ((input: ExamineInput) => Promise<ExamineResult>) | null;
+  /** Seal and pseudonym keys for PayPal payer IDs. Null only where no claimant logs in (the demo seed). */
+  keys: IdentityKeys | null;
 }
 
 export interface FileClaimInput {
@@ -51,22 +54,36 @@ export class ClaimRejectedError extends Error {
 
 const newClaimId = () => `poc-${randomBytes(6).toString("hex")}`;
 
-export async function fileClaim(desk: Desk, f: FileClaimInput): Promise<ClaimRow> {
+/** A private status link's token: 24 random bytes. Only its SHA-256 is stored. */
+export const newStatusToken = () => randomBytes(24).toString("base64url");
+export const statusTokenHash = (token: string): Buffer => createHash("sha256").update(token).digest();
+
+/** Files a claim. The status token is returned once, for the claimant's private link, and never stored. */
+export async function fileClaim(desk: Desk, f: FileClaimInput): Promise<ClaimRow & { statusToken: string }> {
   if (f.tier === "proof" && !f.image) throw new ClaimRejectedError("A claim with proof needs a photo of the receipt.");
   const type = f.image ? sniffImageType(f.image) : null;
   if (f.image && !type) throw new ClaimRejectedError("The receipt must be a JPEG, PNG, GIF or WebP photo.");
   // Hash before the transaction: a photo that can't be hashed still files, and C6 says UNKNOWN.
   const phash = f.image ? await hashRotations(f.image).then((r) => r[0] ?? null, () => null) : null;
+  const id = f.id ?? newClaimId();
+  const s = desk.settlement;
+  let paypal = null;
+  if (f.paypal) {
+    if (!desk.keys) throw new Error("a PayPal-logged-in claim needs PAYER_SEAL_KEY and PAYER_PSEUDONYM_KEY");
+    paypal = { pseudonym: pseudonymOf(desk.keys, s.id, f.paypal.payerId), sealed: sealPayerId(desk.keys, s.id, id, f.paypal.payerId), verified: f.paypal.verified, emailVerified: f.paypal.emailVerified };
+  }
+  const statusToken = newStatusToken();
   try {
-    return await withTransaction(desk.pool, async (c) => {
+    const claim = await withTransaction(desk.pool, async (c) => {
       const claim = await insertClaim(c, {
-        id: f.id ?? newClaimId(), settlementId: desk.settlement.id, tier: f.tier, unitsClaimed: f.unitsClaimed, name: f.name, email: f.email,
+        id, settlementId: s.id, tier: f.tier, unitsClaimed: f.unitsClaimed, name: f.name, email: f.email,
         addressLine: f.addressLine, city: f.city, state: f.state, zip: f.zip, declaration: f.declaration,
-        ipKey: f.ip ? ipPrefixKey(f.ip, desk.networkSecret) : null, paypal: f.paypal, ...(f.submittedAt ? { submittedAt: f.submittedAt } : {}),
+        ipKey: f.ip ? ipPrefixKey(f.ip, desk.networkSecret) : null, paypal, statusTokenHash: statusTokenHash(statusToken), ...(f.submittedAt ? { submittedAt: f.submittedAt } : {}),
       });
       if (f.image && type) await insertEvidence(c, { claimId: claim.id, contentType: type, bytes: f.image, sha256: createHash("sha256").update(f.image).digest("hex"), phash });
       return claim;
     });
+    return { ...claim, statusToken };
   } catch (err) {
     if (err instanceof Error && /claims_one_per_paypal_account/.test(err.message)) throw new ClaimRejectedError("This PayPal account has already filed a claim in this settlement.");
     throw err;
@@ -185,11 +202,34 @@ export async function reviewClaim(desk: Desk, claimId: string, outcome: "APPROVE
 }
 
 /** File, read and decide in one go: what the claim form does. */
-export async function submitClaim(desk: Desk, f: FileClaimInput): Promise<{ claim: ClaimRow; result: DeskDecision | null }> {
-  const claim = await fileClaim(desk, f);
+export async function submitClaim(desk: Desk, f: FileClaimInput): Promise<{ claim: ClaimRow; result: DeskDecision | null; statusToken: string }> {
+  const { statusToken, ...claim } = await fileClaim(desk, f);
   await readEvidence(desk, claim.id);
   const result = await decideClaim(desk, claim.id);
-  return { claim, result };
+  return { claim, result, statusToken };
+}
+
+/** The claim behind a private status link, or null. */
+export async function claimByStatusToken(desk: Pick<Desk, "pool">, token: string): Promise<string | null> {
+  if (!/^[A-Za-z0-9_-]{32}$/.test(token)) return null;
+  return claimIdByStatusToken(desk.pool, statusTokenHash(token));
+}
+
+/**
+ * A claimant who logged in with PayPal again: records what PayPal now says about the account's
+ * verification (an approved claim from an unverified account waits for it), and issues a fresh
+ * private status link, since the old one is never stored. Null if this account filed nothing here.
+ */
+export async function claimantReturns(desk: Desk, a: { payerId: string; verified: boolean; emailVerified: boolean | null }): Promise<{ claimId: string; statusToken: string } | null> {
+  if (!desk.keys) throw new Error("needs PAYER_SEAL_KEY and PAYER_PSEUDONYM_KEY");
+  const claimId = await claimIdByPseudonym(desk.pool, desk.settlement.id, pseudonymOf(desk.keys, desk.settlement.id, a.payerId));
+  if (!claimId) return null;
+  const statusToken = newStatusToken();
+  await withTransaction(desk.pool, async (c) => {
+    await updatePaypalVerified(c, claimId, { verified: a.verified, emailVerified: a.emailVerified });
+    await setStatusTokenHash(c, claimId, statusTokenHash(statusToken));
+  });
+  return { claimId, statusToken };
 }
 
 export { latestDecision };
