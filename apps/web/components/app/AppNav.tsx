@@ -9,6 +9,7 @@ const LINKS = [
   { href: `/admin/${S}`, label: "Claims desk" },
   { href: `/admin/${S}/money`, label: "Money" },
   { href: `/report/${S}`, label: "Court report" },
+  { href: "/settlements", label: "Settlements" },
 ];
 
 export function AppNav({ analyst }: { analyst: { name: string; role: string } | null }) {

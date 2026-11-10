@@ -1,0 +1,75 @@
+.page {
+  display: grid;
+  gap: 24px;
+}
+.page h1 {
+  margin-top: 10px;
+  font-size: clamp(2.2rem, 1.4rem + 2.8vw, 3.6rem);
+  line-height: 0.95;
+}
+.lede {
+  margin-top: 12px;
+  color: var(--ink-2);
+  font-size: 15px;
+  max-width: 70ch;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 32px;
+  align-items: center;
+  padding: 20px;
+  border-radius: var(--r-card);
+  border: 1px solid var(--hair-2);
+  background: var(--card);
+}
+.main {
+  display: grid;
+  gap: 6px;
+}
+.main h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 1.05;
+}
+.main p {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.counts {
+  color: var(--ink-3) !important;
+}
+.state {
+  width: fit-content;
+  padding: 1px 10px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+.state[data-open="true"] {
+  background: var(--more-wash);
+  color: var(--more);
+}
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.foot {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+@media (max-width: 800px) {
+  .card {
+    grid-template-columns: 1fr;
+  }
+}

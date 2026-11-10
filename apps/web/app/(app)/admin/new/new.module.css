@@ -1,0 +1,20 @@
+.page {
+  display: grid;
+  gap: 24px;
+  max-width: 960px;
+}
+.page h1 {
+  margin-top: 10px;
+  font-size: clamp(2.2rem, 1.4rem + 2.8vw, 3.6rem);
+  line-height: 0.95;
+}
+.lede {
+  margin-top: 12px;
+  color: var(--ink-2);
+  font-size: 15px;
+}
+.note {
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: var(--paper-2);
+}

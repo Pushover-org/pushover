@@ -189,6 +189,42 @@ test.describe.serial("a claim, from filing to payment", () => {
     await expect(page.locator('[role="status"]').first()).toContainText("FAIL Every decision hashes to the committed root");
   });
 
+  test("a supervisor opens a settlement from the form, and a claimant files into it (P17, P18)", async ({ browser }) => {
+    test.setTimeout(90_000);
+    const sol = await analyst(browser, E2E.supervisor, "/admin/new");
+    await sol.locator('input[name="id"]').fill("e2e-bottle-settlement");
+    await sol.locator('input[name="name"]').fill("E2E Bottle Settlement");
+    await sol.locator('input[name="fund"]').fill("5000");
+    await sol.locator('input[name="reserve"]').fill("250");
+    await sol.locator('input[name="periodStart"]').fill("2015-01-01");
+    await sol.locator('input[name="periodEnd"]').fill("2019-12-31");
+    await sol.locator('input[name="productId"]').fill("insulated-bottle");
+    await sol.locator('input[name="productName"]').fill("Insulated water bottle");
+    await sol.locator('input[name="productDescription"]').fill("Any insulated water bottle");
+    for (const st of ["CA", "NY"]) await sol.locator(`input[name="states"][value="${st}"]`).check();
+    await sol.locator('input[name="unit"]').fill("15");
+    await sol.locator('input[name="maxUnits"]').fill("5");
+    await sol.locator('input[name="flat"]').fill("10");
+    await sol.locator('input[name="cyPresName"]').fill("Clean Water Access Fund");
+    await sol.locator('input[name="cyPresEmail"]').fill("po-merchant-baseline-3h8w@business.example.com");
+    await sol.getByRole("button", { name: "Open the settlement" }).click();
+    await sol.waitForURL(`${E2E.baseURL}/admin/e2e-bottle-settlement`);
+
+    const pub = await (await browser.newContext()).newPage();
+    await pub.goto("/settlements");
+    await expect(pub.getByRole("heading", { name: "E2E Bottle Settlement (fictional demo)" })).toBeVisible();
+
+    const { page } = await claimant(browser, { payerId: "E2EBTTLE23456", name: "Bea Bottle", state: "CA", ip: "198.51.100.60" });
+    await page.goto("/claim/e2e-bottle-settlement");
+    await page.getByRole("button", { name: /No receipt/ }).click();
+    await page.locator('textarea[name="declaration"]').fill("I bought two insulated bottles for hiking trips at an outdoor shop in Sacramento in 2018.");
+    await page.locator('input[name="sworn"]').check();
+    await page.getByRole("button", { name: "File my claim" }).click();
+    await page.waitForURL(/\/status\/[A-Za-z0-9_-]{32}$/);
+    await expect(page.getByRole("heading", { name: "Approved", exact: true })).toBeVisible();
+    await expect(page.getByText("E2E Bottle Settlement (fictional demo)")).toBeVisible();
+  });
+
   test("live: the browser fetches the committed drand round from drand's relays and verifies it (LIVE_DRAND=1)", async ({ page }) => {
     test.skip(!process.env["LIVE_DRAND"], "needs the real drand network; run with LIVE_DRAND=1");
     test.setTimeout(120_000);
