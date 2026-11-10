@@ -2,7 +2,11 @@
 // involved. The batch is written to the database BEFORE PayPal is called, so a crash after the
 // call leaves a record to reconcile, never money nobody knows about.
 import { allocate, buildClaimBatches, sendBatch, type Allocation, type Payee } from "@proofofclaim/distribute";
-import { canMoveClaim, getClaim, listClaims, markBatchSent, moveClaim, planBatch, recordItemRead, withTransaction, type ClaimState } from "@proofofclaim/db";
+import { createHash } from "node:crypto";
+import {
+  canMoveClaim, decideProposal, getClaim, getProposal, insertProposal, listClaims, markBatchSent, moveClaim, openProposal, planBatch, recordItemRead, withTransaction,
+  type Analyst, type ClaimState, type MoneyProposal,
+} from "@proofofclaim/db";
 import { getPayoutBatch, payoutItemOutcome, valueToCents, type PayPalClient } from "@proofofclaim/paypal";
 import { decideClaim } from "./desk.ts";
 import type { Desk } from "./desk.ts";
@@ -57,8 +61,91 @@ export interface DistributionResult {
   batches: { senderBatchId: string; paypalBatchId: string; status: string; items: number; cents: number; duplicate: boolean }[];
 }
 
-/** Plans each batch in the database, then sends it. A repeat of the same round sends nothing new. */
-export async function distribute(desk: Desk, pp: PayPalClient, plan: DistributionPlan, by: string): Promise<DistributionResult> {
+/** How long a proposal waits for its second person. */
+export const PROPOSAL_TTL_MINUTES = 24 * 60;
+
+/** Money refused for a reason a person can act on. Nothing was sent. */
+export class MoneyRefusedError extends Error {
+  override name = "MoneyRefusedError";
+}
+
+/** What a proposal fixes: every payee, amount and receiver. The approver's plan must hash the same. */
+export function planDigest(settlementId: string, plan: DistributionPlan): { hash: Buffer; summary: PlanSummary } {
+  const receiver = new Map(plan.payees.map((p) => [p.claimId, p.payerId ? `PAYPAL_ID:${p.payerId}` : `EMAIL:${p.email ?? ""}`]));
+  const items = plan.allocation.payouts.filter((p) => p.payoutCents > 0).map((p) => ({ claimId: p.claimId, cents: p.payoutCents, receiver: receiver.get(p.claimId) ?? "" }));
+  const summary: PlanSummary = {
+    settlementId, kind: "CLAIMS", round: plan.round, fundCents: plan.fundCents, totalCents: items.reduce((t, i) => t + i.cents, 0),
+    reservedFeesCents: plan.allocation.reservedFeesCents, scaled: plan.allocation.scaled, items,
+  };
+  return { hash: createHash("sha256").update(JSON.stringify(summary)).digest(), summary };
+}
+
+export interface PlanSummary {
+  settlementId: string;
+  kind: "CLAIMS";
+  round: number;
+  fundCents: number;
+  totalCents: number;
+  reservedFeesCents: number;
+  scaled: boolean;
+  items: { claimId: string; cents: number; receiver: string }[];
+}
+
+/**
+ * First person: re-checks every approved claim, plans the round and records the exact plan for a
+ * second person to approve. Nothing is sent.
+ */
+export async function proposeDistribution(desk: Desk, by: Analyst, opt: { capCents?: number } = {}): Promise<{ proposal: MoneyProposal; moved: Awaited<ReturnType<typeof recheckApproved>> }> {
+  const moved = await recheckApproved(desk);
+  const plan = await planDistribution(desk, opt);
+  const { hash, summary } = planDigest(desk.settlement.id, plan);
+  if (summary.items.length === 0) throw new MoneyRefusedError("No approved claims are waiting to be paid.");
+  const id = await withTransaction(desk.pool, (tx) =>
+    insertProposal(tx, { settlementId: desk.settlement.id, kind: "CLAIMS", planHash: hash, plan: summary, totalCents: summary.totalCents, by, ttlMinutes: PROPOSAL_TTL_MINUTES }),
+  );
+  const proposal = await getProposal(desk.pool, id);
+  if (!proposal) throw new Error(`proposal ${id} vanished`);
+  return { proposal, moved };
+}
+
+/** The proposer, or any supervisor, withdraws an open proposal. */
+export async function cancelProposal(desk: Desk, by: Analyst, proposalId: number): Promise<void> {
+  const p = await getProposal(desk.pool, proposalId);
+  if (!p || p.settlementId !== desk.settlement.id || p.status !== "PROPOSED") throw new MoneyRefusedError("That proposal is no longer open.");
+  if (p.proposedBy.id !== by.id && by.role !== "supervisor") throw new MoneyRefusedError("Only the person who proposed it, or a supervisor, can withdraw it.");
+  await withTransaction(desk.pool, (tx) => decideProposal(tx, { id: p.id, status: "CANCELLED", by }));
+}
+
+/**
+ * Second person: approves an open proposal and sends it. The approver must be a supervisor and
+ * not the proposer. Every approved claim is re-checked and the round planned again; if the plan is
+ * not exactly the one proposed, nothing is sent and the proposal is superseded.
+ */
+export async function approveAndDistribute(desk: Desk, pp: PayPalClient, approver: Analyst, proposalId: number, opt: { capCents?: number } = {}): Promise<DistributionResult> {
+  const p = await getProposal(desk.pool, proposalId);
+  if (!p || p.settlementId !== desk.settlement.id || p.kind !== "CLAIMS" || p.status !== "PROPOSED") throw new MoneyRefusedError("That proposal is no longer open.");
+  if (p.proposedBy.id === approver.id) throw new MoneyRefusedError("A different person has to approve: you proposed this one.");
+  if (approver.role !== "supervisor") throw new MoneyRefusedError("Only a supervisor can approve money leaving the fund.");
+  if (p.expiresAt.getTime() <= Date.now()) throw new MoneyRefusedError("This proposal expired. Propose the round again.");
+  await recheckApproved(desk);
+  const plan = await planDistribution(desk, opt);
+  const { hash } = planDigest(desk.settlement.id, plan);
+  if (!hash.equals(p.planHash)) {
+    await withTransaction(desk.pool, (tx) => decideProposal(tx, { id: p.id, status: "SUPERSEDED", by: approver }));
+    throw new MoneyRefusedError("Claims changed since this was proposed, so the plan is different. Nothing was sent; propose the round again.");
+  }
+  const won = await withTransaction(desk.pool, (tx) => decideProposal(tx, { id: p.id, status: "APPROVED", by: approver }));
+  if (!won) throw new MoneyRefusedError("Someone else decided this proposal first.");
+  return distribute(desk, pp, plan, { proposalId: p.id, proposedBy: p.proposedBy, approvedBy: approver });
+}
+
+export { openProposal };
+
+/**
+ * Plans each batch in the database, then sends it. Only `approveAndDistribute` calls this: the
+ * database refuses a batch without an approved proposal.
+ */
+async function distribute(desk: Desk, pp: PayPalClient, plan: DistributionPlan, who: { proposalId: number; proposedBy: Analyst; approvedBy: Analyst }): Promise<DistributionResult> {
   const s = desk.settlement;
   const batches = buildClaimBatches({
     settlementId: s.id, round: plan.round, allocation: plan.allocation, payees: plan.payees,
@@ -68,13 +155,16 @@ export async function distribute(desk: Desk, pp: PayPalClient, plan: Distributio
   for (const [i, b] of batches.entries()) {
     await withTransaction(desk.pool, async (tx) => {
       await planBatch(tx, {
-        settlementId: s.id, kind: "CLAIMS", round: plan.round, part: i + 1, senderBatchId: b.senderBatchId,
+        settlementId: s.id, kind: "CLAIMS", round: plan.round, part: i + 1, senderBatchId: b.senderBatchId, proposalId: who.proposalId,
         items: b.items.map((it) => ({
           senderItemId: it.senderItemId, claimId: it.senderItemId, cents: it.cents,
           receiver: it.receiverPayerId ?? it.receiverEmail ?? "", recipientType: it.receiverPayerId ? "PAYPAL_ID" : "EMAIL",
         })),
       });
-      await tx.query("INSERT INTO audit_log (actor, action, subject, detail) VALUES ($1, 'distribute', $2, $3)", [by, b.senderBatchId, JSON.stringify({ round: plan.round, fund_cents: plan.fundCents })]);
+      await tx.query("INSERT INTO audit_log (actor, action, subject, detail) VALUES ($1, 'distribute', $2, $3)", [
+        `analyst:${who.approvedBy.email}`, b.senderBatchId,
+        JSON.stringify({ round: plan.round, fund_cents: plan.fundCents, proposal_id: who.proposalId, proposed_by: who.proposedBy.email, approved_by: who.approvedBy.email }),
+      ]);
     });
     const sent = await sendBatch(pp, b);
     const fees = sent.header.fees ? valueToCents(sent.header.fees.value) : null;
@@ -91,7 +181,7 @@ const CLAIM_STATE: Record<string, ClaimState | null> = { PAID: "PAID", UNCLAIMED
 
 /** Reads a batch back from PayPal item by item, records each outcome, and moves each claim to match. */
 export async function readBack(desk: Desk, pp: PayPalClient, batchId: number): Promise<{ status: string; outcomes: Record<string, number> }> {
-  const { rows } = await desk.pool.query<{ paypal_batch_id: string | null }>("SELECT paypal_batch_id FROM payout_batches WHERE id = $1", [batchId]);
+  const { rows } = await desk.pool.query<{ paypal_batch_id: string | null }>("SELECT paypal_batch_id FROM payout_batches WHERE id = $1 AND settlement_id = $2", [batchId, desk.settlement.id]);
   const paypalId = rows[0]?.paypal_batch_id;
   if (!paypalId) throw new Error(`batch ${batchId} was never sent`);
   const b = await getPayoutBatch(pp, paypalId);

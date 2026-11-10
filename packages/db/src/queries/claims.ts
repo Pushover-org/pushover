@@ -246,6 +246,8 @@ export interface PlannedBatch {
   round: number;
   part: number;
   senderBatchId: string;
+  /** The approved money proposal this batch carries out (migration 0006). */
+  proposalId: number;
   items: { senderItemId: string; claimId: string | null; receiver: string; cents: number; recipientType?: "EMAIL" | "PAYPAL_ID" }[];
 }
 
@@ -256,15 +258,15 @@ export interface PlannedBatch {
 export async function planBatch(c: PoolClient, b: PlannedBatch): Promise<number> {
   const amount = b.items.reduce((s, i) => s + i.cents, 0);
   const { rows } = await c.query<{ id: string }>(
-    "INSERT INTO payout_batches (settlement_id, kind, round, part, sender_batch_id, amount_cents) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-    [b.settlementId, b.kind, b.round, b.part, b.senderBatchId, amount],
+    "INSERT INTO payout_batches (settlement_id, kind, round, part, sender_batch_id, amount_cents, proposal_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+    [b.settlementId, b.kind, b.round, b.part, b.senderBatchId, amount, b.proposalId],
   );
   const id = toNumber((rows[0] as { id: string }).id);
   for (const i of b.items) {
     await c.query("INSERT INTO payout_items (batch_id, claim_id, sender_item_id, receiver, amount_cents, recipient_type) VALUES ($1, $2, $3, $4, $5, $6)", [id, i.claimId, i.senderItemId, i.receiver, i.cents, i.recipientType ?? "EMAIL"]);
     if (i.claimId !== null) await moveClaim(c, i.claimId, "APPROVE", "SCHEDULED");
   }
-  await appendAudit(c, { actor: "system", action: "batch_planned", subject: b.senderBatchId, detail: { batch_id: id, kind: b.kind, items: b.items.length, amount_cents: amount } });
+  await appendAudit(c, { actor: "system", action: "batch_planned", subject: b.senderBatchId, detail: { batch_id: id, kind: b.kind, items: b.items.length, amount_cents: amount, proposal_id: b.proposalId } });
   return id;
 }
 

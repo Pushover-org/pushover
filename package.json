@@ -24,7 +24,9 @@
     "db:migrate": "node --env-file-if-exists=.env.local packages/db/src/bin/migrate.ts",
     "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.ts",
     "test:sandbox": "node --env-file-if-exists=.env.local node_modules/vitest/vitest.mjs run --config vitest.sandbox.config.ts",
-    "demo:seed": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-seed.ts"
+    "demo:seed": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-seed.ts",
+    "admin:add": "node --env-file-if-exists=.env.local packages/desk/scripts/add-analyst.ts",
+    "demo:analysts": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-analysts.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

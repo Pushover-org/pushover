@@ -6,7 +6,11 @@ import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DATABASE_URL, freshDatabase } from "../../db/test/testdb.ts";
 import { fakePayPal, json, makeClient } from "../../paypal/test/fake.ts";
-import { ClaimRejectedError, decideClaim, distribute, fileClaim, planDistribution, readBack, recheckApproved, reviewClaim, submitClaim, type Desk, type FileClaimInput } from "../src/index.ts";
+import {
+  analystFromToken, approveAndDistribute, cancelProposal, ClaimRejectedError, decideClaim, fileClaim, hashPassword, login, logout, MoneyRefusedError, openProposal, planDistribution,
+  proposeDistribution, readBack, recheckApproved, reviewClaim, setAnalyst, submitClaim, verifyPassword, type Desk, type FileClaimInput,
+} from "../src/index.ts";
+import type { Analyst } from "@proofofclaim/db";
 
 const S = parseSettlement({
   id: "desk-test", name: "Desk Test Settlement (fictional demo)", demo: true, currency: "USD", fundCents: 200_000, adminReserveCents: 10_000,
@@ -121,26 +125,68 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       expect((await getClaim(pool, early.claim.id))?.status).toBe("REVIEW");
     });
 
-    it("pays a PayPal-verified claimant by payer ID and anyone else by email, writing the batch before sending it", async () => {
+    let ana: Analyst;
+    let lee: Analyst;
+    let sol: Analyst;
+    const sendsPB1 = () => fakePayPal([(call) => {
+      const body = JSON.parse(call.body ?? "{}") as { sender_batch_header: { sender_batch_id: string } };
+      return json(201, { batch_header: { payout_batch_id: "PB1", batch_status: "PENDING", sender_batch_header: body.sender_batch_header } });
+    }]);
+
+    it("money needs two people: a proposer, then a different supervisor", async () => {
+      ana = await setAnalyst(pool, { email: "Ana@Example.com", name: "Ana", role: "analyst", password: "correct horse battery" }, "test");
+      lee = await setAnalyst(pool, { email: "lee@example.com", name: "Lee", role: "analyst", password: "correct horse battery" }, "test");
+      sol = await setAnalyst(pool, { email: "sol@example.com", name: "Sol", role: "supervisor", password: "correct horse battery" }, "test");
+      expect(ana.email).toBe("ana@example.com");
+      const { proposal } = await proposeDistribution(desk(), ana, { capCents: 5000 });
+      expect(proposal).toMatchObject({ status: "PROPOSED", proposedBy: { email: "ana@example.com" } });
+      const never = fakePayPal([]);
+      const { client } = makeClient(never.fetch);
+      await expect(approveAndDistribute(desk(), client, ana, proposal.id, { capCents: 5000 })).rejects.toThrow("you proposed this one");
+      await expect(approveAndDistribute(desk(), client, lee, proposal.id, { capCents: 5000 })).rejects.toThrow("Only a supervisor");
+      expect(never.calls).toHaveLength(0);
+      expect((await openProposal(pool, S.id, "CLAIMS"))?.id).toBe(proposal.id);
+    }, 60_000);
+
+    it("if claims change between proposal and approval, nothing is sent and the proposal is superseded", async () => {
+      const open = await openProposal(pool, S.id, "CLAIMS");
+      await submitClaim(desk(), claim({ declaration: "A late claim: I had a lemonade with dinner at a cafe in Fresno in 2018." }));
+      const never = fakePayPal([]);
+      const { client } = makeClient(never.fetch);
+      await expect(approveAndDistribute(desk(), client, sol, open?.id ?? -1, { capCents: 5000 })).rejects.toThrow(MoneyRefusedError);
+      expect(never.calls).toHaveLength(0);
+      expect(await openProposal(pool, S.id, "CLAIMS")).toBeNull();
+      const { rows } = await pool.query("SELECT count(*)::int AS n FROM payout_batches");
+      expect(rows[0].n).toBe(0);
+    });
+
+    it("the proposer can withdraw their proposal; another analyst can't", async () => {
+      const { proposal } = await proposeDistribution(desk(), ana, { capCents: 5000 });
+      await expect(cancelProposal(desk(), lee, proposal.id)).rejects.toThrow("Only the person who proposed it");
+      await cancelProposal(desk(), ana, proposal.id);
+      expect(await openProposal(pool, S.id, "CLAIMS")).toBeNull();
+    });
+
+    it("approved by a second person, the batch is written before PayPal is called and names both people", async () => {
       const plan = await planDistribution(desk(), { capCents: 5000 });
       expect(plan.fundCents).toBe(5000);
-      const ppId = plan.payees.find((p) => p.payerId);
-      expect(ppId).toBeUndefined(); // the one PayPal-account claim above is still unread, not approved
-      const pp = fakePayPal([(call) => {
-        const body = JSON.parse(call.body ?? "{}") as { sender_batch_header: { sender_batch_id: string }; items: { recipient_type: string }[] };
-        return json(201, { batch_header: { payout_batch_id: "PB1", batch_status: "PENDING", sender_batch_header: body.sender_batch_header } });
-      }]);
+      expect(plan.payees.find((p) => p.payerId)).toBeUndefined(); // the one PayPal-account claim above is still unread, not approved
+      const { proposal } = await proposeDistribution(desk(), ana, { capCents: 5000 });
+      const pp = sendsPB1();
       const { client } = makeClient(pp.fetch);
-      const before = await pool.query("SELECT count(*)::int AS n FROM payout_batches");
-      const out = await distribute(desk(), client, plan, "test-analyst");
+      const out = await approveAndDistribute(desk(), client, sol, proposal.id, { capCents: 5000 });
+      expect(pp.calls).toHaveLength(1);
       expect(out.batches).toHaveLength(1);
       expect(out.batches[0]).toMatchObject({ paypalBatchId: "PB1", status: "PENDING", duplicate: false });
-      const after = await pool.query("SELECT count(*)::int AS n FROM payout_batches");
-      expect(after.rows[0].n - before.rows[0].n).toBe(1);
-      const sentTotal = out.batches[0]?.cents ?? 0;
-      expect(sentTotal).toBeLessThanOrEqual(5000);
+      expect(out.batches[0]?.cents).toBe(proposal.totalCents);
+      expect(out.batches[0]?.cents).toBeLessThanOrEqual(5000);
+      const { rows: b } = await pool.query("SELECT proposal_id FROM payout_batches");
+      expect(b).toEqual([{ proposal_id: String(proposal.id) }]);
       const { rows } = await pool.query("SELECT DISTINCT status FROM claims WHERE id IN (SELECT claim_id FROM payout_items)");
       expect(rows.map((r) => r.status)).toEqual(["SCHEDULED"]);
+      const { rows: audit } = await pool.query("SELECT actor, detail FROM audit_log WHERE action = 'distribute'");
+      expect(audit).toEqual([{ actor: "analyst:sol@example.com", detail: expect.objectContaining({ proposed_by: "ana@example.com", approved_by: "sol@example.com", proposal_id: proposal.id }) }]);
+      await expect(approveAndDistribute(desk(), client, sol, proposal.id, { capCents: 5000 })).rejects.toThrow("no longer open");
     });
 
     it("reads every item back and moves each claim to what PayPal reports", async () => {
@@ -160,5 +206,45 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       const first = await getClaim(pool, items[0]?.sender_item_id ?? "");
       expect(first?.status).toBe("PAID");
     });
+  });
+
+  describe("analyst login", () => {
+    const network = "net-test";
+    it("hashes with a fresh salt, and verifies only the right password", async () => {
+      const a = await hashPassword("a long enough password");
+      const b = await hashPassword("a long enough password");
+      expect(a).toMatch(/^scrypt\$131072\$8\$1\$/);
+      expect(a).not.toBe(b);
+      expect(await verifyPassword("a long enough password", a)).toBe(true);
+      expect(await verifyPassword("a long enough passworD", a)).toBe(false);
+      expect(await verifyPassword("anything", "not-a-hash")).toBe(false);
+      await expect(hashPassword("short")).rejects.toThrow("at least 12");
+    }, 30_000);
+
+    it("logs in, opens a session only with its token, and logs out", async () => {
+      const r = await login(pool, { email: " SOL@example.com ", password: "correct horse battery", network });
+      if (!r.ok) throw new Error(r.error);
+      expect(r.analyst).toMatchObject({ email: "sol@example.com", role: "supervisor" });
+      expect(await analystFromToken(pool, r.token)).toEqual(r.analyst);
+      expect(await analystFromToken(pool, `${r.token}x`)).toBeNull();
+      expect(await analystFromToken(pool, undefined)).toBeNull();
+      const { rows } = await pool.query("SELECT encode(token_hash, 'hex') AS h FROM analyst_sessions");
+      expect(rows.map((x) => x.h)).not.toContain(Buffer.from(r.token).toString("hex")); // only the hash is stored
+      await logout(pool, r.token);
+      expect(await analystFromToken(pool, r.token)).toBeNull();
+    }, 30_000);
+
+    it("refuses a wrong password or unknown email the same way, records it, and locks out after 5", async () => {
+      const bad = await login(pool, { email: "nobody@example.com", password: "whatever whatever", network });
+      expect(bad).toEqual({ ok: false, error: "That email and password don't match an analyst account." });
+      for (let i = 0; i < 5; i++) {
+        const r = await login(pool, { email: "lee@example.com", password: `wrong password ${i}`, network: `n${i}` });
+        expect(r).toEqual({ ok: false, error: "That email and password don't match an analyst account." });
+      }
+      const locked = await login(pool, { email: "lee@example.com", password: "correct horse battery", network: "elsewhere" });
+      expect(locked).toEqual({ ok: false, error: "Too many failed attempts. Try again in 15 minutes." });
+      const { rows } = await pool.query("SELECT action, count(*)::int AS n FROM audit_log WHERE subject = 'lee@example.com' AND action LIKE 'login%' GROUP BY action ORDER BY action");
+      expect(rows).toEqual([{ action: "login_failed", n: 5 }, { action: "login_locked", n: 1 }]);
+    }, 60_000);
   });
 });
