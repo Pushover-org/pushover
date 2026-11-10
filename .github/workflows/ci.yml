@@ -52,3 +52,35 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+
+  e2e:
+    # The real app as a production build on its own database, a fake PayPal on localhost and no
+    # examiner (playwright.config.ts), so the run needs no secrets and sends nothing.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: pushover
+          POSTGRES_PASSWORD: pushover-ci
+          POSTGRES_DB: pushover
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pushover"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://pushover:pushover-ci@localhost:5432/pushover
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e

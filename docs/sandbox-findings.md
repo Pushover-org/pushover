@@ -317,3 +317,15 @@ unconfirmed emails **not** allowed. Logged in as po-buyer1 (Dana Reyes). Play mo
     create call itself returned 201; the failure only shows on read-back.
   - So a claim can be paid to exactly the account that logged in, with no email to swap.
 - Not yet tested: what an unverified account returns.
+
+### Localhost as a Return URL (checked 2026-11-10)
+
+`GET https://www.sandbox.paypal.com/connect?flowEntry=static&client_id=<guarded app>&response_type=code&scope=openid&redirect_uri=…`
+with `redirect_uri=http://localhost:3100/api/paypal/callback` returns PayPal's generic error page,
+whose links carry `invalid_redirect_uri` and "Invalid redirect_uri http://localhost:3100/…". The
+same request with the Return URL already registered on the app
+(`https://example.com/rightfulshare/paypal-callback`) shows the normal login and consent page.
+Not tested: whether the dashboard would accept localhost as a Return URL at all. Either way the
+live Log in with PayPal from the app is proved on the deployed URL (R12), and e2e signs the
+identity cookie itself.
+
