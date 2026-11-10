@@ -90,16 +90,23 @@ export interface ClaimView {
   paypalVerified: boolean | null;
   /** The PayPal account's per-settlement pseudonym; the payer ID itself is never shown. */
   paypalPseudonym: string | null;
+  /** Who filed it (P11, P14): the claimant on the form, or an assistant under the name it gave. */
+  filedVia: "FORM" | "ASSISTANT";
+  agentName: string | null;
+  /** When its person confirmed an assistant's filing; null while it waits. */
+  boundAt: string | null;
 }
 
 interface Row {
   id: string; seq: string; tier: "proof" | "no_proof"; units_claimed: number; claimant_name: string; payout_email: string; state: string; status: string; submitted_at: Date;
   outcome: Outcome | null; reason: string | null; rule: number | null; units: number | null; entitlement_cents: number | null; decided_by: string | null;
   has_evidence: boolean; findings: unknown; failed: string[] | null; unknown: string[] | null; c7: string | null; paypal_verified: boolean | null; paypal_pseudonym: string | null;
+  filed_via: "FORM" | "ASSISTANT"; agent_name: string | null; bound_at: Date | null;
 }
 
 const CLAIMS_SQL = `
 SELECT c.id, c.seq, c.tier, c.units_claimed, c.claimant_name, c.payout_email, c.state, c.status, c.submitted_at, c.paypal_verified, c.paypal_pseudonym,
+       c.filed_via, c.agent_name, c.bound_at,
        d.outcome, d.reason, d.rule, d.units, d.entitlement_cents, d.decided_by,
        EXISTS (SELECT 1 FROM claim_evidence e WHERE e.claim_id = c.id) AS has_evidence,
        f.findings,
@@ -122,11 +129,18 @@ function toView(r: Row): ClaimView {
     hasEvidence: r.has_evidence, merchant: f?.merchant_name ?? null, purchaseDate: f?.purchase_date ?? null, totalCents: f?.total_cents ?? null,
     confidence: f?.confidence ?? null, modelSaid: f?.model_recommendation ?? null, failed: r.failed ?? [], unknown: r.unknown ?? [],
     cluster: Number.isFinite(cluster) ? cluster : null, paypalVerified: r.paypal_verified, paypalPseudonym: r.paypal_pseudonym,
+    filedVia: r.filed_via, agentName: r.agent_name, boundAt: r.bound_at?.toISOString() ?? null,
   };
 }
 
-export async function claimViews(settlementId: string): Promise<ClaimView[]> {
-  const { rows } = await pool().query<Row>(`${CLAIMS_SQL} ORDER BY c.seq`, [settlementId]);
+/**
+ * The settlement's claims. An assistant's filing nobody has confirmed (UNBOUND, LAPSED) is not a
+ * claim, so it is left out unless asked for: the court report, the totals, the scoreboard, the groups
+ * and the desk agent never see one. The analysts' grid asks, to show what is waiting.
+ */
+export async function claimViews(settlementId: string, opt: { includeUnconfirmed?: boolean } = {}): Promise<ClaimView[]> {
+  const where = opt.includeUnconfirmed ? "" : " AND c.status NOT IN ('UNBOUND', 'LAPSED')";
+  const { rows } = await pool().query<Row>(`${CLAIMS_SQL}${where} ORDER BY c.seq`, [settlementId]);
   return rows.map(toView);
 }
 

@@ -178,5 +178,16 @@ describe.skipIf(!DATABASE_URL)("packages/db against Postgres", () => {
       for (const t of grants) expect(grants.filter((g) => g >= t && g < t + 60_000).length).toBeLessThanOrEqual(4);
       expect(grants.at(-1)! - grants[0]!).toBe(120_000);
     });
+
+    it("allow() refuses at once with a retry time, instead of waiting", async () => {
+      let now = Date.parse("2026-10-30T01:00:00Z");
+      const l = new PgRateLimiter(pool, { key: "test-allow", perMinute: 2, now: () => now, sleep: async () => { throw new Error("allow() must not sleep"); } });
+      expect(await l.allow()).toEqual({ ok: true });
+      now += 10_000;
+      expect(await l.allow()).toEqual({ ok: true });
+      expect(await l.allow()).toEqual({ ok: false, retryAfterMs: 50_000 });
+      now += 50_000;
+      expect(await l.allow()).toEqual({ ok: true });
+    });
   });
 });

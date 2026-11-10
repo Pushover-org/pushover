@@ -15,6 +15,7 @@
     "@bryntum/scheduler-enterprise": "8.0.0",
     "@bryntum/scheduler-react-enterprise": "8.0.0",
     "@gsap/react": "2.1.2",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@number-flow/react": "0.6.2",
     "@proofofclaim/checks": "workspace:*",
     "@proofofclaim/claims": "workspace:*",

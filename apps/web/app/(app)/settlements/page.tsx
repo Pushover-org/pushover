@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 export default async function Settlements() {
   const { rows } = await pool().query<{ config: unknown; claims: number; decided: number; paid_cents: string | null; ledgers: number }>(
     `SELECT s.config,
-            (SELECT count(*)::int FROM claims c WHERE c.settlement_id = s.id) AS claims,
-            (SELECT count(*)::int FROM claims c WHERE c.settlement_id = s.id AND c.status NOT IN ('SUBMITTED', 'EXAMINED')) AS decided,
+            (SELECT count(*)::int FROM claims c WHERE c.settlement_id = s.id AND c.status NOT IN ('UNBOUND', 'LAPSED')) AS claims,
+            (SELECT count(*)::int FROM claims c WHERE c.settlement_id = s.id AND c.status NOT IN ('UNBOUND', 'LAPSED', 'SUBMITTED', 'EXAMINED')) AS decided,
             (SELECT sum(i.amount_cents) FROM payout_items i JOIN payout_batches b ON b.id = i.batch_id WHERE b.settlement_id = s.id AND b.kind = 'CLAIMS' AND i.outcome = 'PAID') AS paid_cents,
             (SELECT count(*)::int FROM ledger_commitments l WHERE l.settlement_id = s.id) AS ledgers
      FROM settlements s ORDER BY s.created_at DESC NULLS LAST, s.id`,

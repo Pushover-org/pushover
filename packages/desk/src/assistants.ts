@@ -25,8 +25,11 @@ export interface AssistantFiling {
   tier: "proof" | "no_proof";
   unitsClaimed: number;
   name: string;
-  /** Where to reach the person until they confirm; replaced by their PayPal email when they do. */
-  email: string;
+  /**
+   * Optional, and the public API never sends it: the person's PayPal email replaces it when they
+   * confirm, so an assistant never has to hand over anyone's email address.
+   */
+  email?: string;
   addressLine: string;
   city: string;
   state: string;
@@ -63,11 +66,11 @@ export async function fileForPerson(desk: Desk, f: AssistantFiling, now = new Da
   const id = `poc-${randomBytes(6).toString("hex")}`;
   const claim = await withTransaction(desk.pool, async (c) => {
     const claim = await insertClaim(c, {
-      id, settlementId: desk.settlement.id, tier: f.tier, unitsClaimed: f.tier === "proof" ? f.unitsClaimed : 1, name: f.name, email: f.email,
+      id, settlementId: desk.settlement.id, tier: f.tier, unitsClaimed: f.tier === "proof" ? f.unitsClaimed : 1, name: f.name, email: f.email ?? "",
       addressLine: f.addressLine, city: f.city, state: f.state, zip: f.zip, declaration: f.declaration,
       // The assistant's own servers are not the person's network: C9 gets the person's at confirmation.
       ipKey: null, paypal: null, statusTokenHash: statusTokenHash(statusToken),
-      signals: signalKeys(desk, { email: f.email, addressLine: f.addressLine, zip: f.zip, deviceId: null }),
+      signals: signalKeys(desk, { email: f.email ?? "", addressLine: f.addressLine, zip: f.zip, deviceId: null }),
       assistant: { agentName: f.agentName, confirmTokenHash: confirmTokenHash(confirmToken) },
     });
     if (f.image && type) await insertEvidence(c, { claimId: claim.id, contentType: type, bytes: f.image, sha256: createHash("sha256").update(f.image).digest("hex"), phash });

@@ -37,6 +37,15 @@ export class PgRateLimiter {
     }
   }
 
+  /**
+   * Takes a slot now or says no, without waiting: for a public endpoint, which should refuse with a
+   * retry time rather than hold the request open.
+   */
+  async allow(): Promise<{ ok: true } | { ok: false; retryAfterMs: number }> {
+    const waitMs = await this.tryTake();
+    return waitMs === 0 ? { ok: true } : { ok: false, retryAfterMs: waitMs };
+  }
+
   /** 0 when granted, otherwise how long until the oldest grant leaves the window. */
   private async tryTake(): Promise<number> {
     const client = await this.pool.connect();
