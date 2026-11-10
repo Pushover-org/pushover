@@ -4,3 +4,4 @@ export * from "./identity.ts";
 export * from "./image-hash.ts";
 export * from "./run.ts";
 export * from "./tax.ts";
+export * from "./rings.ts";
