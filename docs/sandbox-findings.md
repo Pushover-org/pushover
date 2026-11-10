@@ -364,3 +364,10 @@ Asked the sandbox (guarded app) at about 05:56 UTC, twenty minutes after batch `
 - **`GET /v1/notifications/webhooks-event-types`**, payout events: `PAYMENT.PAYOUTS-ITEM.{BLOCKED,
   CANCELED, FAILED, HELD, REFUNDED, RETURNED, SUCCEEDED, UNCLAIMED}` and
   `PAYMENT.PAYOUTSBATCH.{DENIED, PROCESSING, SUCCESS}`.
+
+### The plan digest survives in PayPal's record (P36, 2026-11-10, `scripts/money/note-check.ts`)
+
+Batch `JX2JYNCASDVQG`: one $1.00 item to po-buyer2 with the note
+`Proof of Claim note-check claims round 1, plan sha256:<64 hex>`. Read back: `SUCCESS`, fee $0.25,
+`payout_item.note` returned exactly as sent, and `sender_batch_header.email_message` with the
+16-hex digest intact. So every payout's own PayPal record names the plan two people approved.

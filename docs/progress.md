@@ -53,13 +53,16 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 1 Admin login and roles (P16, C7) | done (`1db104e`, `976a508`) |
 | 2 Finish R10: e2e, live login, first Distribute from the app | done except the live Log in with PayPal, which needs the deployed URL (below) |
 | 3 Identity and privacy (P2, P4–P8) | done (`1dab995`, `0023e45`) |
-| 4 Money path: the R11 worker (P34, P36, P38–P40, C4, B5) | next |
-| 5–14 | not started |
+| 4 Money path: the R11 worker (P34, P36, P38–P40, C4, B5) | done (`bb4c15c`..`e8ef04d`); webhook registration waits for the deployed URL |
+| 5 The decision ledger (P33, P42–P45, C1, C2) | next |
+| 6–14 | not started |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
 **C7** two-person approval (enforced in code and in the database), P35/P37 (already had),
 **P2** unverified accounts wait, **P4** sealed payer ID, **P5** per-settlement pseudonyms, **P6** private
-status link, **P7** every state in plain words, **P8** expected amount.
+status link, **P7** every state in plain words, **P8** expected amount, **P34** balance check, **P36** plan
+digest on every payout (verified in the sandbox), **P38** verified webhooks (code; registration after deploy),
+**P39** PayPal history check, **P40** where the money went, **C4** re-offer, **B5** cy-près with two people.
 
 - **Phase 1 evidence (2026-11-10):** migration 0006 (analysts, sessions as token hashes, money
   proposals; database guards: no self-approval, supervisor only, no approval after expiry, no
@@ -82,6 +85,15 @@ status link, **P7** every state in plain words, **P8** expected amount.
   `test/identity-boundary.test.ts`. Planted: a web file opening a sealed ID, and paying unverified
   accounts; both failed tests. e2e 8/8; the e2e database holds no plain payer ID anywhere (checked
   directly). `pnpm test` 787/787 in 28 files. GitHub CI green, including the e2e job.
+- **Phase 4 evidence (2026-11-10):** research first (`scripts/money/probe-reporting.ts`: balance two
+  hours stale, history 404 "not available" for today, T0001 S/P once caught up, the payout webhook
+  events). Migration 0008. 7 PayPal client tests on recorded shapes; 9 new desk tests (balance refused
+  and the exact subtraction, digest on every item, transaction IDs and the re-offer clock, history
+  states, re-offer once in the window, expiry, cy-près once by two people, webhook replay and unknown
+  batch). Planted: no subtraction, cy-près forgetting its claims; both failed tests. Found and fixed:
+  a first read-back of RETURNED left the claim stuck at SCHEDULED. Live: one worker pass read
+  `2HMAKHX862SAE` back and recorded 10 payouts as waiting for history; sandbox batch `JX2JYNCASDVQG`
+  kept the plan-digest note. `pnpm test` 803/803 in 29 files; e2e 8/8.
 - **Live Log in with PayPal (P1) waits for the deployed URL:** PayPal's authorize page answers
   `invalid_redirect_uri` for `http://localhost:3100/api/paypal/callback` (checked 2026-11-10,
   `docs/sandbox-findings.md`). After the first deploy the owner adds
@@ -111,9 +123,15 @@ status link, **P7** every state in plain words, **P8** expected amount.
 
 ## In progress
 
-- **Next: Phase 4, the money path** (R11 worker): balances check (P34), the plan's digest in the
-  payout notes (P36), verified webhooks (P38), Transaction Search confirmation (P39), "where the
-  money went" (P40), re-offer (C4), then cy-près with two-person approval (B5).
+- **Next: Phase 5, the decision ledger** (P33 Merkle root committed before paying, with a drand round;
+  C1 leaves hold evidence, findings, checks, table version and amount; C2 rules hashed in advance;
+  P42 public ledger page; P43 verify in the browser; P44 audit sample; P45 one shared package). Research
+  first: drand quicknet chain info, relays, a JS client and BLS library (`npm view`).
+- **Run the worker** next to the web app: `pnpm worker` (`--once` for one pass). Env: `REOFFER_DAYS`
+  (30; shorter on the demo so returned money reaches cy-près during judging), `WORKER_INTERVAL_SECONDS`.
+- **Demo timing to watch:** the 27 unclaimed items of `2HMAKHX862SAE` (Nov 10) should come back
+  around Dec 10; with `REOFFER_DAYS=2` they become cy-près eligible around Dec 12, inside judging
+  (until Dec 15), and need two people to send.
 - **New env for the web app:** `PAYER_SEAL_KEY`, `PAYER_PSEUDONYM_KEY` (32 random bytes, base64
   each), `JUDGE_ANALYST_PASSWORD`, `JUDGE_SUPERVISOR_PASSWORD`, `NETWORK_SECRET` (`.env.example`).
 - **Local run:** a database named `proofofclaim` (renamed from the working name), migrated and
@@ -199,8 +217,7 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- `../FULL-BUILD-PLAN.md` Phase 4 (the R11 worker: balances check, digest in notes, verified
-  webhooks, Transaction Search, re-offer, cy-près), then Phase 5 (the decision ledger).
+- `../FULL-BUILD-PLAN.md` Phase 5 (the decision ledger), then Phase 6 (rings and the investigator).
 
 ## Pushover history (kept for the record)
 
