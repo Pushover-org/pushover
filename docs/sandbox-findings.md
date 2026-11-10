@@ -346,3 +346,21 @@ held "approve and send", and the app planned the batch in the database before ca
 - Found here: the $50-a-day demo cap was treated as the fund, so the 27 shares were scaled down to
   $0.77–$3.48. Fixed the same day (`desk: a daily cap pays fewer claims in full`); this batch keeps
   its scaled amounts on the record.
+
+## Proof of Claim: balances, history and payout webhooks (2026-11-10, `scripts/money/probe-reporting.ts`)
+
+Asked the sandbox (guarded app) at about 05:56 UTC, twenty minutes after batch `2HMAKHX862SAE`:
+
+- **`GET /v1/reporting/balances?currency_code=USD`**: total and available $6,387.15, withheld
+  $0.00, `as_of_time` and `last_refresh_time` both `2026-11-10T03:59:59Z`. The balance is not live:
+  it predates the 05:36 batch. A balance check must subtract what we sent after `as_of_time`.
+- **Payout items carry `transaction_id`** (27 of 27 on `2HMAKHX862SAE`; 3 of 3 on `7ZRZDZZLRGEAY`).
+- **`GET /v1/reporting/transactions`** for today's window: `404 INVALID_REQUEST`, "Data for the
+  given start date is not available." (debug_id `ca582cfb51832`). History lags the payout.
+- The same search for `7ZRZDZZLRGEAY`'s day (Oct 31, `last_refreshed_datetime`
+  `2026-11-10T03:59:59Z`) found all 3 items by `transaction_id`: `transaction_event_code` `T0001`,
+  amount `-1.00`, fee `-0.25`, a shared `paypal_reference_id` (type `TXN`), and
+  `transaction_status` `S` for the two delivered items and `P` for the one that went UNCLAIMED.
+- **`GET /v1/notifications/webhooks-event-types`**, payout events: `PAYMENT.PAYOUTS-ITEM.{BLOCKED,
+  CANCELED, FAILED, HELD, REFUNDED, RETURNED, SUCCEEDED, UNCLAIMED}` and
+  `PAYMENT.PAYOUTSBATCH.{DENIED, PROCESSING, SUCCESS}`.
