@@ -52,11 +52,14 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 0 Housekeeping: push R10, rename | done (`a3cd62f`) |
 | 1 Admin login and roles (P16, C7) | done (`1db104e`, `976a508`) |
 | 2 Finish R10: e2e, live login, first Distribute from the app | done except the live Log in with PayPal, which needs the deployed URL (below) |
-| 3 Identity and privacy (P2, P4–P8) | next |
-| 4–14 | not started |
+| 3 Identity and privacy (P2, P4–P8) | done (`1dab995`, `0023e45`) |
+| 4 Money path: the R11 worker (P34, P36, P38–P40, C4, B5) | next |
+| 5–14 | not started |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
-**C7** two-person approval (enforced in code and in the database), P35/P37 (already had).
+**C7** two-person approval (enforced in code and in the database), P35/P37 (already had),
+**P2** unverified accounts wait, **P4** sealed payer ID, **P5** per-settlement pseudonyms, **P6** private
+status link, **P7** every state in plain words, **P8** expected amount.
 
 - **Phase 1 evidence (2026-11-10):** migration 0006 (analysts, sessions as token hashes, money
   proposals; database guards: no self-approval, supervisor only, no approval after expiry, no
@@ -72,6 +75,13 @@ Plan items landed: **P16** admin login (real accounts, roles, every action names
   `88cb2c7`). First real Distribute from the app: sandbox batch `2HMAKHX862SAE`, 27 items, all
   UNCLAIMED, fees $6.75, reconciled (`docs/sandbox-findings.md`); it showed the daily cap
   shrinking everyone's share (fixed, `3c21938`). `pnpm test` 753/753 in 25 files.
+- **Phase 3 evidence (2026-11-10):** migration 0007 (no plain payer ID; pseudonym index; sealed
+  ID; status-token hash; payout items to PayPal accounts must record a pseudonym). 14 new desk tests
+  (seal/open, wrong claim or key or flipped byte refused, pseudonyms differ per settlement, unverified
+  waits then pays, links rotate), 5 new db tests, 19 web unit tests (every state has wording),
+  `test/identity-boundary.test.ts`. Planted: a web file opening a sealed ID, and paying unverified
+  accounts; both failed tests. e2e 8/8; the e2e database holds no plain payer ID anywhere (checked
+  directly). `pnpm test` 787/787 in 28 files. GitHub CI green, including the e2e job.
 - **Live Log in with PayPal (P1) waits for the deployed URL:** PayPal's authorize page answers
   `invalid_redirect_uri` for `http://localhost:3100/api/paypal/callback` (checked 2026-11-10,
   `docs/sandbox-findings.md`). After the first deploy the owner adds
@@ -101,8 +111,11 @@ Plan items landed: **P16** admin login (real accounts, roles, every action names
 
 ## In progress
 
-- **Next: Phase 3, identity and privacy** (P2 verified gate, P4 sealed payer ID, P5 pseudonyms,
-  P6 private status link, P7 a message for every state, P8 the expected amount).
+- **Next: Phase 4, the money path** (R11 worker): balances check (P34), the plan's digest in the
+  payout notes (P36), verified webhooks (P38), Transaction Search confirmation (P39), "where the
+  money went" (P40), re-offer (C4), then cy-près with two-person approval (B5).
+- **New env for the web app:** `PAYER_SEAL_KEY`, `PAYER_PSEUDONYM_KEY` (32 random bytes, base64
+  each), `JUDGE_ANALYST_PASSWORD`, `JUDGE_SUPERVISOR_PASSWORD`, `NETWORK_SECRET` (`.env.example`).
 - **Local run:** a database named `proofofclaim` (renamed from the working name), migrated and
   seeded (`pnpm db:migrate`, `pnpm demo:seed`, `pnpm demo:analysts` with `JUDGE_ANALYST_PASSWORD`
   and `JUDGE_SUPERVISOR_PASSWORD`), then
@@ -186,8 +199,8 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- `../FULL-BUILD-PLAN.md` Phase 3 (identity and privacy), then Phase 4 (the R11 worker: balances
-  check, digest in notes, verified webhooks, Transaction Search, re-offer, cy-près).
+- `../FULL-BUILD-PLAN.md` Phase 4 (the R11 worker: balances check, digest in notes, verified
+  webhooks, Transaction Search, re-offer, cy-près), then Phase 5 (the decision ledger).
 
 ## Pushover history (kept for the record)
 
