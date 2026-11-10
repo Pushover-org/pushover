@@ -1,6 +1,6 @@
 import { parseSettlement, type Findings } from "@proofofclaim/claims";
 import { loadTaxTable, PROVISIONAL_CONFIG } from "@proofofclaim/checks";
-import { decideProposal, getClaim, getCommitment, insertCommitment, insertProposal, latestDecision, latestFindings, recordWebhookEvent, withTransaction, type Pool } from "@proofofclaim/db";
+import { checkedEvidence, decideProposal, followupsOf, getClaim, getCommitment, openAppeals, insertCommitment, insertProposal, latestDecision, latestFindings, recordWebhookEvent, withTransaction, type Pool } from "@proofofclaim/db";
 import { auditSample, commitmentDigest, merkleRoot, QUICKNET, roundTime, type Commitment, type DecisionLeaf } from "@proofofclaim/ledger";
 import type { ExamineResult } from "@proofofclaim/examiner";
 import sharp from "sharp";
@@ -12,6 +12,7 @@ import {
   proposeDistribution, readBack, recheckApproved, reviewClaim, setAnalyst, submitClaim, verifyPassword, type Desk, type FileClaimInput,
   approveCyPres, checkBalance, confirmInHistory, expireReoffers, planCyPres, processWebhooks, proposeCyPres, requestReoffer,
   decideAfterClose, decisionLeaves, recordBeacons, SAMPLE_SIZE, detectRings, groupFacts, investigateGroup, decideGroup, heldGroupCount, GroupDecisionError,
+  appealClaim, followupOptions, sendDocument,
 } from "../src/index.ts";
 import { CostGuard } from "@proofofclaim/examiner";
 import type { Analyst } from "@proofofclaim/db";
@@ -143,6 +144,80 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
   it("a decided claim is not decided again", async () => {
     const { claim: c } = await submitClaim(desk(), claim());
     expect(await decideClaim(desk(), c.id)).toBeNull();
+  });
+
+  describe("after a decision: the document the rules asked for, and appeals (P9, C9, B3)", () => {
+    // Seeded noise: unlike photo(), these hash far apart, so C6 only fails on a real copy.
+    const noise = async (seed: number): Promise<Uint8Array> => {
+      let x = seed * 2654435761;
+      const raw = Buffer.alloc(64 * 64);
+      for (let i = 0; i < raw.length; i++) raw[i] = (x = (x * 1103515245 + 12345) >>> 0) >>> 24;
+      return sharp(raw, { raw: { width: 64, height: 64, channels: 1 } }).png().toBuffer();
+    };
+    const ok = (over: Partial<Findings> = {}): ExamineResult => ({ status: "OK", findings: findings(over), model: "fake", stopReason: "end_turn", inputTokens: 0, outputTokens: 0, costUsd: 0, error: null });
+
+    it("a receipt without a readable date asks for one; the document sent is read and the rules decide again", async () => {
+      // Its own merchant, so C12 (same merchant, date and total as another claim) doesn't hold it.
+      reading = () => ok({ purchase_date: null, merchant_name: "Harbor Diner" });
+      const { claim: c, result } = await submitClaim(desk(), claim({ tier: "proof", unitsClaimed: 2, image: await noise(40) }));
+      expect(result?.decision).toMatchObject({ outcome: "NEED_MORE", check: "C1" });
+      expect(await followupOptions(desk(), c.id)).toMatchObject({ canSendDocument: true, canAppeal: false });
+
+      reading = () => ok({ merchant_name: "Harbor Diner" });
+      const before = reads;
+      const again = await sendDocument(desk(), c.id, await noise(41));
+      reading = null;
+      expect(reads - before).toBe(1);
+      expect(again?.decision).toMatchObject({ outcome: "APPROVE", units: 2, entitlementCents: 3000 });
+      expect((await getClaim(pool, c.id))?.status).toBe("APPROVE");
+      expect((await followupsOf(pool, c.id)).map((f) => [f.kind, f.fromStatus])).toEqual([["DOCUMENT", "NEED_MORE"]]);
+      expect((await checkedEvidence(pool, c.id)).length).toBe(2);
+      await expect(sendDocument(desk(), c.id, await noise(42))).rejects.toThrow(ClaimRejectedError);
+    });
+
+    it("a document that copies another claim's photo is caught by the same duplicate check", async () => {
+      const taken = await noise(43);
+      await submitClaim(desk(), claim({ tier: "proof", image: taken }));
+      reading = () => ok({ purchase_date: null });
+      const { claim: c, result: first } = await submitClaim(desk(), claim({ tier: "proof", image: await noise(44) }));
+      expect(first?.decision).toMatchObject({ outcome: "NEED_MORE" });
+      reading = () => ok();
+      const again = await sendDocument(desk(), c.id, taken);
+      reading = null;
+      expect(again?.decision).toMatchObject({ outcome: "DENY", reason: "DUPLICATE_IMAGE" });
+    });
+
+    it("an appeal sends a denied claim back to a person, keeps the denial on record until one decides, and closes then", async () => {
+      reading = () => ok({ purchase_date: "2021-03-02" });
+      const { claim: c, result } = await submitClaim(desk(), claim({ tier: "proof", image: await noise(45) }));
+      reading = null;
+      expect(result?.decision).toMatchObject({ outcome: "DENY", reason: "OUT_OF_PERIOD" });
+
+      await expect(appealClaim(desk(), c.id, { message: "wrong" })).rejects.toThrow(/sentence or two/);
+      const status = await appealClaim(desk(), c.id, { message: "The date on the receipt is 2016, the photo cut off the 6. Here is a clearer photo.", image: await noise(46) });
+      expect(status).toBe("REVIEW");
+      expect((await getClaim(pool, c.id))?.status).toBe("REVIEW");
+      expect(await latestDecision(pool, c.id)).toMatchObject({ outcome: "DENY", decidedBy: "system" });
+      expect((await openAppeals(pool, S.id)).map((f) => f.claimId)).toContain(c.id);
+      await expect(appealClaim(desk(), c.id, { message: "Please look again at my receipt, thank you." })).rejects.toThrow(/already with a person/);
+      // The appeal's photo is for the person, not for the checks.
+      expect((await checkedEvidence(pool, c.id)).length).toBe(1);
+
+      await reviewClaim(desk(), c.id, "APPROVE", "test-analyst");
+      expect((await followupsOf(pool, c.id))[0]).toMatchObject({ kind: "APPEAL", fromStatus: "DENY", open: false });
+      expect((await openAppeals(pool, S.id)).map((f) => f.claimId)).not.toContain(c.id);
+      const { rows } = await pool.query("SELECT actor, detail FROM audit_log WHERE subject = $1 AND action = 'appeal'", [c.id]);
+      expect(rows).toEqual([{ actor: "claimant", detail: { from: "DENY", to: "REVIEW", with_document: true, chars: expect.any(Number) } }]);
+      // Like the decisions, an appeal can't be edited or removed afterwards.
+      await expect(pool.query("UPDATE claim_followups SET message = 'changed' WHERE claim_id = $1", [c.id])).rejects.toThrow(/append-only/);
+      await expect(pool.query("DELETE FROM claim_followups WHERE claim_id = $1", [c.id])).rejects.toThrow(/append-only/);
+    });
+
+    it("an approved claim outside any held group can't be appealed", async () => {
+      const { claim: c } = await submitClaim(desk(), claim());
+      expect(await followupOptions(desk(), c.id)).toMatchObject({ canAppeal: false, heldInGroup: false });
+      await expect(appealClaim(desk(), c.id, { message: "I would like a person to look at this." })).rejects.toThrow(/can't be appealed/);
+    });
   });
 
   describe("Distribute and read back", () => {

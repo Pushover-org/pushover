@@ -7,7 +7,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { decide, DECISION_VERSION, FindingsSchema, type CheckResult, type Decision, type ExaminerStatus, type Findings, type Settlement } from "@proofofclaim/claims";
 import { hashRotations, ipPrefixKey, runChecks, unitsEvidenced, type CheckConfig, type TaxTable } from "@proofofclaim/checks";
 import {
-  allArrivals, allDeclarations, checkResultsOf, claimIdByPseudonym, claimIdByStatusToken, setStatusTokenHash, updatePaypalVerified, earlierIdentities, earlierImageHashes, earlierReceiptDetails, getClaim, getEvidence, insertClaim, insertEvidence, insertFindings,
+  allArrivals, allDeclarations, checkedEvidence, checkResultsOf, claimIdByPseudonym, claimIdByStatusToken, setStatusTokenHash, updatePaypalVerified, earlierIdentities, earlierImageHashes, earlierReceiptDetails, getClaim, getEvidence, insertClaim, insertEvidence, insertFindings,
   latestDecision, latestFindings, moveClaim, recordAnalystDecision, recordDecision, withSettlementLock, withTransaction, type ClaimRow, type Pool, type PoolClient,
 } from "@proofofclaim/db";
 import { sniffImageType, type ExamineInput, type ExamineResult } from "@proofofclaim/examiner";
@@ -56,9 +56,12 @@ export interface FileClaimInput {
 
 /** The claimant gave something the desk can't accept; the message is safe to show them. */
 export class ClaimRejectedError extends Error {
-  constructor(message: string) {
+  /** A short code a page can show in the claimant's own language (followups.ts sets it). */
+  readonly code: string | null;
+  constructor(message: string, code: string | null = null) {
     super(message);
     this.name = "ClaimRejectedError";
+    this.code = code;
   }
 }
 
@@ -134,7 +137,8 @@ export async function decideClaim(desk: Desk, claimId: string, opt: { recheck?: 
   const parsed = stored?.status === "OK" ? FindingsSchema.safeParse(stored.findings) : null;
   const findings: Findings | null = parsed?.success ? parsed.data : null;
   const status: ExaminerStatus = stored ? (stored.status === "OK" && !findings ? "INVALID" : stored.status) : "NOT_RUN";
-  const [evidence] = await getEvidence(desk.pool, claimId);
+  // The latest document the checks read: a document the rules asked for replaces the one filed (B3).
+  const evidence = (await checkedEvidence(desk.pool, claimId)).at(-1);
   const rotations = evidence ? await hashRotations(evidence.bytes).catch(() => null) : null;
 
   return withSettlementLock(desk.pool, desk.settlement.id, async (tx) => {

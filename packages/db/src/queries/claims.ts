@@ -153,13 +153,14 @@ export async function moveClaim(db: Queryable, id: string, from: ClaimState, to:
   if (res.rowCount !== 1) throw new Error(`claim ${id} is not in state ${from}`);
 }
 
-export async function insertEvidence(db: Queryable, e: { claimId: string; contentType: string; bytes: Uint8Array; sha256: string; phash: string | null }): Promise<void> {
-  await db.query("INSERT INTO claim_evidence (claim_id, content_type, bytes, sha256, phash) VALUES ($1, $2, $3, $4, $5)", [e.claimId, e.contentType, Buffer.from(e.bytes), e.sha256, e.phash]);
+export async function insertEvidence(db: Queryable, e: { claimId: string; contentType: string; bytes: Uint8Array; sha256: string; phash: string | null }): Promise<number> {
+  const { rows } = await db.query<{ id: string }>("INSERT INTO claim_evidence (claim_id, content_type, bytes, sha256, phash) VALUES ($1, $2, $3, $4, $5) RETURNING id", [e.claimId, e.contentType, Buffer.from(e.bytes), e.sha256, e.phash]);
+  return toNumber((rows[0] as { id: string }).id);
 }
 
-export async function getEvidence(db: Queryable, claimId: string): Promise<{ contentType: string; bytes: Buffer; sha256: string; phash: string | null }[]> {
-  const { rows } = await db.query<{ content_type: string; bytes: Buffer; sha256: string; phash: string | null }>("SELECT content_type, bytes, sha256, phash FROM claim_evidence WHERE claim_id = $1 ORDER BY id", [claimId]);
-  return rows.map((r) => ({ contentType: r.content_type, bytes: r.bytes, sha256: r.sha256, phash: r.phash }));
+export async function getEvidence(db: Queryable, claimId: string): Promise<{ id: number; contentType: string; bytes: Buffer; sha256: string; phash: string | null }[]> {
+  const { rows } = await db.query<{ id: string; content_type: string; bytes: Buffer; sha256: string; phash: string | null }>("SELECT id, content_type, bytes, sha256, phash FROM claim_evidence WHERE claim_id = $1 ORDER BY id", [claimId]);
+  return rows.map((r) => ({ id: toNumber(r.id), contentType: r.content_type, bytes: r.bytes, sha256: r.sha256, phash: r.phash }));
 }
 
 export async function insertFindings(db: Queryable, f: { claimId: string; model: string; status: "OK" | "INVALID" | "REFUSED" | "NOT_RUN"; findings: Findings | null; costUsd: number }): Promise<void> {

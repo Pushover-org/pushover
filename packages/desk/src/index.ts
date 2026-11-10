@@ -1,6 +1,7 @@
 export {
   claimantReturns, claimByStatusToken, ClaimRejectedError, decideAfterClose, decideClaim, fileClaim, filingOpenForDecisions, readEvidence, reviewClaim, submitClaim, type Desk, type DeskDecision, type FileClaimInput,
 } from "./desk.ts";
+export { appealClaim, followupOptions, MAX_APPEALS, MAX_DOCUMENTS, sendDocument } from "./followups.ts";
 // The function that opens a sealed payer ID is deliberately not exported: only payout.ts uses it.
 export { identityKeysFromEnv, pseudonymOf, type IdentityKeys } from "./payer-id.ts";
 export { analystFromToken, hashPassword, login, logout, MIN_PASSWORD_LENGTH, normalizeEmail, setAnalyst, tokenHash, verifyPassword, type LoginResult } from "./analysts.ts";
