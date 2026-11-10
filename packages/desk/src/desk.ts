@@ -12,6 +12,7 @@ import {
 } from "@proofofclaim/db";
 import { sniffImageType, type ExamineInput, type ExamineResult } from "@proofofclaim/examiner";
 import { pseudonymOf, sealPayerId, type IdentityKeys } from "./payer-id.ts";
+import { signalKeys } from "./rings.ts";
 
 export interface Desk {
   pool: Pool;
@@ -46,6 +47,8 @@ export interface FileClaimInput {
   ip: string | null;
   image: Uint8Array | null;
   paypal: { payerId: string; verified: boolean; emailVerified: boolean | null } | null;
+  /** A random ID the claimant's browser keeps (a first-party cookie): links claims from one device (P25). */
+  deviceId?: string | null;
   /** For seeding a recorded claim set; a live claim takes the time it arrives. */
   id?: string;
   submittedAt?: Date;
@@ -86,6 +89,7 @@ export async function fileClaim(desk: Desk, f: FileClaimInput): Promise<ClaimRow
         id, settlementId: s.id, tier: f.tier, unitsClaimed: f.unitsClaimed, name: f.name, email: f.email,
         addressLine: f.addressLine, city: f.city, state: f.state, zip: f.zip, declaration: f.declaration,
         ipKey: f.ip ? ipPrefixKey(f.ip, desk.networkSecret) : null, paypal, statusTokenHash: statusTokenHash(statusToken), ...(f.submittedAt ? { submittedAt: f.submittedAt } : {}),
+        signals: signalKeys(desk, { email: f.email, addressLine: f.addressLine, zip: f.zip, deviceId: f.deviceId ?? null }),
       });
       if (f.image && type) await insertEvidence(c, { claimId: claim.id, contentType: type, bytes: f.image, sha256: createHash("sha256").update(f.image).digest("hex"), phash });
       return claim;

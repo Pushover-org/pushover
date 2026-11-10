@@ -11,8 +11,9 @@ import {
   analystFromToken, approveAndDistribute, cancelProposal, claimantReturns, claimByStatusToken, ClaimRejectedError, pseudonymOf, decideClaim, fileClaim, hashPassword, login, logout, MoneyRefusedError, openProposal, planDistribution,
   proposeDistribution, readBack, recheckApproved, reviewClaim, setAnalyst, submitClaim, verifyPassword, type Desk, type FileClaimInput,
   approveCyPres, checkBalance, confirmInHistory, expireReoffers, planCyPres, processWebhooks, proposeCyPres, requestReoffer,
-  decisionLeaves, recordBeacons, SAMPLE_SIZE,
+  decisionLeaves, recordBeacons, SAMPLE_SIZE, detectRings, groupFacts, investigateGroup,
 } from "../src/index.ts";
+import { CostGuard } from "@proofofclaim/examiner";
 import type { Analyst } from "@proofofclaim/db";
 
 const S = parseSettlement({
@@ -515,6 +516,87 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       const c = await getCommitment(pool, id);
       expect(c?.beacon).toEqual(REAL_BEACON);
       expect(c?.sample).toEqual(auditSample(leaves, root, REAL_BEACON.randomness, Math.min(SAMPLE_SIZE, leaves.length)));
+    });
+  });
+
+  describe("fraud rings and the investigator (P25–P30)", () => {
+    const R = parseSettlement({ ...S, id: "rings-test", name: "Rings Test Settlement (fictional demo)" });
+    const rdesk = (): Desk => ({ ...desk(), settlement: R });
+    const people = [
+      { name: "Marisol Quintanilla", email: "marisol.q@example.com", addressLine: "4471 Juniper Hollow Rd", zip: "73301", ip: "203.0.113.41", payerId: "QWERTYUPASDF2" },
+      { name: "Bartholomew Okonkwo", email: "MARISOL.Q+second@example.com", addressLine: "9 Sycamore Bend", zip: "10027", ip: "198.51.100.77", payerId: "ZXCVBNMLKJHG3" },
+      { name: "Philippa Vasquez-Lindqvist", email: "marisol.q+third@example.com", addressLine: "88 Larkspur Terrace", zip: "60614", ip: "192.0.2.211", payerId: "MNBVCXZLKJHG4" },
+    ];
+    const stories = [
+      "Mango lassi at a curry house in Tacoma after a long shift, autumn 2016.",
+      "A cream soda with a cheesesteak at a corner shop in Syracuse, winter 2018.",
+      "Hot cider at a farmers market stall in Spokane with the kids, October 2017.",
+    ];
+    let ids: string[] = [];
+
+    beforeAll(async () => {
+      await pool.query("INSERT INTO settlements (id, name, config, fund_cents) VALUES ($1, $2, $3, $4)", [R.id, R.name, JSON.stringify(R), R.fundCents]);
+    });
+
+    it("filing stores keyed signals: one inbox under three spellings, one building under two flats", async () => {
+      ids = [];
+      for (const [i, p] of people.entries()) {
+        const { claim: c } = await submitClaim(rdesk(), claim({ ...p, declaration: stories[i] as string, paypal: { payerId: p.payerId, verified: true, emailVerified: true } }));
+        ids.push(c.id);
+      }
+      const { rows } = await pool.query<{ inbox_key: string; building_key: string | null }>("SELECT inbox_key, building_key FROM claims WHERE id = ANY($1) ORDER BY seq", [ids]);
+      expect(new Set(rows.map((r) => r.inbox_key)).size).toBe(1);
+      expect(rows[0]?.inbox_key).toMatch(/^[0-9a-f]{64}$/);
+      // A household: two flats in one building, own devices, inboxes and words.
+      const flats = ["12 N Oak St Apt 4", "12 North Oak Street #7"];
+      for (const [i, line] of flats.entries()) await submitClaim(rdesk(), claim({ addressLine: line, zip: "95131", email: `flat${i}@example.org`, ip: "203.0.113.9", declaration: [`Ginger ale and pancakes at a truck stop near Laredo on a road trip, 2015.`, `An espresso before a flight at the airport food court in Miami, early 2019.`][i] as string }));
+      const { rows: b } = await pool.query<{ building_key: string }>("SELECT building_key FROM claims WHERE address_line = ANY($1)", [flats]);
+      expect(new Set(b.map((r) => r.building_key)).size).toBe(1);
+    });
+
+    it("detection groups the one inbox behind three names; the household is not a group", async () => {
+      const groups = await detectRings(rdesk());
+      expect(groups).toHaveLength(1);
+      expect(groups[0]?.members).toEqual([...ids].sort());
+      expect(groups[0]?.signals.inbox).toBe(3);
+      const again = await detectRings(rdesk());
+      expect(again[0]?.signature).toBe(groups[0]?.signature);
+      const { rows } = await pool.query("SELECT count(*)::int AS n FROM ring_groups WHERE settlement_id = $1 AND active", [R.id]);
+      expect(rows[0].n).toBe(1);
+    });
+
+    it("the investigator sees stand-in labels and computed facts only: no personal data reaches the model", async () => {
+      const { rows } = await pool.query<{ id: string }>("SELECT id FROM ring_groups WHERE settlement_id = $1 AND active", [R.id]);
+      const calls: unknown[] = [];
+      const client = { messages: { create: async (args: unknown) => {
+        calls.push(args);
+        return { stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify({ probability_coordinated: 0.93, pattern: "device_farm", strength: 4 }) }], usage: { input_tokens: 800, output_tokens: 30 } };
+      } } } as never;
+      const r = await investigateGroup(rdesk(), Number(rows[0]?.id), { client, model: "claude-haiku-5-5", guard: new CostGuard(1) });
+      expect(r).toMatchObject({ status: "OK", recommendation: "DENY_GROUP" });
+      const prompt = JSON.stringify(calls);
+      const secrets = people.flatMap((p) => [...p.name.split(/[\s-]+/), p.email.split("@")[0]?.split("+")[0] ?? "", p.addressLine, p.zip, p.ip, p.payerId]).concat(ids, ["Juniper", "Sycamore", "Larkspur"]);
+      for (const secret of secrets) expect(prompt.toLowerCase(), secret).not.toContain(secret.toLowerCase());
+      expect(prompt).toContain("Claim A");
+      // The label map is stored with us, not sent.
+      const { rows: inv } = await pool.query<{ labels: Record<string, string> }>("SELECT labels FROM investigations ORDER BY id DESC LIMIT 1");
+      expect(Object.values(inv[0]?.labels ?? {}).sort()).toEqual([...ids].sort());
+    });
+
+    it("a rejected answer is stored as rejected, with no recommendation", async () => {
+      const { rows } = await pool.query<{ id: string }>("SELECT id FROM ring_groups WHERE settlement_id = $1 AND active", [R.id]);
+      const client = { messages: { create: async () => ({ stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify({ probability_coordinated: 0.9, pattern: "device_farm", strength: 4, verdict: "deny them" }) }], usage: { input_tokens: 800, output_tokens: 30 } }) } } as never;
+      const r = await investigateGroup(rdesk(), Number(rows[0]?.id), { client, model: "claude-haiku-5-5", guard: new CostGuard(1) });
+      expect(r).toMatchObject({ status: "INVALID", answers: null, recommendation: "PERSON_DECIDES" });
+      const { rows: inv } = await pool.query("SELECT status, answers, recommendation FROM investigations ORDER BY id DESC LIMIT 1");
+      expect(inv[0]).toEqual({ status: "INVALID", answers: null, recommendation: "PERSON_DECIDES" });
+    });
+
+    it("facts carry the real link counts, so the memo's numbers come from code", async () => {
+      const { facts } = await groupFacts(rdesk(), ids);
+      expect(facts.members.map((m) => m.label)).toEqual(["Claim A", "Claim B", "Claim C"]);
+      expect(facts.links.filter((l) => l.kind === "inbox")).toHaveLength(3);
+      expect(facts.links.filter((l) => l.kind === "building")).toHaveLength(0);
     });
   });
 

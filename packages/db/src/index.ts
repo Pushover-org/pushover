@@ -7,5 +7,6 @@ export * from "./queries/analysts.ts";
 export * from "./queries/claims.ts";
 export * from "./queries/ledger.ts";
 export * from "./queries/money.ts";
+export * from "./queries/rings.ts";
 export { getActivePolicy } from "./queries/policy.ts";
 export type * from "./types.ts";

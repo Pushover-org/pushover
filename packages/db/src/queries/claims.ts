@@ -74,9 +74,11 @@ export interface NewClaim {
   paypal?: { pseudonym: string; sealed: Buffer; verified: boolean; emailVerified: boolean | null } | null;
   /** SHA-256 of the claimant's private status-link token (migration 0007). */
   statusTokenHash?: Buffer | null;
+  /** Keyed hashes of the linking signals (migration 0010). */
+  signals?: { deviceKey: string | null; inboxKey: string | null; buildingKey: string | null };
 }
 
-export interface ClaimRow extends Omit<NewClaim, "submittedAt" | "paypal" | "statusTokenHash"> {
+export interface ClaimRow extends Omit<NewClaim, "submittedAt" | "paypal" | "statusTokenHash" | "signals"> {
   paypal: { pseudonym: string; sealed: Buffer; verified: boolean; emailVerified: boolean | null } | null;
   seq: number;
   status: ClaimState;
@@ -98,10 +100,11 @@ const claimFrom = (r: RawClaim): ClaimRow => ({
 export async function insertClaim(db: Queryable, c: NewClaim): Promise<ClaimRow> {
   const { rows } = await db.query<RawClaim>(
     `INSERT INTO claims (id, settlement_id, tier, units_claimed, claimant_name, payout_email, address_line, city, state, zip, declaration, ip_key, submitted_at,
-       paypal_pseudonym, paypal_payer_sealed, paypal_verified, paypal_email_verified, status_token_hash)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13, now()), $14, $15, $16, $17, $18) RETURNING *`,
+       paypal_pseudonym, paypal_payer_sealed, paypal_verified, paypal_email_verified, status_token_hash, device_key, inbox_key, building_key)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13, now()), $14, $15, $16, $17, $18, $19, $20, $21) RETURNING *`,
     [c.id, c.settlementId, c.tier, c.unitsClaimed, c.name, c.email, c.addressLine, c.city, c.state, c.zip, c.declaration, c.ipKey, c.submittedAt ?? null,
-      c.paypal?.pseudonym ?? null, c.paypal?.sealed ?? null, c.paypal?.verified ?? null, c.paypal?.emailVerified ?? null, c.statusTokenHash ?? null],
+      c.paypal?.pseudonym ?? null, c.paypal?.sealed ?? null, c.paypal?.verified ?? null, c.paypal?.emailVerified ?? null, c.statusTokenHash ?? null,
+      c.signals?.deviceKey ?? null, c.signals?.inboxKey ?? null, c.signals?.buildingKey ?? null],
   );
   return claimFrom(rows[0] as RawClaim);
 }
