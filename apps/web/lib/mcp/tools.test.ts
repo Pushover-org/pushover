@@ -134,6 +134,20 @@ describe("the MCP server's tools (P12)", () => {
     expect(unknown.isError).toBe(true);
   });
 
+  it("refuses a field it doesn't know, such as 'sworn' or 'confirmed', instead of ignoring it", async () => {
+    const client = await inMemory();
+    const before = filed.length;
+    for (const extra of [{ sworn: true }, { confirmed: true }, { approve: true }]) {
+      const r = await client.callTool({
+        name: "file_claim",
+        arguments: { settlement: "acme-restaurant-beverage", agent_name: "Test Assistant", tier: "no_proof", name: "Ada Lovelace", address_line: "1 Main St", city: "Fresno", state: "CA", zip: "93701", declaration: "I had an iced tea with lunch at a diner in Fresno in 2017.", ...extra },
+      });
+      expect(r.isError, JSON.stringify(extra)).toBe(true);
+      expect(JSON.stringify(r.content)).toMatch(/unrecognized/i);
+    }
+    expect(filed.length).toBe(before);
+  });
+
   it("a tool that doesn't exist can't be called, whatever its name", async () => {
     const client = await inMemory();
     for (const name of ["confirm_claim", "approve_claim", "pay_claim", "distribute"]) {

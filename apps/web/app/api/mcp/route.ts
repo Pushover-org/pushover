@@ -33,6 +33,15 @@ async function handle(req: Request): Promise<Response> {
   }
 }
 
-export const GET = handle;
+/**
+ * Stateless: there is no server-to-client stream to open (GET) and no session to end (DELETE). The
+ * MCP spec lets such a server answer 405, as the SDK's own stateless example does; an empty stream
+ * that closes at once would only make some clients reconnect in a loop.
+ */
+function methodNotAllowed(): Response {
+  return Response.json({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed. This server is stateless: send JSON-RPC with POST." }, id: null }, { status: 405, headers: { Allow: "POST" } });
+}
+
 export const POST = handle;
-export const DELETE = handle;
+export const GET = methodNotAllowed;
+export const DELETE = methodNotAllowed;

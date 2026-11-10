@@ -48,9 +48,10 @@ export const ClaimFormSchema = z.object({
 /**
  * An assistant filing for a person (JSON, snake_case; the MCP tool file_claim and POST /api/v1/claims).
  * There is no "sworn" field on purpose: an assistant can't swear for anyone. The person swears to the
- * declaration on the confirm page, after logging in with PayPal.
+ * declaration on the confirm page, after logging in with PayPal. Unknown fields are refused, not
+ * ignored, so an assistant that sends `sworn` or `confirmed` learns at once that it can't.
  */
-export const FileClaimInput = z.object({
+export const FileClaimInput = z.strictObject({
   settlement: field.settlement,
   agent_name: z
     .string()
@@ -70,14 +71,14 @@ export const FileClaimInput = z.object({
   receipt: z
     .object({
       content_type: z.enum(["image/jpeg", "image/png", "image/gif", "image/webp"]),
-      data_base64: z.base64().max(MAX_BASE64).describe("The photo's bytes, base64-encoded. At most 8 MB before encoding."),
+      data_base64: z.base64().max(MAX_BASE64, "the photo is over 8 MB").describe("The photo's bytes, base64-encoded. At most 8 MB before encoding."),
     })
     .optional()
     .describe("The receipt photo. Required for the proof tier. It is read and checked like any other claim's, once the person confirms."),
 });
 export type FileClaimInput = z.infer<typeof FileClaimInput>;
 
-export const ClaimStatusInput = z.object({
+export const ClaimStatusInput = z.strictObject({
   status_token: z.string().regex(/^[A-Za-z0-9_-]{32}$/).describe("The status_token file_claim returned. It stops working once the person confirms, because the claim is theirs from then on."),
 });
 

@@ -408,7 +408,8 @@
           "state",
           "zip",
           "declaration"
-        ]
+        ],
+        "additionalProperties": false
       },
       "FileClaimResult": {
         "type": "object",
@@ -466,7 +467,8 @@
         },
         "required": [
           "status_token"
-        ]
+        ],
+        "additionalProperties": false
       },
       "ClaimStatusResult": {
         "type": "object",

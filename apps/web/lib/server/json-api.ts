@@ -19,6 +19,10 @@ export async function readJson<S extends z.ZodType>(req: Request, schema: S): Pr
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
+    if (issue?.code === "unrecognized_keys") {
+      const keys = issue.keys.join(", ");
+      return { ok: false, response: apiError(400, "unknown_field", `Unknown field: ${keys}. Only the person can swear to or confirm a claim, on the confirm page.`) };
+    }
     return { ok: false, response: apiError(400, "invalid", `Please check ${issue?.path.join(".") || "the body"}: ${issue?.message ?? "invalid"}.`) };
   }
   return { ok: true, value: parsed.data };
