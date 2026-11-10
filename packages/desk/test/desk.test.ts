@@ -125,6 +125,20 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       expect((await getClaim(pool, early.claim.id))?.status).toBe("REVIEW");
     });
 
+    it("the re-check doesn't undo a person's approval, but a cluster that forms afterwards pulls it back", async () => {
+      const template = "On many occasions I ordered bottled sodas with meals at family restaurants and I affirm this claim is true and correct.";
+      reading = () => ({ status: "NOT_RUN", findings: null, model: "fake", stopReason: null, inputTokens: 0, outputTokens: 0, costUsd: 0, error: "not run" });
+      const { claim: c, result } = await submitClaim(desk(), claim({ tier: "proof", image: await photo(41), declaration: `${template} First.` }));
+      reading = null;
+      expect(result?.decision).toMatchObject({ outcome: "REVIEW", reason: "EXAMINER_NOT_RUN" });
+      await reviewClaim(desk(), c.id, "APPROVE", "rhea@example.com");
+      expect((await recheckApproved(desk())).map((m) => m.claimId)).not.toContain(c.id);
+      expect((await getClaim(pool, c.id))?.status).toBe("APPROVE");
+      for (let i = 0; i < 4; i++) await fileClaim(desk(), claim({ declaration: `${template} Copy ${i}.` }));
+      expect(await recheckApproved(desk())).toContainEqual({ claimId: c.id, outcome: "REVIEW", reason: "TEMPLATE_CLUSTER" });
+      expect(await latestDecision(pool, c.id)).toMatchObject({ outcome: "REVIEW", reason: "TEMPLATE_CLUSTER", rule: 3, decidedBy: "system" });
+    });
+
     let ana: Analyst;
     let lee: Analyst;
     let sol: Analyst;

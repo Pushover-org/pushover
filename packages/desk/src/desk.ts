@@ -4,11 +4,11 @@
 //
 // The model only reads. Code decides (decision table v1) and nothing here calls PayPal.
 import { createHash, randomBytes } from "node:crypto";
-import { decide, FindingsSchema, type CheckResult, type Decision, type ExaminerStatus, type Findings, type Settlement } from "@proofofclaim/claims";
+import { decide, DECISION_VERSION, FindingsSchema, type CheckResult, type Decision, type ExaminerStatus, type Findings, type Settlement } from "@proofofclaim/claims";
 import { hashRotations, ipPrefixKey, runChecks, unitsEvidenced, type CheckConfig, type TaxTable } from "@proofofclaim/checks";
 import {
-  allArrivals, allDeclarations, earlierIdentities, earlierImageHashes, earlierReceiptDetails, getClaim, getEvidence, insertClaim, insertEvidence, insertFindings,
-  latestDecision, latestFindings, moveClaim, recordAnalystDecision, recordDecision, withSettlementLock, withTransaction, type ClaimRow, type Pool,
+  allArrivals, allDeclarations, checkResultsOf, earlierIdentities, earlierImageHashes, earlierReceiptDetails, getClaim, getEvidence, insertClaim, insertEvidence, insertFindings,
+  latestDecision, latestFindings, moveClaim, recordAnalystDecision, recordDecision, withSettlementLock, withTransaction, type ClaimRow, type Pool, type PoolClient,
 } from "@proofofclaim/db";
 import { sniffImageType, type ExamineInput, type ExamineResult } from "@proofofclaim/examiner";
 
@@ -128,9 +128,37 @@ export async function decideClaim(desk: Desk, claimId: string, opt: { recheck?: 
       examiner: proof ? { status, ...(findings ? { confidence: findings.confidence } : {}) } : { status: "NOT_RUN" },
     });
     if (opt.recheck && decision.outcome === "APPROVE") return { decision, checks };
+    if (opt.recheck) {
+      const last = await latestDecision(tx, c.id);
+      if (last?.decidedBy.startsWith("analyst:")) {
+        // A person approved it after seeing the system's checks, so the re-check doesn't undo that
+        // for the same reasons. Only a cluster that formed since can pull it back.
+        const held = await clusterFormedSince(tx, c.id, last.id, decision.checks, checks);
+        if (!held) return null;
+        await recordDecision(tx, { claimId: c.id, from: c.status, decision: held, checks, decidedBy: "system" });
+        return { decision: held, checks };
+      }
+    }
     await recordDecision(tx, { claimId: c.id, from: c.status, decision, checks, decidedBy: "system" });
     return { decision, checks };
   });
+}
+
+/**
+ * C7 (template text) and C9 (network velocity) are the only checks that look at claims filed
+ * later; C6, C8 and C12 compare only with earlier ones. So for a claim a person approved, the
+ * re-check holds it again only if C7 or C9 fails now and didn't in the system decision the person
+ * reviewed. The hold is decision-v1's own rule 3.
+ */
+async function clusterFormedSince(tx: PoolClient, claimId: string, analystDecisionId: number, seen: Decision["checks"], now: CheckResult[]): Promise<Decision | null> {
+  const { rows } = await tx.query<{ id: string }>("SELECT id FROM decisions WHERE claim_id = $1 AND decided_by = 'system' AND id < $2 ORDER BY id DESC LIMIT 1", [claimId, analystDecisionId]);
+  const reviewed = new Map((rows[0] ? await checkResultsOf(tx, Number(rows[0].id)) : []).map((k) => [k.id, k.result]));
+  for (const id of ["C7", "C9"] as const) {
+    if (now.find((k) => k.id === id)?.result === "FAIL" && reviewed.get(id) !== "FAIL") {
+      return { version: DECISION_VERSION, rule: 3, outcome: "REVIEW", reason: id === "C7" ? "TEMPLATE_CLUSTER" : "VELOCITY_CLUSTER", check: id, checks: seen };
+    }
+  }
+  return null;
 }
 
 /** A person's decision on a claim in REVIEW. An approval pays what the evidence supports, never more than claimed. */
