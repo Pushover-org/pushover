@@ -56,8 +56,10 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 4 Money path: the R11 worker (P34, P36, P38–P40, C4, B5) | done (`bb4c15c`..`e8ef04d`); webhook registration waits for the deployed URL |
 | 5 The decision ledger (P33, P42–P45, C1, C2) | done (`ad497ea`, `7bdeeee`, `5b7d484`) |
 | 6 Rings and the AI investigator (P25–P32, C8) | done (`e125701`..`270e259`) |
-| 7 The console (P17–P24, C6, C13) | next |
-| 8–14 | not started |
+| 7 The console (P17–P24, C6, C13) | done (`3fc0cec`..`f1d26ae`) |
+| 8 Claimant upgrades (P9, C9, C3, B3, C11, C12) | done (`4f6f196`, `f3430d8`, `a03e4e1`) |
+| 9 Assistants: MCP server and OpenAPI (P12–P15, C14) | next |
+| 10–14 | not started |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
 **C7** two-person approval (enforced in code and in the database), P35/P37 (already had),
@@ -69,7 +71,12 @@ digest on every payout (verified in the sandbox), **P38** verified webhooks (cod
 **P42** public ledger page, **P43** verify in the browser, **P44** audit sample, **P45** one shared package,
 **P25** signals and strong-core groups, **P26** group pages, **P27**/**P28** investigator with stand-in labels,
 **P29** rejected-answer banner, **P30** replay, **P31**/**C8** measured false holds, **P32** 5,000-claim generator
-(synthetic people only: no receipts at that scale; receipt fraud stays measured on claims-v1).
+(synthetic people only: no receipts at that scale; receipt fraud stays measured on claims-v1),
+**P17** settlements index, **P18** create form (supervisors), **P19** filing deadline and decide-after-close,
+**P20** grid CSV export and linked-group column, **P21**/**C6** live scoreboard with lone fakes, **P22** group
+decisions one by one or in bulk, **P23** no money while a group is held, **P24** Bryntum timeline, **C13**
+read-only AG Studio agent, **P9**/**C9** appeal with a new photo, **C3** reasons in plain words, **B3** the
+requested-document upload, **C11** axe accessibility checks, **C12** Spanish and Hindi claimant pages.
 
 - **Phase 1 evidence (2026-11-10):** migration 0006 (analysts, sessions as token hashes, money
   proposals; database guards: no self-approval, supervisor only, no approval after expiry, no
@@ -118,6 +125,26 @@ digest on every payout (verified in the sandbox), **P38** verified webhooks (cod
   two designs). Measured on the held-out rings-v2 (pre-registered `60d27eb`): recall 80.0%, false holds
   6.3% (households 27.6%), precision 84.9%; the rings-v1 result (38.7% false holds) is kept with its
   two causes. `pnpm demo:rings` records answers in `data/replay/investigations.json`.
+- **Phase 7 evidence (2026-11-10):** P23 desk tests (proposal and approval refused while a group is
+  held); group decisions recorded per claim by the deciding analyst; settlements index and create form
+  (e2e files a claim into a settlement made from the form); filing deadline refuses late claims and the
+  worker decides after close; scoreboard arithmetic is a pure function with 8 tests (demo: pay everyone
+  $770 to fraud, the rules $40, the rules with people's decisions $30; 17 lone fakes, 14 stopped by the
+  proof checks); Bryntum timeline renders the held groups in a browser (trial key accepted, its "Trial"
+  badge shows by design); AG Studio agent: AG Studio's reading tools only, enforced on the server
+  (`READ_ONLY_TOOLS`, 7 translator tests); live run: "denied over $20" in 3 turns (9 claims), "approve
+  claim #1 and pay it" declined; 4 turns cost $0.0045. AG Grid moved to 36.3.0 to match AG Studio 3.1.
+- **Phase 8 evidence (2026-11-10):** migration 0011 (append-only follow-ups); desk tests: a requested
+  document is read and re-decided (and a copied photo is caught by C6), an appeal moves DENY to REVIEW
+  with the denial still on record and closes when a person decides, appeal photos never feed the checks,
+  follow-ups can't be edited. Web: plain-word reasons from the claimant's own receipt (6 tests),
+  message tables in en/es/hi with a test that keys and slots match (Spanish and Hindi not yet reviewed by
+  a professional translator). e2e: appeal end to end with the analyst's decision, filing in Spanish
+  with the reason in Spanish, axe WCAG A/AA on claimant pages at 390 px (en and hi) and on the desk.
+  Fixed for axe: text contrast tokens, the review amber, the locked claim step, AG Studio's send button.
+  Not covered: Bryntum's grid reports one `aria-required-children` rule inside its own markup.
+  Checks at the end of Phase 8: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 905/905 in 37 files,
+  `pnpm e2e` 16 passed, 1 skipped (the live drand test, run with `LIVE_DRAND=1`).
 - **Live Log in with PayPal (P1) waits for the deployed URL:** PayPal's authorize page answers
   `invalid_redirect_uri` for `http://localhost:3100/api/paypal/callback` (checked 2026-11-10,
   `docs/sandbox-findings.md`). After the first deploy the owner adds
@@ -147,10 +174,14 @@ digest on every payout (verified in the sandbox), **P38** verified webhooks (cod
 
 ## In progress
 
-- **Next: Phase 7, the console** (P17 settlements index, P18 create form, P19 filing deadline, P20 grid
-  export and grouping, P21 live scoreboard with AI-alone and lone-fraud rows, P22 bulk group decisions,
-  P23 Distribute blocked while groups are held, P24 Bryntum timeline, C13 AG Studio agent).
+- **Next: Phase 9, assistants** (P12 MCP server with no decision or money tools, P13 unbound until the
+  person confirms with PayPal, P14 the assistant's name, P15 OpenAPI 3.1 and the drift test, C14).
   Not done in Phase 6, optional: measuring the investigator itself on rings-v2's groups (about $0.05).
+- **Demo database:** migrate to 0011 (`pnpm db:migrate`) before running the web app on it.
+- **Licence keys** in `.env.local`: `AG_STUDIO_LICENSE_KEY` (trial until 2026-12-25; its terms say
+  evaluation only, production use needs a licence) and `BRYNTUM_LICENSE_KEY` (trial until 2026-12-25;
+  Bryntum shows a "Trial" badge with a trial key). Both are visible in the browser by design; neither is
+  in git. Restart `next dev` after adding a key: the root env file is read at startup.
 - **Run the worker** next to the web app: `pnpm worker` (`--once` for one pass). Env: `REOFFER_DAYS`
   (30; shorter on the demo so returned money reaches cy-près during judging), `WORKER_INTERVAL_SECONDS`.
 - **Demo timing to watch:** the 27 unclaimed items of `2HMAKHX862SAE` (Nov 10) should come back
@@ -241,7 +272,7 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- `../FULL-BUILD-PLAN.md` Phase 7 (the console), then Phase 8 (claimant upgrades).
+- `../FULL-BUILD-PLAN.md` Phase 9 (assistants: MCP server, unbound claims, OpenAPI), when the owner says go.
 
 ## Pushover history (kept for the record)
 
