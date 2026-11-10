@@ -162,12 +162,12 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       expect((await openProposal(pool, S.id, "CLAIMS"))?.id).toBe(proposal.id);
     }, 60_000);
 
-    it("if claims change between proposal and approval, nothing is sent and the proposal is superseded", async () => {
-      const open = await openProposal(pool, S.id, "CLAIMS");
+    it("if what would be paid changes between proposal and approval, nothing is sent and the proposal is superseded", async () => {
+      const { proposal: open } = await proposeDistribution(desk(), ana); // no cap: every approved claim is in it
       await submitClaim(desk(), claim({ declaration: "A late claim: I had a lemonade with dinner at a cafe in Fresno in 2018." }));
       const never = fakePayPal([]);
       const { client } = makeClient(never.fetch);
-      await expect(approveAndDistribute(desk(), client, sol, open?.id ?? -1, { capCents: 5000 })).rejects.toThrow(MoneyRefusedError);
+      await expect(approveAndDistribute(desk(), client, sol, open.id)).rejects.toThrow(MoneyRefusedError);
       expect(never.calls).toHaveLength(0);
       expect(await openProposal(pool, S.id, "CLAIMS")).toBeNull();
       const { rows } = await pool.query("SELECT count(*)::int AS n FROM payout_batches");
@@ -183,7 +183,9 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
 
     it("approved by a second person, the batch is written before PayPal is called and names both people", async () => {
       const plan = await planDistribution(desk(), { capCents: 5000 });
-      expect(plan.fundCents).toBe(5000);
+      expect(plan.fundCents).toBe(S.fundCents);
+      // The cap never shrinks a share: each claim paid now gets its full entitlement (the fund covers everyone).
+      for (const p of plan.allocation.payouts) expect(p.payoutCents).toBe(p.entitlementCents);
       expect(plan.payees.find((p) => p.payerId)).toBeUndefined(); // the one PayPal-account claim above is still unread, not approved
       const { proposal } = await proposeDistribution(desk(), ana, { capCents: 5000 });
       const pp = sendsPB1();
@@ -203,6 +205,23 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       await expect(approveAndDistribute(desk(), client, sol, proposal.id, { capCents: 5000 })).rejects.toThrow("no longer open");
     });
 
+    it("a cap pays claims in filing order, each in full, and leaves the rest approved for the next round", async () => {
+      for (let i = 0; i < 3; i++) await submitClaim(desk(), claim({ declaration: `Capped claim ${i}: a ginger ale with supper at a grill in Sacramento, ${2015 + i}.` }));
+      const cap = 2500;
+      const plan = await planDistribution(desk(), { capCents: cap });
+      const uncapped = await planDistribution(desk());
+      const sum = (ps: { payoutCents: number }[]) => ps.reduce((t, p) => t + p.payoutCents, 0);
+      expect(plan.round).toBe(2);
+      expect(uncapped.deferred).toBe(0);
+      expect(plan.deferred).toBeGreaterThanOrEqual(1);
+      expect(plan.allocation.payouts.length + plan.deferred).toBe(uncapped.allocation.payouts.length);
+      for (const p of plan.allocation.payouts) expect(p.payoutCents).toBe(p.entitlementCents); // whole shares, never scaled to the cap
+      // In filing order: today's claims are the first ones, and the next one wouldn't have fitted.
+      expect(plan.allocation.payouts).toEqual(uncapped.allocation.payouts.slice(0, plan.allocation.payouts.length));
+      expect(sum(plan.allocation.payouts)).toBeLessThanOrEqual(cap);
+      expect(sum(uncapped.allocation.payouts.slice(0, plan.allocation.payouts.length + 1))).toBeGreaterThan(cap);
+    });
+
     it("reads every item back and moves each claim to what PayPal reports", async () => {
       const { rows: items } = await pool.query<{ batch_id: string; sender_item_id: string }>("SELECT batch_id, sender_item_id FROM payout_items ORDER BY id");
       const batchId = Number(items[0]?.batch_id);
@@ -216,7 +235,8 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       const { client } = makeClient(pp.fetch);
       const r = await readBack(desk(), client, batchId);
       expect(r.status).toBe("SUCCESS");
-      expect(Object.keys(r.outcomes).sort()).toEqual(["FAILED", "PAID", "UNCLAIMED"].filter((o, i) => i < items.length));
+      const outcomeOf: Record<string, string> = { SUCCESS: "PAID", UNCLAIMED: "UNCLAIMED", FAILED: "FAILED" };
+      expect(Object.keys(r.outcomes).sort()).toEqual([...new Set(items.map((_, i) => outcomeOf[statuses[i % 3] ?? ""]))].sort());
       const first = await getClaim(pool, items[0]?.sender_item_id ?? "");
       expect(first?.status).toBe("PAID");
     });

@@ -30,30 +30,54 @@ export async function recheckApproved(desk: Desk): Promise<{ claimId: string; ou
 
 export interface DistributionPlan {
   round: number;
+  /** This round's payouts: shares of the whole fund, for the claims paid now. */
   allocation: Allocation;
   payees: Payee[];
-  /** The fund this round pays from: the settlement's, or less when a cap applies. */
+  /** The settlement's fund; every share is of this, whatever the round's cap. */
   fundCents: number;
+  /** Approved claims left for a later round because this round's cap was reached. */
+  deferred: number;
 }
 
-/** What Distribute would pay now. Nothing is written and nothing is sent. */
+/** States of a claim that already has its share in a payout (or had one come back). */
+const ALREADY_SENT = ["SCHEDULED", "PAID", "UNCLAIMED", "UNVERIFIED", "RETURNED", "FAILED", "CY_PRES_ELIGIBLE"];
+
+/**
+ * What Distribute would pay now. Nothing is written and nothing is sent.
+ *
+ * Shares are always of the whole fund, over every claim entitled to one (approved now or already
+ * sent in an earlier round), so a later round can't pay the fund out twice. A cap (the demo's
+ * daily sandbox limit) never shrinks anyone's share: it pays approved claims in filing order, each
+ * in full, until the cap is reached, and the rest wait for the next round.
+ */
 export async function planDistribution(desk: Desk, opt: { capCents?: number } = {}): Promise<DistributionPlan> {
   const s = desk.settlement;
-  const approved = await desk.pool.query<{ id: string; payout_email: string; paypal_payer_id: string | null; entitlement_cents: number }>(
-    `SELECT c.id, c.payout_email, c.paypal_payer_id, d.entitlement_cents FROM claims c
-     JOIN LATERAL (SELECT entitlement_cents FROM decisions x WHERE x.claim_id = c.id ORDER BY x.id DESC LIMIT 1) d ON true
-     WHERE c.settlement_id = $1 AND c.status = 'APPROVE' ORDER BY c.seq`,
-    [s.id],
+  const { rows } = await desk.pool.query<{ id: string; status: string; payout_email: string; paypal_payer_id: string | null; entitlement_cents: number }>(
+    `SELECT c.id, c.status, c.payout_email, c.paypal_payer_id, d.entitlement_cents FROM claims c
+     JOIN LATERAL (SELECT entitlement_cents FROM decisions x WHERE x.claim_id = c.id AND x.outcome = 'APPROVE' ORDER BY x.id DESC LIMIT 1) d ON true
+     WHERE c.settlement_id = $1 AND (c.status = 'APPROVE' OR c.status = ANY($2)) ORDER BY c.seq`,
+    [s.id, ALREADY_SENT],
   );
   const { rows: r } = await desk.pool.query<{ round: number | null }>("SELECT max(round) AS round FROM payout_batches WHERE settlement_id = $1 AND kind = 'CLAIMS'", [s.id]);
-  const fundCents = Math.min(s.fundCents, opt.capCents ?? s.fundCents);
-  const reserve = Math.min(s.adminReserveCents, Math.floor(fundCents / 10));
-  const allocation = allocate({
-    fundCents, adminReserveCents: reserve, feePerItemCents: FEE_PER_ITEM_CENTS,
-    entitlements: approved.rows.map((a) => ({ claimId: a.id, entitlementCents: a.entitlement_cents })),
+  const whole = allocate({
+    fundCents: s.fundCents, adminReserveCents: s.adminReserveCents, feePerItemCents: FEE_PER_ITEM_CENTS,
+    entitlements: rows.map((a) => ({ claimId: a.id, entitlementCents: a.entitlement_cents })),
   });
-  const payees: Payee[] = approved.rows.map((a) => (a.paypal_payer_id ? { claimId: a.id, payerId: a.paypal_payer_id } : { claimId: a.id, email: a.payout_email }));
-  return { round: (r[0]?.round ?? 0) + 1, allocation, payees, fundCents };
+  const share = new Map(whole.payouts.map((p) => [p.claimId, p]));
+  const approved = rows.filter((a) => a.status === "APPROVE");
+  const payNow: Allocation["payouts"] = [];
+  let total = 0;
+  for (const a of approved) {
+    const p = share.get(a.id);
+    if (!p || p.payoutCents === 0) continue;
+    if (opt.capCents !== undefined && total + p.payoutCents > opt.capCents) break;
+    payNow.push(p);
+    total += p.payoutCents;
+  }
+  const paid = new Set(payNow.map((p) => p.claimId));
+  const allocation: Allocation = { ...whole, payouts: payNow, reservedFeesCents: payNow.length * FEE_PER_ITEM_CENTS };
+  const payees: Payee[] = approved.filter((a) => paid.has(a.id)).map((a) => (a.paypal_payer_id ? { claimId: a.id, payerId: a.paypal_payer_id } : { claimId: a.id, email: a.payout_email }));
+  return { round: (r[0]?.round ?? 0) + 1, allocation, payees, fundCents: s.fundCents, deferred: approved.length - payNow.length };
 }
 
 export interface DistributionResult {
