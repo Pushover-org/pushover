@@ -329,3 +329,20 @@ Not tested: whether the dashboard would accept localhost as a Return URL at all.
 live Log in with PayPal from the app is proved on the deployed URL (R12), and e2e signs the
 identity cookie itself.
 
+
+## Proof of Claim: the first Distribute from the app (2026-11-10)
+
+Through the running app on the demo database, with the two judge logins (spec §7.1's 1:05 beat):
+the Demo Analyst proposed round 1 at 05:36 UTC (27 approved claims, $38.25), the Demo Supervisor
+held "approve and send", and the app planned the batch in the database before calling PayPal.
+
+- Batch **`2HMAKHX862SAE`** (`sender_batch_id` `poc-acme-restaurant-beverage-r1-p1`): `PENDING`
+  on creation; read back from the app about a minute later as `SUCCESS`.
+- All 27 items `UNCLAIMED` with `RECEIVER_UNREGISTERED`: the labelled demo claims carry fictional
+  addresses. They should return to the sender about 30 days later (around Dec 10), during judging,
+  which is what the cy-près step needs.
+- PayPal reported a fee of $0.25 on every item ($6.75 in all), matching the R5 fee check.
+- The money screen reconciled: $2,000.00 = $38.25 unclaimed + $6.75 fees + $1,955.00 held.
+- Found here: the $50-a-day demo cap was treated as the fund, so the 27 shares were scaled down to
+  $0.77–$3.48. Fixed the same day (`desk: a daily cap pays fewer claims in full`); this batch keeps
+  its scaled amounts on the record.

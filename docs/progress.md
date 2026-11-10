@@ -1,6 +1,6 @@
 # Progress (hand-off between machines and sessions)
 
-Last updated: 2026-11-02 (original laptop).
+Last updated: 2026-11-10 (original laptop).
 
 ## The project: Proof of Claim (pivot from Pushover, 2026-10-31)
 
@@ -21,7 +21,7 @@ Owner decisions (2026-11-01):
 - Commit as we go; ask before every push.
 - Pushover's agent code is retired by tag + delete: tag `pushover-final` marks the last
   Pushover commit.
-- Package scope was `@proofofclaim/*`; renamed to `@proofofclaim/*` in one commit on 2026-11-10.
+- Package scope was `@pushover/*`; renamed to `@proofofclaim/*` in one commit on 2026-11-10.
 - Admin screens are built on **AG Grid** (sponsor prize target, spec §4.7). The **AG Studio**
   trial starts **on or after Nov 3**, never before.
 - Models unchanged: main `claude-haiku-5-5`, comparison `claude-sonnet-5-5`; the examiner
@@ -30,7 +30,55 @@ Owner decisions (2026-11-01):
 Dates (IST): R0–R7 by Nov 3; a minimal version (/demo plus one real Payouts batch) submitted
 by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 
-## Proof of Claim steps
+## Owner decisions 2026-11-09/10 (these win over the spec where they conflict)
+
+- This is the owner's only entry; both people work on it, one laptop at a time, with this file
+  as the hand-off.
+- Renamed to Proof of Claim (`a3cd62f`). Never name a rival entry in anything public (app,
+  README, video, Devpost, this repo), and never present one-claim-per-PayPal-account as our idea.
+- **Build order from now on: `../FULL-BUILD-PLAN.md` Part E, in strict phase order** (owner's
+  choice on 2026-11-10, knowing deploy and submission come last and the deadline is
+  Nov 13 01:30 IST). Mark plan items (P/B/C) below as they land.
+- Money needs two people (plan C7): an analyst proposes, a different supervisor approves.
+- C6 duplicate-image false positive (c-115): keep decision table v1; report it in R13 and
+  LIMITATIONS.md.
+- No green "safe" state anywhere in the UI (unknown shows as UNVERIFIED or HELD): Phase 12.
+- Pushed 2026-11-10: the 11 R10 commits (`adad2db..78d087b`). Ask before every push.
+
+## FULL-BUILD-PLAN phases
+
+| Phase | Status |
+|---|---|
+| 0 Housekeeping: push R10, rename | done (`a3cd62f`) |
+| 1 Admin login and roles (P16, C7) | done (`1db104e`, `976a508`) |
+| 2 Finish R10: e2e, live login, first Distribute from the app | done except the live Log in with PayPal, which needs the deployed URL (below) |
+| 3 Identity and privacy (P2, P4–P8) | next |
+| 4–14 | not started |
+
+Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
+**C7** two-person approval (enforced in code and in the database), P35/P37 (already had).
+
+- **Phase 1 evidence (2026-11-10):** migration 0006 (analysts, sessions as token hashes, money
+  proposals; database guards: no self-approval, supervisor only, no approval after expiry, no
+  payout batch without an approved proposal). scrypt passwords; lockout after 5 failures per email
+  or 20 per network in 15 min, from the audit log. `test/admin-guard.test.ts` fails if an admin
+  page reads data before `requireAnalyst` or an action doesn't start with it. Planted bugs (no
+  plan-hash check, no lockout, any analyst may approve, data read before the guard, an unguarded
+  action) each failed tests. Anonymous HTTP: all admin pages 307 to `/login?next=…`.
+- **Phase 2 evidence (2026-11-10):** `pnpm e2e` 6/6 on a production build with its own database
+  and a fake PayPal (happy path, deny, review, someone else's result is 404, anonymous redirects,
+  propose → supervisor approves → read back, paid to the PayPal account). CI runs it as a job.
+  The first e2e run found that the re-check before money undid analysts' approvals (fixed,
+  `88cb2c7`). First real Distribute from the app: sandbox batch `2HMAKHX862SAE`, 27 items, all
+  UNCLAIMED, fees $6.75, reconciled (`docs/sandbox-findings.md`); it showed the daily cap
+  shrinking everyone's share (fixed, `3c21938`). `pnpm test` 753/753 in 25 files.
+- **Live Log in with PayPal (P1) waits for the deployed URL:** PayPal's authorize page answers
+  `invalid_redirect_uri` for `http://localhost:3100/api/paypal/callback` (checked 2026-11-10,
+  `docs/sandbox-findings.md`). After the first deploy the owner adds
+  `https://<deployed>/api/paypal/callback` as a Return URL on `pushover-guarded`.
+
+## Spec R-steps (RIGHTFULSHARE-BUILD-SPEC §6), for reference
+
 
 | Step | Status |
 |---|---|
@@ -44,7 +92,7 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | R7 `packages/examiner` (one dataset receipt + one rendered fake) | done |
 | R8 Corpus scripts, manifest and labels committed before any run | done |
 | R9 Eval runner, three arms, pilot gate | done: **GO** on both models |
-| R10 `apps/web` (AG Grid admin) | in progress: all five screens built; e2e and live PayPal login left |
+| R10 `apps/web` (AG Grid admin) | done 2026-11-10 except the live PayPal login (needs the deployed URL) |
 | R11–R14 Worker, deploy, full run, submission | |
 
 - **R1 evidence (2026-11-01):** tag `pushover-final` → `b613415`. `pnpm lint` exit 0,
@@ -53,18 +101,18 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 
 ## In progress
 
-- **R10 (2026-11-02), built and committed:**
-  - Landing page (Court Ledger direction, `docs/design-direction.md`), `/demo`, `/claim/[s]` with Log in with PayPal, the claims desk on AG Grid with the claim page and review, `/admin/[s]/money` with Distribute and read-back, and `/report/[s]` with CSV.
-  - `packages/desk` files, reads, checks and decides claims on the database; 11 tests on real Postgres, including a planted bug.
-  - Migration 0005 records the PayPal account (one account = one claim) and pays by payer ID.
-  - `pnpm demo:seed` loads the 57 dev and pilot claims into a fresh database. The pilot matches R9 on 28 of 32; the 4 differences are explained under Open below.
-  - `pnpm test` 726 passing.
-- **Left in R10:**
-  - Playwright e2e (happy path, one deny, one review) against its own database.
-  - A real Log in with PayPal from the app. The owner must add the app's callback as a Return URL.
-  - The first real Distribute from the app (Nov 5 milestone).
-- **Local run:** `DATABASE_URL=<…>/proofofclaim pnpm --filter @proofofclaim/web dev` (port 3100), with `SESSION_SECRET` set.
-
+- **Next: Phase 3, identity and privacy** (P2 verified gate, P4 sealed payer ID, P5 pseudonyms,
+  P6 private status link, P7 a message for every state, P8 the expected amount).
+- **Local run:** a database named `proofofclaim` (renamed from the working name), migrated and
+  seeded (`pnpm db:migrate`, `pnpm demo:seed`, `pnpm demo:analysts` with `JUDGE_ANALYST_PASSWORD`
+  and `JUDGE_SUPERVISOR_PASSWORD`), then
+  `DATABASE_URL=<…>/proofofclaim SESSION_SECRET=… pnpm --filter @proofofclaim/web dev` (port 3100).
+  `pnpm e2e` builds and starts its own server on port 3200; stop `next dev` in `apps/web` first
+  only if you want both, since Next allows one dev server per app directory.
+- **R10 (2026-11-02), built and committed:** landing page, `/demo`, `/claim/[s]` with Log in with
+  PayPal, the AG Grid claims desk with the claim page and review, money with Distribute and
+  read-back, `/report/[s]` with CSV; `packages/desk`; migration 0005; `pnpm demo:seed` (57 dev and
+  pilot claims; the pilot matches R9 on 28 of 32, differences under Open below).
 
 - **R2 evidence (2026-11-01):** `pnpm test` 95/95 (20 Payouts unit tests on a recorded sandbox
   batch and PayPal's real duplicate error); `pnpm test:sandbox` PASS (batch `FHT9WYQD2RX9G`:
@@ -138,9 +186,8 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- R10: `apps/web`: /demo, /claim, /admin, /money, /report; admin tables on AG Grid with custom
-  cell renderers (spec §4.7). The AG Studio trial starts on or after Nov 3: build without the key
-  until then (watermark). Minimal version (/demo plus one real Payouts batch) by Nov 5.
+- `../FULL-BUILD-PLAN.md` Phase 3 (identity and privacy), then Phase 4 (the R11 worker: balances
+  check, digest in notes, verified webhooks, Transaction Search, re-offer, cy-près).
 
 ## Pushover history (kept for the record)
 
