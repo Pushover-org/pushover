@@ -11,6 +11,14 @@ export type ClaimantState = ClaimState | "WAITING_VERIFICATION" | "GROUP_HELD";
 
 export const CLAIMANT_STATE: Record<ClaimantState, { title: string; detail: string }> = {
   SUBMITTED: { title: "Filed", detail: "We have your claim. The checks run within seconds." },
+  UNBOUND: {
+    title: "Waiting for you to confirm",
+    detail: "An assistant filed this for you. It isn't a claim yet: nothing is read, decided or paid until you open the confirm link, log in with PayPal and confirm it's yours.",
+  },
+  LAPSED: {
+    title: "Closed: never confirmed",
+    detail: "An assistant filed this for someone, and nobody confirmed it in time, or the person said it wasn't theirs. It was never read, decided or paid. While filing is open, you can still file your own claim.",
+  },
   EXAMINED: { title: "Receipt read", detail: "Your receipt has been read. The checks and the published rules decide next." },
   APPROVE: { title: "Approved", detail: "Your claim passed the checks. You're paid when the court approves the distribution." },
   WAITING_VERIFICATION: {

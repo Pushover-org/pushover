@@ -78,6 +78,10 @@ export const en = {
   // Claim states, as the claimant sees them
   "state.SUBMITTED.title": "Filed",
   "state.SUBMITTED.detail": "We have your claim. The checks run within seconds.",
+  "state.UNBOUND.title": "Waiting for you to confirm",
+  "state.UNBOUND.detail": "An assistant filed this for you. It isn't a claim yet: nothing is read, decided or paid until you open the confirm link, log in with PayPal and confirm it's yours.",
+  "state.LAPSED.title": "Closed: never confirmed",
+  "state.LAPSED.detail": "An assistant filed this for someone, and nobody confirmed it in time, or the person said it wasn't theirs. It was never read, decided or paid. While filing is open, you can still file your own claim.",
   "state.EXAMINED.title": "Receipt read",
   "state.EXAMINED.detail": "Your receipt has been read. The checks and the published rules decide next.",
   "state.APPROVE.title": "Approved",

@@ -78,6 +78,10 @@ export const es: Messages = {
 
   "state.SUBMITTED.title": "Presentado",
   "state.SUBMITTED.detail": "Tenemos su reclamo. Las comprobaciones se hacen en segundos.",
+  "state.UNBOUND.title": "Esperando su confirmación",
+  "state.UNBOUND.detail": "Un asistente presentó esto por usted. Todavía no es un reclamo: no se lee, no se decide ni se paga hasta que abra el enlace de confirmación, inicie sesión con PayPal y confirme que es suyo.",
+  "state.LAPSED.title": "Cerrado: nunca se confirmó",
+  "state.LAPSED.detail": "Un asistente presentó esto por alguien, y nadie lo confirmó a tiempo, o la persona dijo que no era suyo. Nunca se leyó, decidió ni pagó. Mientras la presentación siga abierta, puede presentar su propio reclamo.",
   "state.EXAMINED.title": "Recibo leído",
   "state.EXAMINED.detail": "Su recibo ya se leyó. Ahora deciden las comprobaciones y las reglas publicadas.",
   "state.APPROVE.title": "Aprobado",

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CLAIMANT_STATE, claimantState, expectedAmount } from "./claim-status.ts";
 
-// Every state the claims table allows (migration 0004's claim_state), plus the derived one.
-const STORED = ["SUBMITTED", "EXAMINED", "APPROVE", "DENY", "NEED_MORE", "REVIEW", "SCHEDULED", "PAID", "UNCLAIMED", "RETURNED", "FAILED", "CY_PRES_ELIGIBLE", "UNVERIFIED"] as const;
+// Every state the claims table allows (migration 0004's claim_state, and 0012's UNBOUND and LAPSED), plus the derived ones.
+const STORED = ["UNBOUND", "LAPSED", "SUBMITTED", "EXAMINED", "APPROVE", "DENY", "NEED_MORE", "REVIEW", "SCHEDULED", "PAID", "UNCLAIMED", "RETURNED", "FAILED", "CY_PRES_ELIGIBLE", "UNVERIFIED"] as const;
 const tiers = { proof: { unitCents: 1500, maxUnits: 5 }, noProof: { flatCents: 1000 } };
 
 describe("what a claimant reads", () => {
@@ -31,8 +31,15 @@ describe("what a claimant reads", () => {
   });
 
   it("held, in-flight and unconfirmed are never titled as done", () => {
-    for (const s of ["REVIEW", "UNVERIFIED", "SCHEDULED", "UNCLAIMED", "WAITING_VERIFICATION", "GROUP_HELD"] as const) expect(CLAIMANT_STATE[s].title).not.toMatch(/\b(paid|safe|done|complete)\b/i);
+    for (const s of ["UNBOUND", "REVIEW", "UNVERIFIED", "SCHEDULED", "UNCLAIMED", "WAITING_VERIFICATION", "GROUP_HELD"] as const) expect(CLAIMANT_STATE[s].title).not.toMatch(/\b(paid|safe|done|complete)\b/i);
     expect(CLAIMANT_STATE.UNVERIFIED.detail).toMatch(/never as paid/);
+  });
+
+  it("an assistant's filing reads as waiting for its person, and says nothing is paid before they confirm", () => {
+    expect(CLAIMANT_STATE.UNBOUND.title).toMatch(/waiting/i);
+    expect(CLAIMANT_STATE.UNBOUND.detail).toMatch(/log in with PayPal/);
+    expect(CLAIMANT_STATE.UNBOUND.detail).toMatch(/nothing is read, decided or paid/);
+    expect(CLAIMANT_STATE.LAPSED.detail).toMatch(/never read, decided or paid/);
   });
 });
 

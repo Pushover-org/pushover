@@ -28,7 +28,7 @@ export async function ringClaims(db: Queryable, settlementId: string): Promise<R
     payout_email: string; address_line: string; zip: string; tier: "proof" | "no_proof"; units_claimed: number; state: string; status: string;
   }>(
     `SELECT id, seq, claimant_name, device_key, inbox_key, building_key, ip_key, declaration, submitted_at, payout_email, address_line, zip, tier, units_claimed, state, status
-     FROM claims WHERE settlement_id = $1 ORDER BY seq`,
+     FROM claims WHERE settlement_id = $1 AND status NOT IN ('UNBOUND', 'LAPSED') ORDER BY seq`,
     [settlementId],
   );
   return rows.map((r) => ({

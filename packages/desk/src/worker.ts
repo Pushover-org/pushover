@@ -8,6 +8,7 @@ import {
 import { findInHistory, type PayPalClient } from "@proofofclaim/paypal";
 import { ClaimRejectedError, type Desk } from "./desk.ts";
 import { readBack } from "./payout.ts";
+import { lapseUnconfirmed } from "./assistants.ts";
 
 /** How long a claimant has to ask for returned money again, unless the settlement sets otherwise. */
 export const REOFFER_DAYS = 30;
@@ -98,6 +99,8 @@ export interface TickResult {
   readBacks: number;
   history: Record<string, number>;
   expired: number;
+  /** Assistant filings nobody confirmed in time, now closed (P13). */
+  lapsed: number;
 }
 
 /** One pass of the worker for one settlement: read back what isn't settled, check history, expire re-offers. */
@@ -109,5 +112,6 @@ export async function workerTick(desk: Desk, pp: PayPalClient, opt: { now?: Date
   }
   const history = await confirmInHistory(desk, pp, { limit: opt.historyLimit ?? 10, ...(opt.now ? { now: opt.now } : {}) });
   const expired = await expireReoffers(desk, opt.now);
-  return { readBacks, history, expired };
+  const lapsed = await lapseUnconfirmed(desk, opt.now);
+  return { readBacks, history, expired, lapsed };
 }
