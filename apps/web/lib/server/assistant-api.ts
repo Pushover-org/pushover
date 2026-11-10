@@ -11,15 +11,13 @@ import { claimByStatusToken, ClaimRejectedError, fileForPerson } from "@proofofc
 import type { z } from "zod";
 import { CLAIMANT_STATE, claimantState, expectedAmount } from "../claim-status.ts";
 import type { ClaimStatusResult, FileClaimInput, FileClaimResult, ListSettlementsResult, SettlementSummary } from "../api/schemas.ts";
-import { MAX_IMAGE_BYTES } from "../api/schemas.ts";
+import { LIMITS, MAX_IMAGE_BYTES } from "../api/schemas.ts";
 import { claimView, desk, pool } from "./data.ts";
 
 export type ApiFailure = { ok: false; status: number; code: string; error: string; retryAfterSeconds?: number };
 export type ApiResult<T> = { ok: true; value: T } | ApiFailure;
 const failure = (status: number, code: string, error: string, extra: Partial<ApiFailure> = {}): ApiFailure => ({ ok: false, status, code, error, ...extra });
 
-/** Per network (a keyed hash, never the raw IP), per minute; and per settlement, per hour. */
-export const LIMITS = { callsPerMinute: 60, filingsPerMinute: 10, filingsPerSettlementPerHour: 300 } as const;
 
 /** Refuses a caller that has used its minute's budget. Every tool call and API request counts. */
 export async function admit(network: string | null, kind: "call" | "filing"): Promise<ApiFailure | null> {

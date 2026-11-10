@@ -1,0 +1,1008 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Proof of Claim: claims API for assistants",
+    "version": "1.0.0",
+    "summary": "File a class-action claim for a person, with their receipt, and follow it. Nothing here can confirm, decide or pay a claim.",
+    "description": "Proof of Claim runs claims for class-action settlements. An assistant (or any program) can find an open settlement, file a claim on a person's behalf with the receipt photo, and read the claim's progress.\n\n**A filing is not a claim until its person confirms it.** fileClaim returns a `confirm_url`. The person opens it, logs in with PayPal, checks what was filed and swears to it. Until then nothing is read, checked, decided or paid, and if nobody confirms it within 7 days (or by the filing deadline) it closes.\n\n**Decisions are made by published rules and claims staff, never by the caller.** Approved claims are paid through PayPal Payouts, only to the PayPal account that confirmed the claim, and only after two different staff members approve the payout round.\n\nThe same three operations are available as MCP tools (list_settlements, file_claim, claim_status) at `/api/mcp` (Streamable HTTP).\n\nNo API key. Limits per network: 60 requests and 10 filings a minute; per settlement: 300 assistant filings an hour.\n\nDemo settlements are fictional and pay PayPal sandbox play money.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "This deployment"
+    }
+  ],
+  "tags": [
+    {
+      "name": "claims",
+      "description": "Filing and following claims"
+    }
+  ],
+  "x-mcp": {
+    "endpoint": "/api/mcp",
+    "transport": "streamable-http",
+    "tools": [
+      "list_settlements",
+      "file_claim",
+      "claim_status"
+    ]
+  },
+  "paths": {
+    "/api/v1/settlements": {
+      "get": {
+        "operationId": "listSettlements",
+        "tags": [
+          "claims"
+        ],
+        "summary": "List open settlements",
+        "description": "Settlements taking claims now: who qualifies, the class period and states, and what a claim can pay. MCP tool: list_settlements.",
+        "responses": {
+          "200": {
+            "description": "The open settlements.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSettlementsResult"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this network, or this settlement is taking too many assistant filings right now.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/claims": {
+      "post": {
+        "operationId": "fileClaim",
+        "tags": [
+          "claims"
+        ],
+        "summary": "File a claim for a person",
+        "description": "Files a claim on a person's behalf, with their receipt photo for the proof tier. It waits (state UNBOUND) until the person opens confirm_url, logs in with PayPal and confirms it. MCP tool: file_claim.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileClaimRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Filed, waiting for the person to confirm it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileClaimResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body is invalid, or the receipt is missing or not an image.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No settlement has that ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Filing for this settlement has closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The receipt photo is over 8 MB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The body is not application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this network, or this settlement is taking too many assistant filings right now.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/claims/status": {
+      "post": {
+        "operationId": "claimStatus",
+        "tags": [
+          "claims"
+        ],
+        "summary": "Check a claim's progress",
+        "description": "A claim's state, decision, reason and expected amount, by its private status token (in the body, so it stays out of URLs and logs). Nothing personal is returned. MCP tool: claim_status.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The claim's progress.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimStatusResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No claim has that status token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The body is not application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this network, or this settlement is taking too many assistant filings right now.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FileClaimRequest": {
+        "type": "object",
+        "properties": {
+          "settlement": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,64}$",
+            "description": "The settlement's ID, from list_settlements."
+          },
+          "agent_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[^\\p{Cc}]+$",
+            "description": "The name you, the assistant, go by (for example the product's name). It is shown to the person and the claims staff as the name you gave."
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "proof",
+              "no_proof"
+            ],
+            "description": "proof: with a receipt photo, paid per qualifying item. no_proof: without one, a flat amount."
+          },
+          "units": {
+            "default": 1,
+            "description": "proof tier: how many qualifying items the person bought (capped by what the receipt shows). Ignored for no_proof.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120,
+            "description": "The person's full name."
+          },
+          "address_line": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200,
+            "description": "Street address."
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "City."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "AL",
+              "AK",
+              "AZ",
+              "AR",
+              "CA",
+              "CO",
+              "CT",
+              "DE",
+              "DC",
+              "FL",
+              "GA",
+              "HI",
+              "ID",
+              "IL",
+              "IN",
+              "IA",
+              "KS",
+              "KY",
+              "LA",
+              "ME",
+              "MD",
+              "MA",
+              "MI",
+              "MN",
+              "MS",
+              "MO",
+              "MT",
+              "NE",
+              "NV",
+              "NH",
+              "NJ",
+              "NM",
+              "NY",
+              "NC",
+              "ND",
+              "OH",
+              "OK",
+              "OR",
+              "PA",
+              "RI",
+              "SC",
+              "SD",
+              "TN",
+              "TX",
+              "UT",
+              "VT",
+              "VA",
+              "WA",
+              "WV",
+              "WI",
+              "WY"
+            ],
+            "description": "Two-letter US state code."
+          },
+          "zip": {
+            "type": "string",
+            "pattern": "^\\d{5}(-\\d{4})?$",
+            "description": "5-digit ZIP code."
+          },
+          "declaration": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000,
+            "description": "In the person's own words: what they bought, where and when. Template wording is held for a person to check."
+          },
+          "receipt": {
+            "description": "The receipt photo. Required for the proof tier. It is read and checked like any other claim's, once the person confirms.",
+            "type": "object",
+            "properties": {
+              "content_type": {
+                "type": "string",
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/gif",
+                  "image/webp"
+                ]
+              },
+              "data_base64": {
+                "type": "string",
+                "maxLength": 11184812,
+                "format": "base64",
+                "contentEncoding": "base64",
+                "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$",
+                "description": "The photo's bytes, base64-encoded. At most 8 MB before encoding."
+              }
+            },
+            "required": [
+              "content_type",
+              "data_base64"
+            ]
+          }
+        },
+        "required": [
+          "settlement",
+          "agent_name",
+          "tier",
+          "name",
+          "address_line",
+          "city",
+          "state",
+          "zip",
+          "declaration"
+        ]
+      },
+      "FileClaimResult": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "const": "UNBOUND",
+            "description": "Filed, waiting for the person. Not read, checked, decided or payable until they confirm."
+          },
+          "confirm_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Give this link to the person. They log in with PayPal and confirm the claim is theirs. You can't do this step for them."
+          },
+          "lapses_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "If nobody confirms by then, the filing closes for good."
+          },
+          "status_token": {
+            "type": "string",
+            "description": "For claim_status. Keep it private; it shows the claim's progress, nothing personal."
+          },
+          "status_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "next_step": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "state",
+          "confirm_url",
+          "lapses_at",
+          "status_token",
+          "status_url",
+          "next_step"
+        ],
+        "additionalProperties": false
+      },
+      "ClaimStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status_token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{32}$",
+            "description": "The status_token file_claim returned. It stops working once the person confirms, because the claim is theirs from then on."
+          }
+        },
+        "required": [
+          "status_token"
+        ]
+      },
+      "ClaimStatusResult": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "settlement": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "description": "UNBOUND, LAPSED, SUBMITTED, EXAMINED, APPROVE, WAITING_VERIFICATION, GROUP_HELD, DENY, NEED_MORE, REVIEW, SCHEDULED, PAID, UNCLAIMED, RETURNED, FAILED, CY_PRES_ELIGIBLE or UNVERIFIED."
+          },
+          "title": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "APPROVE",
+                  "DENY",
+                  "NEED_MORE",
+                  "REVIEW"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The latest decision by the published rules or a person; null while undecided."
+          },
+          "reason": {
+            "description": "Why, in the words on the court's record.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expected_amount": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "basis": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "basis"
+            ],
+            "additionalProperties": false
+          },
+          "filed_by": {
+            "type": "object",
+            "properties": {
+              "via": {
+                "type": "string",
+                "enum": [
+                  "FORM",
+                  "ASSISTANT"
+                ]
+              },
+              "agent_name": {
+                "description": "The name the assistant gave itself. Not verified.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "confirmed_at": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "via",
+              "agent_name",
+              "confirmed_at"
+            ],
+            "additionalProperties": false
+          },
+          "status_url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "claim_id",
+          "settlement",
+          "state",
+          "title",
+          "detail",
+          "outcome",
+          "reason",
+          "expected_amount",
+          "filed_by",
+          "status_url"
+        ],
+        "additionalProperties": false
+      },
+      "ListSettlementsResult": {
+        "type": "object",
+        "properties": {
+          "settlements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "demo": {
+                  "type": "boolean",
+                  "description": "True for a fictional demo settlement, paid in PayPal sandbox play money."
+                },
+                "who_qualifies": {
+                  "type": "string",
+                  "description": "Plain-words eligibility: what, where and when."
+                },
+                "class_period": {
+                  "type": "object",
+                  "properties": {
+                    "start": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    "end": {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    }
+                  },
+                  "required": [
+                    "start",
+                    "end"
+                  ],
+                  "additionalProperties": false
+                },
+                "states": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "AL",
+                      "AK",
+                      "AZ",
+                      "AR",
+                      "CA",
+                      "CO",
+                      "CT",
+                      "DE",
+                      "DC",
+                      "FL",
+                      "GA",
+                      "HI",
+                      "ID",
+                      "IL",
+                      "IN",
+                      "IA",
+                      "KS",
+                      "KY",
+                      "LA",
+                      "ME",
+                      "MD",
+                      "MA",
+                      "MI",
+                      "MN",
+                      "MS",
+                      "MO",
+                      "MT",
+                      "NE",
+                      "NV",
+                      "NH",
+                      "NJ",
+                      "NM",
+                      "NY",
+                      "NC",
+                      "ND",
+                      "OH",
+                      "OK",
+                      "OR",
+                      "PA",
+                      "RI",
+                      "SC",
+                      "SD",
+                      "TN",
+                      "TX",
+                      "UT",
+                      "VT",
+                      "VA",
+                      "WA",
+                      "WV",
+                      "WI",
+                      "WY"
+                    ]
+                  }
+                },
+                "products": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "description"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "tiers": {
+                  "type": "object",
+                  "properties": {
+                    "proof": {
+                      "type": "object",
+                      "properties": {
+                        "unit_cents": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "max_units": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "unit_cents",
+                        "max_units"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "no_proof": {
+                      "type": "object",
+                      "properties": {
+                        "flat_cents": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "flat_cents"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "proof",
+                    "no_proof"
+                  ],
+                  "additionalProperties": false
+                },
+                "filing_closes_at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "claim_url": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "Where a person can file by themselves."
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "demo",
+                "who_qualifies",
+                "class_period",
+                "states",
+                "products",
+                "tiers",
+                "filing_closes_at",
+                "claim_url"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "settlements"
+        ],
+        "additionalProperties": false
+      },
+      "SettlementSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "demo": {
+            "type": "boolean",
+            "description": "True for a fictional demo settlement, paid in PayPal sandbox play money."
+          },
+          "who_qualifies": {
+            "type": "string",
+            "description": "Plain-words eligibility: what, where and when."
+          },
+          "class_period": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              "end": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          },
+          "states": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "AL",
+                "AK",
+                "AZ",
+                "AR",
+                "CA",
+                "CO",
+                "CT",
+                "DE",
+                "DC",
+                "FL",
+                "GA",
+                "HI",
+                "ID",
+                "IL",
+                "IN",
+                "IA",
+                "KS",
+                "KY",
+                "LA",
+                "ME",
+                "MD",
+                "MA",
+                "MI",
+                "MN",
+                "MS",
+                "MO",
+                "MT",
+                "NE",
+                "NV",
+                "NH",
+                "NJ",
+                "NM",
+                "NY",
+                "NC",
+                "ND",
+                "OH",
+                "OK",
+                "OR",
+                "PA",
+                "RI",
+                "SC",
+                "SD",
+                "TN",
+                "TX",
+                "UT",
+                "VT",
+                "VA",
+                "WA",
+                "WV",
+                "WI",
+                "WY"
+              ]
+            }
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "description"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tiers": {
+            "type": "object",
+            "properties": {
+              "proof": {
+                "type": "object",
+                "properties": {
+                  "unit_cents": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "max_units": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "unit_cents",
+                  "max_units"
+                ],
+                "additionalProperties": false
+              },
+              "no_proof": {
+                "type": "object",
+                "properties": {
+                  "flat_cents": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "flat_cents"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "proof",
+              "no_proof"
+            ],
+            "additionalProperties": false
+          },
+          "filing_closes_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "claim_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Where a person can file by themselves."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "demo",
+          "who_qualifies",
+          "class_period",
+          "states",
+          "products",
+          "tiers",
+          "filing_closes_at",
+          "claim_url"
+        ],
+        "additionalProperties": false
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "A sentence that can be shown to the person."
+          },
+          "code": {
+            "type": "string",
+            "description": "A short machine-readable code."
+          }
+        },
+        "required": [
+          "error",
+          "code"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

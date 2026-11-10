@@ -7,6 +7,9 @@
 import { US_STATES } from "@proofofclaim/claims";
 import { z } from "zod";
 
+/** Per network (a keyed hash, never the raw IP), per minute; and per settlement, per hour. Published in the OpenAPI document. */
+export const LIMITS = { callsPerMinute: 60, filingsPerMinute: 10, filingsPerSettlementPerHour: 300 } as const;
+
 /** The most a receipt photo may weigh, for every claimant: the form and the assistants alike. */
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_BASE64 = Math.ceil(MAX_IMAGE_BYTES / 3) * 4;

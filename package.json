@@ -28,7 +28,8 @@
     "admin:add": "node --env-file-if-exists=.env.local packages/desk/scripts/add-analyst.ts",
     "demo:analysts": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-analysts.ts",
     "worker": "node --env-file-if-exists=.env.local apps/worker/src/main.ts",
-    "demo:rings": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-rings.ts"
+    "demo:rings": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-rings.ts",
+    "openapi": "node apps/web/scripts/openapi.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
