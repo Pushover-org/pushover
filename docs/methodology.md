@@ -322,3 +322,33 @@ Development only: these are the demo's claims, not a held-out set.
   is shown with the facts. The measured number is on the generated rings set (rings-v1), below.
 - Found on the way: replays were keyed by the facts alone, so a changed prompt replayed stale answers;
   the key now covers the prompt too. Cost of all three runs: $0.0022.
+
+## Ring detection on rings-v1 and rings-v2 (plan items P25, P31, P32, C8; 2026-11-10)
+
+Synthetic claimants (`packages/eval/corpus/rings-v1/README.md`): five kinds of fraud ring and the
+honest look-alikes detection must not hold. Labels and metrics committed before each measurement.
+
+**rings-v1, as pre-registered (`b5497c0`), measured with detector v1:** recall 90.6%, but 38.7% of
+honest claimants held (solo 23.6%, campus 86.7%). Far worse than expected; the result is kept
+(`packages/eval/results/rings-v1-2026-11-10/summary.json`). Diagnosis: (1) the detector chained
+near-identical declarations through single links into giant groups (one of 249 strangers); (2) the
+generator numbered IPv4 test networks inside one range, so 256 "different" networks shared each
+/24 prefix, linking strangers by network. Fixes: a story link counts only inside the story graph's
+2-core (detector v2), and one /24 per network (generator). Tuned on a development set (seed 7771,
+`results/rings-dev-v2-2026-11-10`): 5.8% false holds, 82.2% recall. Then frozen.
+
+**rings-v2 (seed 20261111), pre-registered in `60d27eb` before measurement, detector v2:**
+
+| | Result (Wilson 95%) |
+|---|---|
+| Recall, all fraud | 1,229 / 1,536 = **80.0%** [77.9–81.9]; 152 of 180 rings touched |
+| device farm / template crew / inbox ring / quiet ring | 100.0% / 98.7% / 100.0% / 100.0% |
+| address mill | 0.7% [0.2–2.4]: the known blind spot (only a building and a network in common) |
+| False holds, all honest | 218 / 3,464 = **6.3%** [5.5–7.1] |
+| household | 27.6% [24.4–31.0]: homes where two members share a family device; a person (or the investigator) clears them |
+| campus / shared network / solo | 0.4% / 1.3% / 0.7% |
+| coincidence (strangers writing alike) | 8.0% [3.1–18.8] |
+| Precision | 1,229 of 1,447 grouped claims are fraud (84.9%); 65 of 183 groups contain an honest claimant |
+
+5,000 claims grouped in 348 ms. Synthetic data: these numbers say how the rule behaves on the patterns
+we built, not on real claimants; real declarations, devices and addresses will differ.

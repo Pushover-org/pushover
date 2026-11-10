@@ -1,0 +1,116 @@
+{
+  "corpus": "rings-v2",
+  "version": "v2",
+  "measured": "2026-11-10T07:05:06.183Z",
+  "config": {
+    "storyShingle": 3,
+    "storyThreshold": 0.5,
+    "storyMinDegree": 2,
+    "attachMinMembers": 2
+  },
+  "claims": 5000,
+  "ms": 348,
+  "groups": 183,
+  "groupsWithAnHonestMember": 65,
+  "precision": {
+    "groupedClaims": 1447,
+    "fraud": 1229,
+    "rate": 0.8493
+  },
+  "recall": {
+    "all": {
+      "k": 1229,
+      "n": 1536,
+      "rate": 0.8001,
+      "low": 0.7794,
+      "high": 0.8194
+    },
+    "ringsWithAnyMemberGrouped": {
+      "k": 152,
+      "n": 180
+    },
+    "byKind": {
+      "device_farm": {
+        "k": 404,
+        "n": 404,
+        "rate": 1,
+        "low": 0.9906,
+        "high": 1
+      },
+      "template_crew": {
+        "k": 392,
+        "n": 397,
+        "rate": 0.9874,
+        "low": 0.9709,
+        "high": 0.9946
+      },
+      "inbox_ring": {
+        "k": 196,
+        "n": 196,
+        "rate": 1,
+        "low": 0.9808,
+        "high": 1
+      },
+      "address_mill": {
+        "k": 2,
+        "n": 304,
+        "rate": 0.0066,
+        "low": 0.0018,
+        "high": 0.0237
+      },
+      "quiet_ring": {
+        "k": 235,
+        "n": 235,
+        "rate": 1,
+        "low": 0.9839,
+        "high": 1
+      }
+    }
+  },
+  "falseHolds": {
+    "all": {
+      "k": 218,
+      "n": 3464,
+      "rate": 0.0629,
+      "low": 0.0553,
+      "high": 0.0715
+    },
+    "byKind": {
+      "household": {
+        "k": 194,
+        "n": 704,
+        "rate": 0.2756,
+        "low": 0.2438,
+        "high": 0.3097
+      },
+      "campus": {
+        "k": 1,
+        "n": 240,
+        "rate": 0.0042,
+        "low": 0.0007,
+        "high": 0.0232
+      },
+      "shared_network": {
+        "k": 2,
+        "n": 150,
+        "rate": 0.0133,
+        "low": 0.0037,
+        "high": 0.0473
+      },
+      "coincidence": {
+        "k": 4,
+        "n": 50,
+        "rate": 0.08,
+        "low": 0.0315,
+        "high": 0.1884
+      },
+      "solo": {
+        "k": 17,
+        "n": 2320,
+        "rate": 0.0073,
+        "low": 0.0046,
+        "high": 0.0117
+      }
+    }
+  }
+}
