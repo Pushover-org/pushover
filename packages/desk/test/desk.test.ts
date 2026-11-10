@@ -397,14 +397,16 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       const p = await proposeCyPres(desk(), ana);
       const never = fakePayPal([]);
       await expect(approveCyPres(desk(), makeClient(never.fetch).client, ana, p.id)).rejects.toThrow("you proposed this one");
-      let body: { items: { receiver: string; amount: { value: string }; note: string }[] } | null = null;
+      // A holder, not a bare let: TypeScript can't see the assignment inside the callback.
+      const seen: { body: { items: { receiver: string; amount: { value: string }; note: string }[]; sender_batch_header: object } | null } = { body: null };
       const pp = fakePayPal([balance(), (call) => {
-        body = JSON.parse(call.body ?? "{}");
-        return json(201, { batch_header: { payout_batch_id: "CP1", batch_status: "PENDING", sender_batch_header: (body as unknown as { sender_batch_header: object }).sender_batch_header } });
+        seen.body = JSON.parse(call.body ?? "{}");
+        return json(201, { batch_header: { payout_batch_id: "CP1", batch_status: "PENDING", sender_batch_header: seen.body?.sender_batch_header } });
       }]);
+      const body = () => seen.body;
       const out = await approveCyPres(desk(), makeClient(pp.fetch).client, sol, p.id);
       expect(out).toMatchObject({ paypalBatchId: "CP1", cents });
-      expect(body?.items).toEqual([expect.objectContaining({ receiver: S.cyPres.payoutEmail, amount: { currency: "USD", value: (cents / 100).toFixed(2) }, note: expect.stringContaining("cy_pres round 1, plan sha256:") })]);
+      expect(body()?.items).toEqual([expect.objectContaining({ receiver: S.cyPres.payoutEmail, amount: { currency: "USD", value: (cents / 100).toFixed(2) }, note: expect.stringContaining("cy_pres round 1, plan sha256:") })]);
       const { rows } = await pool.query("SELECT claim_id, cents FROM cy_pres_claims");
       expect(rows).toEqual([{ claim_id: id, cents: String(cents) }]);
       const { rows: t } = await pool.query("SELECT approved_by, cents FROM cy_pres_transfers");
