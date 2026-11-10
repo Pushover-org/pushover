@@ -32,3 +32,6 @@ packages/eval/results/*/transcripts.jsonl
 apps/web/AGENTS.md
 apps/web/next-env.d.ts
 *.tsbuildinfo
+
+# Regenerable development set for rings (seed 7771): see packages/eval/corpus/rings-v2/README.md
+packages/eval/corpus/rings-dev/

@@ -13,5 +13,10 @@
     "probability_coordinated": 0.45,
     "pattern": "device_farm",
     "strength": 2
+  },
+  "4c36525c92a1f63fed23ec04e45069aa46d1549186efb371eaed692e98f8d8ed": {
+    "probability_coordinated": 0.3,
+    "pattern": "template_crew",
+    "strength": 2
   }
 }

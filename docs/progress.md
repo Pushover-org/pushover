@@ -55,8 +55,9 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 3 Identity and privacy (P2, P4–P8) | done (`1dab995`, `0023e45`) |
 | 4 Money path: the R11 worker (P34, P36, P38–P40, C4, B5) | done (`bb4c15c`..`e8ef04d`); webhook registration waits for the deployed URL |
 | 5 The decision ledger (P33, P42–P45, C1, C2) | done (`ad497ea`, `7bdeeee`, `5b7d484`) |
-| 6 Rings and the AI investigator (P25–P32, C8) | next |
-| 7–14 | not started |
+| 6 Rings and the AI investigator (P25–P32, C8) | done (`e125701`..`270e259`) |
+| 7 The console (P17–P24, C6, C13) | next |
+| 8–14 | not started |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
 **C7** two-person approval (enforced in code and in the database), P35/P37 (already had),
@@ -65,7 +66,10 @@ status link, **P7** every state in plain words, **P8** expected amount, **P34** 
 digest on every payout (verified in the sandbox), **P38** verified webhooks (code; registration after deploy),
 **P39** PayPal history check, **P40** where the money went, **C4** re-offer, **B5** cy-près with two people,
 **P33** ledger committed before paying with a drand round, **C1** decision leaves, **C2** rules by hash,
-**P42** public ledger page, **P43** verify in the browser, **P44** audit sample, **P45** one shared package.
+**P42** public ledger page, **P43** verify in the browser, **P44** audit sample, **P45** one shared package,
+**P25** signals and strong-core groups, **P26** group pages, **P27**/**P28** investigator with stand-in labels,
+**P29** rejected-answer banner, **P30** replay, **P31**/**C8** measured false holds, **P32** 5,000-claim generator
+(synthetic people only: no receipts at that scale; receipt fraud stays measured on claims-v1).
 
 - **Phase 1 evidence (2026-11-10):** migration 0006 (analysts, sessions as token hashes, money
   proposals; database guards: no self-approval, supervisor only, no approval after expiry, no
@@ -106,6 +110,14 @@ digest on every payout (verified in the sandbox), **P38** verified webhooks (cod
   Planted: trust the relay; a sample the randomness doesn't drive; both failed. e2e 10/10 (public
   verify passes; a ledger changed in transit fails) and the live drand run passed. `pnpm test`
   820/820 in 31 files. CI green again after `65668a6` (fixed a test type error that `652c857` pushed).
+- **Phase 6 evidence (2026-11-10):** `packages/checks/src/rings.ts` (15 tests incl. a property test
+  that networks and buildings alone never group, and the chain test); investigator in
+  `packages/examiner/src/investigate.ts` (20 tests); migration 0010; desk tests incl. a prompt scan for
+  personal data (a planted claim-ID leak failed it). Live investigator runs on the demo's groups
+  recorded honestly in `docs/methodology.md` (it wrongly recommended clearing fraud groups in the first
+  two designs). Measured on the held-out rings-v2 (pre-registered `60d27eb`): recall 80.0%, false holds
+  6.3% (households 27.6%), precision 84.9%; the rings-v1 result (38.7% false holds) is kept with its
+  two causes. `pnpm demo:rings` records answers in `data/replay/investigations.json`.
 - **Live Log in with PayPal (P1) waits for the deployed URL:** PayPal's authorize page answers
   `invalid_redirect_uri` for `http://localhost:3100/api/paypal/callback` (checked 2026-11-10,
   `docs/sandbox-findings.md`). After the first deploy the owner adds
@@ -135,9 +147,10 @@ digest on every payout (verified in the sandbox), **P38** verified webhooks (cod
 
 ## In progress
 
-- **Next: Phase 6, rings and the AI investigator** (P25 signals and strong-core clustering, P26 group
-  page, P27/P28 investigator with stand-in labels, P29 rejected-answer banner, P30 replay mode, P31/C8
-  fairness cases and a measured false-hold rate, P32 a 5,000-claim generator with receipts).
+- **Next: Phase 7, the console** (P17 settlements index, P18 create form, P19 filing deadline, P20 grid
+  export and grouping, P21 live scoreboard with AI-alone and lone-fraud rows, P22 bulk group decisions,
+  P23 Distribute blocked while groups are held, P24 Bryntum timeline, C13 AG Studio agent).
+  Not done in Phase 6, optional: measuring the investigator itself on rings-v2's groups (about $0.05).
 - **Run the worker** next to the web app: `pnpm worker` (`--once` for one pass). Env: `REOFFER_DAYS`
   (30; shorter on the demo so returned money reaches cy-près during judging), `WORKER_INTERVAL_SECONDS`.
 - **Demo timing to watch:** the 27 unclaimed items of `2HMAKHX862SAE` (Nov 10) should come back
@@ -228,7 +241,7 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- `../FULL-BUILD-PLAN.md` Phase 6 (rings and the investigator), then Phase 7 (the console).
+- `../FULL-BUILD-PLAN.md` Phase 7 (the console), then Phase 8 (claimant upgrades).
 
 ## Pushover history (kept for the record)
 
