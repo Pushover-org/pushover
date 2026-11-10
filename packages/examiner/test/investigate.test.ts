@@ -38,6 +38,30 @@ describe("the fixed rule", () => {
   });
 });
 
+describe("the model's word never clears a group the facts don't fit", () => {
+  const link = (kind: "device" | "inbox" | "story", over: object = {}) => ({ kind, between: ["Claim A", "Claim B"] as [string, string], sameName: false, sameBuilding: false, ...over });
+  const two = facts.members.slice(0, 2);
+  const household: Answers = { probability_coordinated: 0.1, pattern: "household", strength: 1 };
+  const coincidence: Answers = { probability_coordinated: 0.1, pattern: "coincidence", strength: 1 };
+  it("a household must share a building on every strong link", () => {
+    expect(recommend(household, { members: two, links: [link("device", { sameBuilding: true, sameName: false })] })).toBe("CLEAR");
+    expect(recommend(household, { members: two, links: [link("inbox")] })).toBe("PERSON_DECIDES"); // one inbox, two names, two buildings
+  });
+  it("a coincidence must be small and joined only by moderately similar words", () => {
+    expect(recommend(coincidence, { members: two, links: [link("story", { similarity: 0.6 })] })).toBe("CLEAR");
+    expect(recommend(coincidence, { members: two, links: [link("story", { similarity: 0.92 })] })).toBe("PERSON_DECIDES");
+    expect(recommend(coincidence, { members: two, links: [link("inbox")] })).toBe("PERSON_DECIDES");
+    expect(recommend(coincidence, { members: facts.members.concat({ ...facts.members[0]!, label: "Claim D" }), links: [link("story", { similarity: 0.6 })] })).toBe("PERSON_DECIDES");
+  });
+  it("the memo says when the facts don't fit the pattern named", () => {
+    const f = { members: two, links: [link("inbox")] };
+    const r = readAnswers("claude-haiku-5-5", factsSha256(f), reply(JSON.stringify(household)), f);
+    expect(r.recommendation).toBe("PERSON_DECIDES");
+    expect(memo(f, r).at(-1)).toBe("The facts don't fit a household, so the fixed rule makes no recommendation. A person decides on the evidence.");
+    expect(memo(f, r)[1]).toBe("1 of 1 strong links join claims with different names at different buildings.");
+  });
+});
+
 describe("the model's answer", () => {
   const sha = factsSha256(facts);
   it("three valid fields are used, through the rule", () => {
@@ -73,6 +97,14 @@ describe("asking, and replaying", () => {
     const changed = { ...facts, members: facts.members.slice(1) };
     expect(await investigate(null, changed, (s) => recorded.get(s) ?? null)).toMatchObject({ status: "NOT_RUN", recommendation: "PERSON_DECIDES" });
   });
+  it("the replay key covers the question asked as well as the facts", async () => {
+    const { SYSTEM_PROMPT } = await import("../src/investigate.ts");
+    const { createHash } = await import("node:crypto");
+    const factsOnly = createHash("sha256").update(JSON.stringify({ members: [...facts.members].sort((a, b) => a.label.localeCompare(b.label)) })).digest("hex");
+    expect(factsSha256(facts)).not.toBe(factsOnly);
+    expect(SYSTEM_PROMPT.length).toBeGreaterThan(100);
+  });
+
   it("the same group hashes the same whatever order its facts came in", () => {
     expect(factsSha256({ members: [...facts.members].reverse(), links: [...facts.links].reverse().map((l) => ({ ...l, between: [l.between[1], l.between[0]] as [string, string] })) })).toBe(factsSha256(facts));
   });

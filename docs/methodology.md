@@ -294,3 +294,31 @@ not reliably keep is a rule that nothing outside the prompt enforces: one inject
 enough for Haiku to skip the $250 staff review. The structural gaps from the pilot stand.
 
 **Next (owner decision; spec §9 step 7 says stop and reassess):** see `docs/progress.md`.
+
+## The AI investigator on the demo's groups (development, 2026-11-10)
+
+Ring detection (code) found 3 groups among the 57 demo claims (dev and pilot slices of claims-v1);
+all 10 grouped claims are labelled fraud: 6 F5 bot-farm claims joined by near-identical words, 2 more
+F5 claims (words and network), and an F6 pair (one inbox under two names at two addresses). The
+investigator (Haiku 5.5, effort low) was then asked about each, three times as its design changed.
+Development only: these are the demo's claims, not a held-out set.
+
+| Group | Run 1 | Run 2 | Run 3 |
+|---|---|---|---|
+| 6 claims, 8 story links | template crew, 45%, strength 2 → none | coincidence, 20% → **clear** | template crew, 30%, strength 2 → none |
+| 2 claims, story + network | shared network, 15% → **clear** | shared network, 10% → **clear** | coincidence, 8% → **clear** |
+| 2 claims, one inbox, two names | household, 10% → **clear** | coincidence, 12% → **clear** | device farm, 45%, strength 2 → none |
+
+- Run 1: names and addresses are never shown (P28), so the model couldn't tell a family from a ring.
+- Run 2 added yes/no facts computed by code (same name? same building?) on strong links. The model read
+  "different names, different buildings" as independent people and cleared all three.
+- Run 3 added one domain sentence to the prompt (a shared device, inbox or script behind different
+  names at different buildings is the sign of made-up identities) and made the fixed rule check the
+  model's word against the facts: "household" clears only if every strong link shares a building;
+  "coincidence" or "shared network" only for at most 3 claims joined by words below 0.8 similarity.
+  One fraud pair (moderately similar words on one network) is still recommended for clearing; the
+  facts there really are ambiguous. The investigator never recommended denying a group.
+- What this means: the investigator's recommendation is a hint for a person, never a decision, and it
+  is shown with the facts. The measured number is on the generated rings set (rings-v1), below.
+- Found on the way: replays were keyed by the facts alone, so a changed prompt replayed stale answers;
+  the key now covers the prompt too. Cost of all three runs: $0.0022.

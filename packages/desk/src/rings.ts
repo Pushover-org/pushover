@@ -35,6 +35,8 @@ export async function detectRings(desk: Desk): Promise<RingGroup[]> {
   return groups;
 }
 
+const sameName = (a: string, b: string) => a.trim().toLowerCase().replace(/\s+/g, " ") === b.trim().toLowerCase().replace(/\s+/g, " ");
+
 const LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const label = (i: number) => `Claim ${i < 26 ? LABELS[i] : `${LABELS[Math.floor(i / 26) - 1]}${LABELS[i % 26]}`}`;
 
@@ -73,10 +75,12 @@ export async function groupFacts(desk: Desk, members: string[]): Promise<{ facts
       const a = rows[i] as RingClaimRow;
       const b = rows[j] as RingClaimRow;
       const between: [string, string] = [byClaim.get(a.claimId) as string, byClaim.get(b.claimId) as string];
-      if (a.deviceKey && a.deviceKey === b.deviceKey) facts.links.push({ kind: "device", between });
-      if (a.inboxKey && a.inboxKey === b.inboxKey) facts.links.push({ kind: "inbox", between });
+      // Yes-or-no facts that tell a household from a ring, without showing a name or an address.
+      const same = { sameName: sameName(a.name, b.name), sameBuilding: a.buildingKey !== null && a.buildingKey === b.buildingKey };
+      if (a.deviceKey && a.deviceKey === b.deviceKey) facts.links.push({ kind: "device", between, ...same });
+      if (a.inboxKey && a.inboxKey === b.inboxKey) facts.links.push({ kind: "inbox", between, ...same });
       const sim = jaccard(sets.get(a.claimId) ?? new Set(), sets.get(b.claimId) ?? new Set());
-      if (sim >= RING_CONFIG.storyThreshold) facts.links.push({ kind: "story", between, similarity: Math.round(sim * 100) / 100 });
+      if (sim >= RING_CONFIG.storyThreshold) facts.links.push({ kind: "story", between, similarity: Math.round(sim * 100) / 100, ...same });
       if (a.buildingKey && a.buildingKey === b.buildingKey) facts.links.push({ kind: "building", between });
       if (a.networkKey && a.networkKey === b.networkKey) facts.links.push({ kind: "network", between });
     }

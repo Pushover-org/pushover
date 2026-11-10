@@ -1,0 +1,17 @@
+{
+  "448bd4b3b1ea0dbf8d6089b5d3f01e4881e77ab8c7a4c2e353be9d89f80596b5": {
+    "probability_coordinated": 0.3,
+    "pattern": "template_crew",
+    "strength": 2
+  },
+  "246205cabd8158ade05367aa0991d5448dd6ceab29de5788130eebdfc846c317": {
+    "probability_coordinated": 0.08,
+    "pattern": "coincidence",
+    "strength": 1
+  },
+  "9128608954c87c9126ff22da3a69ba8f20f2b6671a810ebf45cea8c4281b25c0": {
+    "probability_coordinated": 0.45,
+    "pattern": "device_farm",
+    "strength": 2
+  }
+}

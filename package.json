@@ -27,7 +27,8 @@
     "demo:seed": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-seed.ts",
     "admin:add": "node --env-file-if-exists=.env.local packages/desk/scripts/add-analyst.ts",
     "demo:analysts": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-analysts.ts",
-    "worker": "node --env-file-if-exists=.env.local apps/worker/src/main.ts"
+    "worker": "node --env-file-if-exists=.env.local apps/worker/src/main.ts",
+    "demo:rings": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-rings.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

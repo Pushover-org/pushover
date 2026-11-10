@@ -6,6 +6,7 @@ import { appendAudit } from "./claims.ts";
 export interface RingClaimRow {
   claimId: string;
   seq: number;
+  name: string;
   deviceKey: string | null;
   inboxKey: string | null;
   buildingKey: string | null;
@@ -23,15 +24,15 @@ export interface RingClaimRow {
 
 export async function ringClaims(db: Queryable, settlementId: string): Promise<RingClaimRow[]> {
   const { rows } = await db.query<{
-    id: string; seq: string; device_key: string | null; inbox_key: string | null; building_key: string | null; ip_key: string | null; declaration: string; submitted_at: Date;
+    id: string; seq: string; claimant_name: string; device_key: string | null; inbox_key: string | null; building_key: string | null; ip_key: string | null; declaration: string; submitted_at: Date;
     payout_email: string; address_line: string; zip: string; tier: "proof" | "no_proof"; units_claimed: number; state: string; status: string;
   }>(
-    `SELECT id, seq, device_key, inbox_key, building_key, ip_key, declaration, submitted_at, payout_email, address_line, zip, tier, units_claimed, state, status
+    `SELECT id, seq, claimant_name, device_key, inbox_key, building_key, ip_key, declaration, submitted_at, payout_email, address_line, zip, tier, units_claimed, state, status
      FROM claims WHERE settlement_id = $1 ORDER BY seq`,
     [settlementId],
   );
   return rows.map((r) => ({
-    claimId: r.id, seq: Number(r.seq), deviceKey: r.device_key, inboxKey: r.inbox_key, buildingKey: r.building_key, networkKey: r.ip_key, declaration: r.declaration,
+    claimId: r.id, seq: Number(r.seq), name: r.claimant_name, deviceKey: r.device_key, inboxKey: r.inbox_key, buildingKey: r.building_key, networkKey: r.ip_key, declaration: r.declaration,
     filedAt: r.submitted_at, email: r.payout_email, addressLine: r.address_line, zip: r.zip, tier: r.tier, unitsClaimed: r.units_claimed, state: r.state, status: r.status,
   }));
 }

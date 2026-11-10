@@ -35,16 +35,34 @@ export type Answers = z.infer<typeof AnswersSchema>;
 /** What the model is shown: computed facts under stand-in labels. */
 export interface GroupFacts {
   members: { label: string; tier: "proof" | "no_proof"; state: string; outcome: string | null; filedMinutesAfterFirst: number; askedCents: number }[];
-  /** Which members share which signal, by label. Story links carry their similarity (0–1). */
-  links: { kind: "device" | "inbox" | "story" | "building" | "network"; between: [string, string]; similarity?: number }[];
+  /**
+   * Which members share which signal, by label. Story links carry their similarity (0–1). Strong
+   * links (device, inbox, story) also say whether the two claims give the same name and the same
+   * building: computed by code as yes or no, so neither name nor address is shown.
+   */
+  links: { kind: "device" | "inbox" | "story" | "building" | "network"; between: [string, string]; similarity?: number; sameName?: boolean; sameBuilding?: boolean }[];
 }
 
 export type Recommendation = "CLEAR" | "DENY_GROUP" | "PERSON_DECIDES";
 
+/**
+ * Whether an innocent pattern the model names fits what code computed. The model's word alone
+ * never clears a group: a household must share a building on every strong link; a coincidence or
+ * a shared network must be small and joined only by moderately similar words.
+ */
+export function patternFitsFacts(pattern: Pattern, f: GroupFacts): boolean {
+  const strong = f.links.filter((l) => l.kind === "device" || l.kind === "inbox" || l.kind === "story");
+  if (pattern === "household") return strong.length > 0 && strong.every((l) => l.sameBuilding === true);
+  if (pattern === "coincidence" || pattern === "shared_network" || pattern === "campus_or_dorm") {
+    return f.members.length <= 3 && strong.every((l) => l.kind === "story" && (l.similarity ?? 1) < 0.8);
+  }
+  return true;
+}
+
 /** The fixed rule. Held is not denied: anything short of a clear answer goes to a person with no recommendation. */
-export function recommend(a: Answers): Recommendation {
+export function recommend(a: Answers, f?: GroupFacts): Recommendation {
   const honest = HONEST_PATTERNS.includes(a.pattern);
-  if (honest && a.probability_coordinated < 0.5) return "CLEAR";
+  if (honest && a.probability_coordinated < 0.5 && (!f || patternFitsFacts(a.pattern, f))) return "CLEAR";
   if (!honest && a.probability_coordinated >= 0.8 && a.strength >= 3) return "DENY_GROUP";
   return "PERSON_DECIDES";
 }
@@ -65,9 +83,11 @@ export interface InvestigationResult {
 
 export const SYSTEM_PROMPT = `You review a group of claims filed in a class-action settlement that code linked because they share signals. You answer three questions and nothing else. Code wrote every fact below; you cannot add facts, and a person makes every decision.
 
-The signals: device (the same browser filed them), inbox (one email inbox once dots and plus-tags are ignored), story (near-identical declarations; similarity 0 to 1), building (the same building, any flat), network (the same home or office network).
+The signals: device (the same browser filed them), inbox (one email inbox once dots and plus-tags are ignored), story (near-identical declarations; similarity 0 to 1), building (the same building, any flat), network (the same home or office network). On device, inbox and story links, sameName says whether the two claims give the same claimant name and sameBuilding whether they give the same building; the names and addresses themselves are not shown to you.
 
 Many groups are innocent: a family in one home, students in one dorm, strangers on a café's network, two people who happen to write alike. Your main job is to recognise those. Coordinated fraud looks like: one device or inbox behind several identities (device_farm), many identities at one building that isn't plausibly their home (address_mill), copied declarations (template_crew), or a ring that shares little but files in tight bursts (quiet_ring).
+
+A family shares a building. One device, one inbox or one script behind different names at different buildings is the classic sign of made-up identities, not of independent people: independent people don't share an inbox, and rarely write the same paragraph.
 
 Answer with:
 - probability_coordinated: 0 to 1, how likely this group is one actor or a coordinated ring rather than independent honest claimants.
@@ -91,7 +111,11 @@ function canonicalFacts(f: GroupFacts): string {
   return JSON.stringify({ members, links });
 }
 
-export const factsSha256 = (f: GroupFacts) => createHash("sha256").update(canonicalFacts(f)).digest("hex");
+/**
+ * The replay key: SHA-256 of the question asked (the system prompt) and the exact facts shown. A
+ * recorded answer replays only for both unchanged; changing either asks again.
+ */
+export const factsSha256 = (f: GroupFacts) => createHash("sha256").update(SYSTEM_PROMPT).update("\n").update(canonicalFacts(f)).digest("hex");
 
 const result = (status: InvestigationStatus, model: string, facts: string, a: Partial<InvestigationResult> = {}): InvestigationResult => ({
   status, answers: null, recommendation: "PERSON_DECIDES", model, factsSha256: facts, costUsd: 0, error: null, ...a,
@@ -107,7 +131,7 @@ export async function investigate(deps: InvestigatorDeps | null, facts: GroupFac
   if (recorded) {
     const ok = AnswersSchema.safeParse(recorded);
     return ok.success
-      ? result("REPLAYED", "replay", sha, { answers: ok.data, recommendation: recommend(ok.data) })
+      ? result("REPLAYED", "replay", sha, { answers: ok.data, recommendation: recommend(ok.data, facts) })
       : result("INVALID", "replay", sha, { error: "recorded answer fails validation" });
   }
   if (!deps) return result("NOT_RUN", "none", sha, { error: "no AI configured" });
@@ -130,12 +154,12 @@ export async function investigate(deps: InvestigatorDeps | null, facts: GroupFac
     if (err instanceof Anthropic.APIError) return result("NOT_RUN", deps.model, sha, { error: `API error ${err.status ?? "no status"}: ${err.name}` });
     throw err;
   }
-  const r = readAnswers(deps.model, sha, res);
+  const r = readAnswers(deps.model, sha, res, facts);
   deps.guard.record(r.costUsd);
   return r;
 }
 
-export function readAnswers(model: string, sha: string, res: Anthropic.Message): InvestigationResult {
+export function readAnswers(model: string, sha: string, res: Anthropic.Message, facts?: GroupFacts): InvestigationResult {
   const cost = costUsd(model, { inputTokens: res.usage.input_tokens, outputTokens: res.usage.output_tokens });
   if (res.stop_reason === "refusal") return result("REFUSED", model, sha, { costUsd: cost, error: "refused" });
   if (res.stop_reason !== "end_turn") return result("INVALID", model, sha, { costUsd: cost, error: `stopped early: ${res.stop_reason}` });
@@ -148,7 +172,7 @@ export function readAnswers(model: string, sha: string, res: Anthropic.Message):
   }
   const parsed = AnswersSchema.safeParse(json);
   if (!parsed.success) return result("INVALID", model, sha, { costUsd: cost, error: `answer fails validation: ${parsed.error.issues.map((i) => i.path.join(".") || i.code).slice(0, 4).join(", ")}` });
-  return result("OK", model, sha, { answers: parsed.data, recommendation: recommend(parsed.data), costUsd: cost });
+  return result("OK", model, sha, { answers: parsed.data, recommendation: recommend(parsed.data, facts), costUsd: cost });
 }
 
 const PATTERN_WORDS: Record<Pattern, string> = {
@@ -167,8 +191,11 @@ export function memo(f: GroupFacts, r: InvestigationResult): string[] {
   const outcomes = new Map<string, number>();
   for (const m of f.members) outcomes.set(m.outcome ?? "PENDING", (outcomes.get(m.outcome ?? "PENDING") ?? 0) + 1);
   const asked = f.members.reduce((t, m) => t + m.askedCents, 0);
+  const strong = f.links.filter((l) => l.sameName !== undefined && l.sameBuilding !== undefined);
+  const apart = strong.filter((l) => l.sameName === false && l.sameBuilding === false).length;
   const lines = [
     `${f.links.length} shared signals among ${f.members.length} claims: ${counts.map(([k, n]) => `${n} ${k}`).join(", ")}.`,
+    ...(strong.length ? [`${apart} of ${strong.length} strong links join claims with different names at different buildings.`] : []),
     `Filed within ${span < 120 ? `${span} minutes` : `${Math.round(span / 60)} hours`} of each other, asking $${(asked / 100).toFixed(2)} in all.`,
     `Decisions so far: ${[...outcomes].map(([o, n]) => `${n} ${o.toLowerCase().replace("_", " ")}`).join(", ")}.`,
   ];
@@ -177,7 +204,9 @@ export function memo(f: GroupFacts, r: InvestigationResult): string[] {
     lines.push(
       r.recommendation === "CLEAR" ? "The fixed rule recommends clearing the group: each claim then stands on its own checks."
         : r.recommendation === "DENY_GROUP" ? "The fixed rule recommends denying the group. A person decides."
-          : "The fixed rule makes no recommendation. A person decides on the evidence.",
+          : HONEST_PATTERNS.includes(r.answers.pattern) && !patternFitsFacts(r.answers.pattern, f)
+            ? `The facts don't fit ${PATTERN_WORDS[r.answers.pattern]}, so the fixed rule makes no recommendation. A person decides on the evidence.`
+            : "The fixed rule makes no recommendation. A person decides on the evidence.",
     );
   } else {
     lines.push(r.status === "INVALID" || r.status === "REFUSED" ? "The AI's answer was rejected and not used. A person decides on the evidence." : "No AI answer. A person decides on the evidence.");
