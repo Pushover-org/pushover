@@ -273,4 +273,11 @@ export const es: Messages = {
   "confirm.err.login": "Primero inicie sesión con PayPal.",
   "confirm.err.unavailable": "No es posible confirmar en este momento. Inténtelo más tarde.",
   "status.confirmed": "Confirmado. Ahora este reclamo es suyo, y este es su enlace privado.",
+
+  // Who filed the claim (P11, P14)
+  "filedBy.title": "Presentado por",
+  "filedBy.FORM": "Usted, en el formulario de reclamo",
+  "filedBy.ASSISTANT_WAITING": "Un asistente que dio el nombre «{agent}», esperando su confirmación",
+  "filedBy.ASSISTANT_CONFIRMED": "Un asistente que dio el nombre «{agent}»; usted lo confirmó con PayPal el {date}",
+  "filedBy.ASSISTANT_LAPSED": "Un asistente que dio el nombre «{agent}»; nadie lo confirmó, así que se cerró",
 };

@@ -5,6 +5,7 @@ import { AllCommunityModule, ModuleRegistry, type ColDef, type GridApi, type ICe
 import { AgGridReact } from "ag-grid-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
+import { filedByLabel, type FiledByKind } from "@/lib/filed-by.ts";
 import { dollars, GROUP_LABEL, OUTCOME_LABEL, REASON_SHORT } from "@/lib/labels.ts";
 import type { Outcome } from "@/lib/pilot-shared.ts";
 import { ledgerTheme } from "./grid-theme.ts";
@@ -38,6 +39,8 @@ export interface GridRow {
   waiting: boolean;
   /** The claimant appealed and no person has decided since (plan item P9). */
   appealed: boolean;
+  /** Who filed it (P11, P14): the claimant, or an assistant under the name it gave. */
+  filedBy: { kind: FiledByKind; agent: string | null; boundAt: string | null };
   /** The linked group this claim is in, if any (plan items P20, P26). */
   group: { id: number; size: number; status: "HELD" | "CLEARED" | "DENIED"; href: string } | null;
 }
@@ -64,9 +67,11 @@ const Claim = ({ data }: ICellRendererParams<GridRow>) => (
   </span>
 );
 
+const NOT_A_CLAIM_YET: Partial<Record<FiledByKind, string>> = { ASSISTANT_WAITING: "waiting for its person", ASSISTANT_LAPSED: "never confirmed" };
+
 const Decision = ({ value, data }: P<"outcome">) => (
   <span className={s.decision}>
-    <Stamp outcome={value ?? null} />
+    {data && NOT_A_CLAIM_YET[data.filedBy.kind] ? <Stamp outcome={null} label={NOT_A_CLAIM_YET[data.filedBy.kind] as string} /> : <Stamp outcome={value ?? null} />}
     {data?.appealed ? <span className={s.appealed}>Appealed</span> : null}
   </span>
 );
@@ -132,6 +137,16 @@ const Group = ({ data }: ICellRendererParams<GridRow>) =>
     <span className={s.dim}>—</span>
   );
 
+const FiledBy = ({ data }: ICellRendererParams<GridRow>) => {
+  if (!data) return null;
+  const l = filedByLabel(data.filedBy.kind, data.filedBy.agent, data.filedBy.boundAt);
+  return (
+    <span className={s.filedBy} data-k={data.filedBy.kind} title={l.long}>
+      {data.filedBy.kind === "FORM" ? "Claimant" : <>Assistant <b>{l.short}</b></>}
+    </span>
+  );
+};
+
 const FILTERS: { key: string; label: string; test: (r: GridRow) => boolean }[] = [
   { key: "ALL", label: "All claims", test: () => true },
   { key: "REVIEW", label: "Review queue", test: (r) => r.waiting },
@@ -140,6 +155,8 @@ const FILTERS: { key: string; label: string; test: (r: GridRow) => boolean }[] =
   { key: "DENY", label: OUTCOME_LABEL.DENY, test: (r) => r.outcome === "DENY" },
   { key: "NEED_MORE", label: OUTCOME_LABEL.NEED_MORE, test: (r) => r.outcome === "NEED_MORE" },
   { key: "GROUPED", label: "In a linked group", test: (r) => r.group !== null },
+  { key: "ASSISTANT", label: "Filed by an assistant", test: (r) => r.filedBy.kind !== "FORM" },
+  { key: "UNBOUND", label: "Waiting for its person", test: (r) => r.filedBy.kind === "ASSISTANT_WAITING" },
   { key: "DISAGREE", label: "Model said ≠ rules said", test: (r) => r.modelSaid !== null && (r.modelSaid === "approve") !== (r.outcome === "APPROVE") },
 ];
 
@@ -158,6 +175,10 @@ export function ClaimsGrid({ rows, settlementId, initial }: { rows: GridRow[]; s
       { headerName: "Why", field: "reason", cellRenderer: Reason, flex: 1, minWidth: 220, getQuickFilterText: (p) => REASON_SHORT[p.value ?? ""] ?? "" },
       { headerName: "Checks", cellRenderer: Checks, width: 190, sortable: false, comparator: (_a, _b, x, y) => (x.data?.failed.length ?? 0) - (y.data?.failed.length ?? 0) },
       { headerName: "Model said", field: "modelSaid", cellRenderer: ModelVsRules, width: 160 },
+      {
+        headerName: "Filed by", colId: "filedBy", cellRenderer: FiledBy, width: 200,
+        valueGetter: (p) => (p.data ? filedByLabel(p.data.filedBy.kind, p.data.filedBy.agent, p.data.filedBy.boundAt).short : ""),
+      },
       { headerName: "Cluster", field: "cluster", width: 100, type: "rightAligned", valueFormatter: (p) => (p.value && p.value > 1 ? `of ${p.value}` : "—"), cellClass: "num" },
       { headerName: "Amount", field: "entitlementCents", cellRenderer: Amount, width: 120, type: "rightAligned" },
       { headerName: "Linked group", colId: "linked", valueGetter: (p) => (p.data?.group ? `Group ${p.data.group.id} (${p.data.group.status.toLowerCase()})` : ""), cellRenderer: Group, width: 190 },
@@ -189,7 +210,7 @@ export function ClaimsGrid({ rows, settlementId, initial }: { rows: GridRow[]; s
             onClick={() =>
               api.current?.exportDataAsCsv({
                 fileName: `${settlementId}-claims.csv`,
-                columnKeys: ["seq", "outcome", "reason", "modelSaid", "cluster", "entitlementCents", "linked", "label"],
+                columnKeys: ["seq", "outcome", "reason", "modelSaid", "filedBy", "cluster", "entitlementCents", "linked", "label"],
                 processCellCallback: (p) => {
                   const d = p.node?.data;
                   if (!d) return String(p.value ?? "");

@@ -273,4 +273,11 @@ export const hi: Messages = {
   "confirm.err.login": "पहले PayPal से लॉग इन करें।",
   "confirm.err.unavailable": "अभी पुष्टि नहीं हो सकती। कृपया बाद में फिर कोशिश करें।",
   "status.confirmed": "पुष्टि हो गई। अब यह आपका दावा है, और यह उसका आपका निजी लिंक है।",
+
+  // Who filed the claim (P11, P14)
+  "filedBy.title": "किसने भरा",
+  "filedBy.FORM": "आपने, दावे के फ़ॉर्म पर",
+  "filedBy.ASSISTANT_WAITING": "एक सहायक, जिसने अपना नाम “{agent}” बताया, आपकी पुष्टि का इंतज़ार",
+  "filedBy.ASSISTANT_CONFIRMED": "एक सहायक, जिसने अपना नाम “{agent}” बताया; आपने {date} को PayPal से इसकी पुष्टि की",
+  "filedBy.ASSISTANT_LAPSED": "एक सहायक, जिसने अपना नाम “{agent}” बताया; किसी ने पुष्टि नहीं की, इसलिए यह बंद हो गया",
 };

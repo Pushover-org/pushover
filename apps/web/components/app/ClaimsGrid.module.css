@@ -231,3 +231,20 @@
   color: var(--more);
   white-space: nowrap;
 }
+
+/* Who filed it (P11, P14). An assistant's filing waiting for its person is in review ink, never green. */
+.filedBy {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.filedBy b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.filedBy[data-k="ASSISTANT_WAITING"] b {
+  color: var(--review);
+}
+.filedBy[data-k="ASSISTANT_LAPSED"] b {
+  color: var(--ink-3);
+  font-weight: 400;
+}

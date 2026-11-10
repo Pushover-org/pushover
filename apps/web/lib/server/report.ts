@@ -14,6 +14,8 @@ export interface ReportRow {
   reason: string;
   reasonText: string;
   decidedBy: string;
+  /** "form" or "assistant, confirmed" (P11). Unconfirmed filings are not claims and aren't listed. */
+  filedBy: string;
   rule: number | null;
   amountCents: number | null;
   payout: string;
@@ -27,6 +29,7 @@ export async function reportRows(settlementId: string): Promise<ReportRow[]> {
     claim: v.id, filed: v.submittedAt.slice(0, 10), claimant: initials(v.name), state: v.state, tier: v.tier === "proof" ? "receipt" : "no receipt",
     decision: v.outcome ?? "PENDING", reason: v.reason ?? "", reasonText: v.reason && v.reason in REASONS ? REASONS[v.reason as ReasonCode] : "",
     decidedBy: v.decidedBy?.startsWith("analyst:") ? "analyst" : v.decidedBy ? "rules" : "", rule: v.rule,
+    filedBy: v.filedVia === "ASSISTANT" ? "assistant, confirmed" : "form",
     amountCents: v.outcome === "APPROVE" || PAYOUT[v.status] ? v.entitlementCents : null, payout: PAYOUT[v.status] ?? "",
   }));
 }
@@ -37,7 +40,7 @@ const cell = (v: string | number | null) => {
 };
 
 export function toCsv(rows: ReportRow[]): string {
-  const head = ["claim", "filed", "claimant", "state", "tier", "decision", "reason", "reason_text", "decided_by", "rule", "amount_usd", "payout"];
-  const body = rows.map((r) => [r.claim, r.filed, r.claimant, r.state, r.tier, r.decision, r.reason, r.reasonText, r.decidedBy, r.rule, r.amountCents === null ? "" : (r.amountCents / 100).toFixed(2), r.payout].map(cell).join(","));
+  const head = ["claim", "filed", "claimant", "state", "tier", "decision", "reason", "reason_text", "decided_by", "filed_by", "rule", "amount_usd", "payout"];
+  const body = rows.map((r) => [r.claim, r.filed, r.claimant, r.state, r.tier, r.decision, r.reason, r.reasonText, r.decidedBy, r.filedBy, r.rule, r.amountCents === null ? "" : (r.amountCents / 100).toFixed(2), r.payout].map(cell).join(","));
   return `${head.join(",")}\n${body.join("\n")}\n`;
 }

@@ -240,3 +240,15 @@
 .meta {
   padding-right: clamp(104px, 26vw, 150px);
 }
+
+/* Who filed it, for a claim an assistant filed (P11). */
+.filedBy {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  max-width: calc(100% - 150px);
+}
+@media (max-width: 560px) {
+  .filedBy {
+    max-width: none;
+  }
+}

@@ -368,3 +368,20 @@
   border-radius: 8px;
   border: 1px solid var(--hair-2);
 }
+
+/* An assistant's filing (P11, P14): who filed it, and whether its person has confirmed it. */
+.filedBy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--paper-2);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.filedBy[data-k="ASSISTANT_WAITING"] {
+  background: var(--review-wash);
+  color: var(--review);
+}

@@ -280,6 +280,13 @@ export const en = {
   "confirm.err.login": "Log in with PayPal first.",
   "confirm.err.unavailable": "Confirming isn't available right now. Please try again later.",
   "status.confirmed": "Confirmed. This is now your claim, and this is your private link to it.",
+
+  // Who filed the claim (P11, P14)
+  "filedBy.title": "Filed by",
+  "filedBy.FORM": "You, on the claim form",
+  "filedBy.ASSISTANT_WAITING": "An assistant that gave its name as “{agent}”, waiting for you to confirm",
+  "filedBy.ASSISTANT_CONFIRMED": "An assistant that gave its name as “{agent}”; you confirmed it with PayPal on {date}",
+  "filedBy.ASSISTANT_LAPSED": "An assistant that gave its name as “{agent}”; nobody confirmed it, so it closed",
 } as const;
 
 export type MessageKey = keyof typeof en;

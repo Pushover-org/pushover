@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { LangSwitch } from "@/components/app/LangSwitch.tsx";
 import { Stamp } from "@/components/app/Stamp.tsx";
 import { claimantState, expectedAmount } from "@/lib/claim-status.ts";
+import { FILED_BY_KEY, filedByKind } from "@/lib/filed-by.ts";
 import type { MessageKey } from "@/lib/i18n.ts";
 import { plainReasons } from "@/lib/plain-reasons.ts";
 import { claimDetail, desk, pool, settlement } from "@/lib/server/data.ts";
@@ -62,6 +63,11 @@ export default async function Status({ params, searchParams }: { params: Promise
         <p className={`label ${s.meta}`}>
           {S.name} · {t("status.claim")} <span className="num">{c.id}</span>
         </p>
+        {c.filedVia === "ASSISTANT" ? (
+          <p className={s.filedBy}>
+            {t("filedBy.title")}: {t(FILED_BY_KEY[filedByKind(c)], { agent: c.agentName ?? "", date: c.boundAt?.slice(0, 10) ?? "" })}
+          </p>
+        ) : null}
         <div className={s.stamp}>
           {(() => {
             const o = state === "GROUP_HELD" ? "REVIEW" : c.outcome;

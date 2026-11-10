@@ -3,6 +3,7 @@
 // claim page and by the public demo view of labelled corpus claims.
 import { REASONS, type ReasonCode, type Settlement } from "@proofofclaim/claims";
 import type { Followup } from "@proofofclaim/db";
+import { filedByKind, filedByLabel } from "@/lib/filed-by.ts";
 import { dollars, GROUP_LABEL } from "@/lib/labels.ts";
 import { asFiledCents, type ClaimDetail, type Truth } from "@/lib/server/data.ts";
 import s from "./ClaimDossier.module.css";
@@ -31,6 +32,11 @@ export function ClaimDossier({
             Claim <span className="num">{c.id}</span> · filed {new Date(c.submittedAt).toISOString().slice(0, 10)} · {c.tier === "proof" ? "with a receipt" : "without a receipt"}
           </p>
           <h1 className="display">{c.name}</h1>
+          {c.filedVia === "ASSISTANT" ? (
+            <p className={s.filedBy} data-k={filedByKind(c)}>
+              <span className="label">Filed by</span> {filedByLabel(filedByKind(c), c.agentName, c.boundAt).long}
+            </p>
+          ) : null}
           <p className={s.addr}>
             {d.addressLine}, {c.state} {d.zip} · {c.email}
             {c.paypalVerified !== null ? (

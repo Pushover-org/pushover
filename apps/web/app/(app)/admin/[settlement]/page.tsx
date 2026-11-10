@@ -2,6 +2,7 @@ import { listGroups, openAppeals } from "@proofofclaim/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ClaimsGrid, type GridRow } from "@/components/app/ClaimsGrid.tsx";
+import { filedByKind } from "@/lib/filed-by.ts";
 import { dollars } from "@/lib/labels.ts";
 import { requireAnalyst } from "@/lib/server/auth.ts";
 import { asFiledCents, claimViews, demoTruth, pool, settlement } from "@/lib/server/data.ts";
@@ -15,7 +16,7 @@ export default async function Admin({ params, searchParams }: { params: Promise<
   await requireAnalyst(`/admin/${id}`);
   const S = await settlement(id);
   if (!S) notFound();
-  const [views, truth, groups] = await Promise.all([claimViews(S.id), demoTruth(), listGroups(pool(), S.id, { activeOnly: true })]);
+  const [views, truth, groups] = await Promise.all([claimViews(S.id, { includeUnconfirmed: true }), demoTruth(), listGroups(pool(), S.id, { activeOnly: true })]);
   const groupOf = new Map(groups.flatMap((g) => g.members.map((m) => [m, { id: g.id, size: g.members.length, status: g.status, href: `/admin/${S.id}/groups/${g.id}` }] as const)));
   const appealed = new Set((await openAppeals(pool(), S.id)).map((f) => f.claimId));
   const rows: GridRow[] = views.map((v) => {
@@ -25,6 +26,7 @@ export default async function Admin({ params, searchParams }: { params: Promise<
       hasEvidence: v.hasEvidence, failed: v.failed, unknown: v.unknown, modelSaid: v.modelSaid, cluster: v.cluster, decidedBy: v.decidedBy,
       label: t?.group ?? null, truth: t?.truth ?? null, paypalVerified: v.paypalVerified, paypal: v.paypalPseudonym?.slice(0, 10) ?? null, group: groupOf.get(v.id) ?? null,
       waiting: v.status === "REVIEW", appealed: appealed.has(v.id),
+      filedBy: { kind: filedByKind(v), agent: v.agentName, boundAt: v.boundAt },
     };
   });
   const review = views.filter((v) => v.status === "REVIEW").length;
