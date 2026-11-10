@@ -265,7 +265,7 @@ export const en = {
   "confirm.step2": "Confirm, under oath",
   "confirm.sworn": "I declare under penalty of perjury that this claim is mine, that what it says is true, and that I haven't filed another claim in this settlement.",
   "confirm.mine": "This is my claim",
-  "confirm.after": "After you confirm, your receipt is read and the published rules decide, exactly as for anyone who files on the claim page. You get your own private status link, and the assistant's link stops working.",
+  "confirm.after": "After you confirm, the published rules check and decide your claim (reading the receipt first, if there is one), exactly as for anyone who files on the claim page. You get your own private status link, and the assistant's link stops working.",
   "confirm.notMineTitle": "Not yours, or something's wrong?",
   "confirm.notMineHint": "Close it. Nothing stays filed in your name and nothing is paid. If only the details are wrong, close it and file yourself on the claim page.",
   "confirm.notMine": "This isn't mine: close it",

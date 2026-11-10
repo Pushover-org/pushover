@@ -258,7 +258,7 @@ export const es: Messages = {
   "confirm.step2": "Confirme, bajo juramento",
   "confirm.sworn": "Declaro bajo pena de perjurio que este reclamo es mío, que lo que dice es verdad y que no he presentado otro reclamo en este acuerdo.",
   "confirm.mine": "Este reclamo es mío",
-  "confirm.after": "Después de confirmar, se lee su recibo y deciden las reglas publicadas, igual que para quien presenta en la página de reclamos. Recibe su propio enlace privado de estado, y el enlace del asistente deja de funcionar.",
+  "confirm.after": "Después de confirmar, las reglas publicadas revisan y deciden su reclamo (leyendo primero el recibo, si lo hay), igual que para quien presenta en la página de reclamos. Recibe su propio enlace privado de estado, y el enlace del asistente deja de funcionar.",
   "confirm.notMineTitle": "¿No es suyo, o algo está mal?",
   "confirm.notMineHint": "Ciérrelo. Nada queda presentado en su nombre y nada se paga. Si solo los datos están mal, ciérrelo y presente usted mismo en la página de reclamos.",
   "confirm.notMine": "No es mío: cerrarlo",

@@ -67,7 +67,8 @@ const Claim = ({ data }: ICellRendererParams<GridRow>) => (
   </span>
 );
 
-const NOT_A_CLAIM_YET: Partial<Record<FiledByKind, string>> = { ASSISTANT_WAITING: "waiting for its person", ASSISTANT_LAPSED: "never confirmed" };
+// An assistant's filing nobody confirmed is not a claim: nothing was checked or decided.
+const NOT_A_CLAIM_YET: Partial<Record<FiledByKind, string>> = { ASSISTANT_WAITING: "unconfirmed", ASSISTANT_LAPSED: "lapsed" };
 
 const Decision = ({ value, data }: P<"outcome">) => (
   <span className={s.decision}>
@@ -83,7 +84,10 @@ const Reason = ({ data }: ICellRendererParams<GridRow>) => (
   </span>
 );
 
-const Checks = ({ data }: ICellRendererParams<GridRow>) => (
+const Checks = ({ data }: ICellRendererParams<GridRow>) =>
+  data && NOT_A_CLAIM_YET[data.filedBy.kind] ? (
+    <span className={s.dim} title="Checks run only after its person confirms it with PayPal">not checked yet</span>
+  ) : (
   <span className={s.checks}>
     {data?.failed.map((c) => (
       <span key={c} className={s.fail} title={`${c} failed`}>
@@ -100,7 +104,7 @@ const Checks = ({ data }: ICellRendererParams<GridRow>) => (
     ) : null}
     {data && data.failed.length + data.unknown.length === 0 ? <span className={s.allPass}>all pass</span> : null}
   </span>
-);
+  );
 
 const ModelVsRules = ({ data }: ICellRendererParams<GridRow>) => {
   if (!data?.modelSaid) return <span className={s.dim}>—</span>;
@@ -176,7 +180,7 @@ export function ClaimsGrid({ rows, settlementId, initial }: { rows: GridRow[]; s
       { headerName: "Checks", cellRenderer: Checks, width: 190, sortable: false, comparator: (_a, _b, x, y) => (x.data?.failed.length ?? 0) - (y.data?.failed.length ?? 0) },
       { headerName: "Model said", field: "modelSaid", cellRenderer: ModelVsRules, width: 160 },
       {
-        headerName: "Filed by", colId: "filedBy", cellRenderer: FiledBy, width: 200,
+        headerName: "Filed by", colId: "filedBy", cellRenderer: FiledBy, width: 240,
         valueGetter: (p) => (p.data ? filedByLabel(p.data.filedBy.kind, p.data.filedBy.agent, p.data.filedBy.boundAt).short : ""),
       },
       { headerName: "Cluster", field: "cluster", width: 100, type: "rightAligned", valueFormatter: (p) => (p.value && p.value > 1 ? `of ${p.value}` : "—"), cellClass: "num" },

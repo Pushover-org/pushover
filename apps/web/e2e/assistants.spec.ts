@@ -81,6 +81,8 @@ test.describe.serial("an assistant files for a person; only the person makes it 
 
     const status = await client.callTool({ name: "claim_status", arguments: { status_token: filed.status_token } });
     expect(status.structuredContent).toMatchObject({ claim_id: filed.claim_id, state: "UNBOUND", outcome: null, filed_by: { via: "ASSISTANT", agent_name: AGENT, confirmed_at: null } });
+    // Stateless: no stream to open and no session to end (the SDK client copes with 405 by design).
+    for (const method of ["GET", "DELETE"]) expect((await fetch(new URL("/api/mcp", E2E.baseURL), { method })).status, method).toBe(405);
     // The JSON twin of claim_status says the same.
     const rest = await fetch(new URL("/api/v1/claims/status", E2E.baseURL), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ status_token: filed.status_token }) });
     expect(await rest.json()).toMatchObject({ claim_id: filed.claim_id, state: "UNBOUND" });
@@ -98,7 +100,10 @@ test.describe.serial("an assistant files for a person; only the person makes it 
     await desk.getByRole("tab", { name: /Waiting for its person/ }).click();
     const row = desk.locator(".ag-row").filter({ hasText: filed.claim_id });
     await expect(row).toContainText(`"${AGENT}" · waiting`);
-    await expect(row).toContainText("waiting for its person");
+    await expect(row).toContainText("unconfirmed");
+    // Nothing was checked, so nothing may read as passed.
+    await expect(row).toContainText("not checked yet");
+    await expect(row).not.toContainText("all pass");
     // It is not a claim yet: the public report doesn't list it.
     const report = await desk.request.get(`/api/report/${S}`);
     expect(await report.text()).not.toContain(filed.claim_id);
