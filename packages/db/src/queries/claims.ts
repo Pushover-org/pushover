@@ -22,8 +22,9 @@ const NEXT: Record<ClaimState, readonly ClaimState[]> = {
   DENY: ["REVIEW"],
   SCHEDULED: ["PAID", "UNCLAIMED", "FAILED", "UNVERIFIED"],
   UNCLAIMED: ["PAID", "RETURNED", "UNVERIFIED"],
-  RETURNED: ["CY_PRES_ELIGIBLE"],
-  FAILED: ["CY_PRES_ELIGIBLE"],
+  // Money that came back is re-offered once the claimant asks (C4), or goes to cy-près after the window.
+  RETURNED: ["CY_PRES_ELIGIBLE", "APPROVE"],
+  FAILED: ["CY_PRES_ELIGIBLE", "APPROVE"],
   UNVERIFIED: ["PAID", "UNCLAIMED", "RETURNED", "FAILED"],
   PAID: ["UNVERIFIED"],
   CY_PRES_ELIGIBLE: [],
@@ -305,11 +306,12 @@ export async function markBatchSent(db: Queryable, senderBatchId: string, a: { p
   if (res.rowCount !== 1) throw new Error(`no planned batch ${senderBatchId}`);
 }
 
-export async function recordItemRead(db: Queryable, a: { batchId: number; senderItemId: string; paypalItemId: string | null; paypalStatus: string | null; outcome: "PAID" | "UNCLAIMED" | "RETURNED" | "FAILED" | "IN_FLIGHT" | "UNVERIFIED"; feeCents: number | null; error: string | null }): Promise<void> {
+export async function recordItemRead(db: Queryable, a: { batchId: number; senderItemId: string; paypalItemId: string | null; paypalStatus: string | null; outcome: "PAID" | "UNCLAIMED" | "RETURNED" | "FAILED" | "IN_FLIGHT" | "UNVERIFIED"; feeCents: number | null; error: string | null; paypalTransactionId?: string | null }): Promise<void> {
   const res = await db.query(
-    `UPDATE payout_items SET paypal_item_id = $3, paypal_status = $4, outcome = $5, fee_cents = $6, error = $7, read_at = now()
+    `UPDATE payout_items SET paypal_item_id = $3, paypal_status = $4, outcome = $5, fee_cents = $6, error = $7, read_at = now(),
+       paypal_transaction_id = COALESCE($8, paypal_transaction_id)
      WHERE batch_id = $1 AND sender_item_id = $2`,
-    [a.batchId, a.senderItemId, a.paypalItemId, a.paypalStatus, a.outcome, a.feeCents, a.error],
+    [a.batchId, a.senderItemId, a.paypalItemId, a.paypalStatus, a.outcome, a.feeCents, a.error, a.paypalTransactionId ?? null],
   );
   if (res.rowCount !== 1) throw new Error(`no payout item ${a.senderItemId} on batch ${a.batchId}`);
 }
@@ -320,7 +322,17 @@ export async function payoutItemsOf(db: Queryable, batchId: number): Promise<{ s
   return rows.map((r) => ({ senderItemId: r.sender_item_id, claimId: r.claim_id, receiver: r.receiver, cents: r.amount_cents, outcome: r.outcome, paypalStatus: r.paypal_status, feeCents: r.fee_cents }));
 }
 
-export async function recordCyPres(c: PoolClient, a: { settlementId: string; batchId: number; recipientName: string; recipientEmail: string; cents: number; approvedBy: string }): Promise<void> {
-  await c.query("INSERT INTO cy_pres_transfers (settlement_id, batch_id, recipient_name, recipient_email, cents, approved_by) VALUES ($1, $2, $3, $4, $5, $6)", [a.settlementId, a.batchId, a.recipientName, a.recipientEmail, a.cents, a.approvedBy]);
-  await appendAudit(c, { actor: a.approvedBy, action: "cy_pres_approved", subject: a.settlementId, detail: { batch_id: a.batchId, cents: a.cents } });
+/** A cy-près transfer and, from migration 0008, whose returned money it carries (each claim's once). */
+export async function recordCyPres(
+  c: PoolClient,
+  a: { settlementId: string; batchId: number; recipientName: string; recipientEmail: string; cents: number; approvedBy: string; claims?: { claimId: string; cents: number }[] },
+): Promise<number> {
+  const { rows } = await c.query<{ id: string }>(
+    "INSERT INTO cy_pres_transfers (settlement_id, batch_id, recipient_name, recipient_email, cents, approved_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+    [a.settlementId, a.batchId, a.recipientName, a.recipientEmail, a.cents, a.approvedBy],
+  );
+  const id = toNumber((rows[0] as { id: string }).id);
+  for (const k of a.claims ?? []) await c.query("INSERT INTO cy_pres_claims (claim_id, transfer_id, cents) VALUES ($1, $2, $3)", [k.claimId, id, k.cents]);
+  await appendAudit(c, { actor: a.approvedBy, action: "cy_pres_approved", subject: a.settlementId, detail: { batch_id: a.batchId, cents: a.cents, claims: (a.claims ?? []).length } });
+  return id;
 }

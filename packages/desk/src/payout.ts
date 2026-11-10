@@ -7,7 +7,7 @@ import {
   canMoveClaim, decideProposal, getClaim, getProposal, insertProposal, listClaims, markBatchSent, moveClaim, openProposal, planBatch, recordItemRead, withTransaction,
   type Analyst, type ClaimState, type MoneyProposal,
 } from "@proofofclaim/db";
-import { getPayoutBatch, payoutItemOutcome, valueToCents, type PayPalClient } from "@proofofclaim/paypal";
+import { getBalance, getPayoutBatch, payoutItemOutcome, valueToCents, type PayPalClient } from "@proofofclaim/paypal";
 import { decideClaim } from "./desk.ts";
 import { openPayerId } from "./payer-id.ts";
 import type { Desk } from "./desk.ts";
@@ -116,6 +116,36 @@ export class MoneyRefusedError extends Error {
   override name = "MoneyRefusedError";
 }
 
+const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+/**
+ * Plan item P34: is the money there? PayPal's balance is as of a past time (about two hours behind
+ * in the sandbox), so whatever we sent after that time, with its fees, is taken off first. One
+ * PayPal account pays every settlement, so every settlement's batches count.
+ */
+export async function checkBalance(desk: Desk, pp: PayPalClient, needCents: number, items: number): Promise<{ availableCents: number; sentSinceCents: number; asOf: Date }> {
+  const b = await getBalance(pp);
+  const { rows } = await desk.pool.query<{ cents: string; items: string }>(
+    `SELECT COALESCE(sum(b.amount_cents), 0) AS cents,
+            (SELECT count(*) FROM payout_items i JOIN payout_batches x ON x.id = i.batch_id WHERE x.created_at > $1 AND x.paypal_batch_id IS NOT NULL) AS items
+     FROM payout_batches b WHERE b.created_at > $1 AND b.paypal_batch_id IS NOT NULL`,
+    [b.asOf],
+  );
+  const sentSinceCents = Number(rows[0]?.cents ?? 0) + Number(rows[0]?.items ?? 0) * FEE_PER_ITEM_CENTS;
+  const room = b.availableCents - sentSinceCents;
+  const want = needCents + items * FEE_PER_ITEM_CENTS;
+  if (room < want) {
+    throw new MoneyRefusedError(
+      `PayPal shows ${usd(b.availableCents)} available as of ${b.asOf.toISOString().slice(0, 16).replace("T", " ")} UTC, less ${usd(sentSinceCents)} we've sent since: ${usd(room)}. This round needs ${usd(want)} with fees. Nothing was sent.`,
+    );
+  }
+  return { availableCents: b.availableCents, sentSinceCents, asOf: b.asOf };
+}
+
+/** Plan item P36: the approved plan's digest rides on every payout, so PayPal's own record names it. */
+export const planNote = (settlementId: string, kind: string, round: number, hash: Buffer) =>
+  `Proof of Claim ${settlementId} ${kind.toLowerCase()} round ${round}, plan sha256:${hash.toString("hex")}`;
+
 /** What a proposal fixes: every payee, amount and receiver. The approver's plan must hash the same. */
 export function planDigest(settlementId: string, plan: DistributionPlan): { hash: Buffer; summary: PlanSummary } {
   // The proposal stores this summary: pseudonyms and emails only, never a payer ID.
@@ -181,9 +211,10 @@ export async function approveAndDistribute(desk: Desk, pp: PayPalClient, approve
     await withTransaction(desk.pool, (tx) => decideProposal(tx, { id: p.id, status: "SUPERSEDED", by: approver }));
     throw new MoneyRefusedError("Claims changed since this was proposed, so the plan is different. Nothing was sent; propose the round again.");
   }
+  await checkBalance(desk, pp, p.totalCents, plan.allocation.payouts.length);
   const won = await withTransaction(desk.pool, (tx) => decideProposal(tx, { id: p.id, status: "APPROVED", by: approver }));
   if (!won) throw new MoneyRefusedError("Someone else decided this proposal first.");
-  return distribute(desk, pp, plan, { proposalId: p.id, proposedBy: p.proposedBy, approvedBy: approver });
+  return distribute(desk, pp, plan, { proposalId: p.id, planHash: p.planHash, proposedBy: p.proposedBy, approvedBy: approver });
 }
 
 export { openProposal };
@@ -192,11 +223,13 @@ export { openProposal };
  * Plans each batch in the database, then sends it. Only `approveAndDistribute` calls this: the
  * database refuses a batch without an approved proposal.
  */
-async function distribute(desk: Desk, pp: PayPalClient, plan: DistributionPlan, who: { proposalId: number; proposedBy: Analyst; approvedBy: Analyst }): Promise<DistributionResult> {
+async function distribute(desk: Desk, pp: PayPalClient, plan: DistributionPlan, who: { proposalId: number; planHash: Buffer; proposedBy: Analyst; approvedBy: Analyst }): Promise<DistributionResult> {
   const s = desk.settlement;
+  const note = planNote(s.id, "CLAIMS", plan.round, who.planHash);
   const batches = buildClaimBatches({
-    settlementId: s.id, round: plan.round, allocation: plan.allocation, payees: plan.payees,
-    emailSubject: `Your payment from the ${s.name}`, emailMessage: "Your claim was approved. This is your share of the settlement fund.",
+    settlementId: s.id, round: plan.round, allocation: plan.allocation, payees: plan.payees, note,
+    emailSubject: `Your payment from the ${s.name}`,
+    emailMessage: `Your claim was approved. This is your share of the settlement fund. Round ${plan.round}, plan sha256:${who.planHash.toString("hex").slice(0, 16)}.`,
   });
   const out: DistributionResult = { round: plan.round, batches: [] };
   for (const [i, b] of batches.entries()) {
@@ -224,6 +257,34 @@ async function distribute(desk: Desk, pp: PayPalClient, plan: DistributionPlan, 
   return out;
 }
 
+const STATES: ClaimState[] = ["SUBMITTED", "EXAMINED", "APPROVE", "DENY", "NEED_MORE", "REVIEW", "SCHEDULED", "PAID", "UNCLAIMED", "RETURNED", "FAILED", "CY_PRES_ELIGIBLE", "UNVERIFIED"];
+
+/**
+ * The shortest run of legal moves from one state to another. PayPal can report an item's end state
+ * at the first read (RETURNED, if nobody looked for 30 days), and the claim must still pass through
+ * the states in between (SCHEDULED, UNCLAIMED, RETURNED). Null if there is no legal way.
+ */
+export function pathBetween(from: ClaimState, to: ClaimState): ClaimState[] | null {
+  const prev = new Map<ClaimState, ClaimState>();
+  const queue: ClaimState[] = [from];
+  const seen = new Set<ClaimState>([from]);
+  while (queue.length) {
+    const at = queue.shift() as ClaimState;
+    if (at === to) break;
+    for (const next of STATES) {
+      if (!seen.has(next) && canMoveClaim(at, next)) {
+        seen.add(next);
+        prev.set(next, at);
+        queue.push(next);
+      }
+    }
+  }
+  if (!seen.has(to) || from === to) return null;
+  const path: ClaimState[] = [];
+  for (let s: ClaimState | undefined = to; s && s !== from; s = prev.get(s)) path.unshift(s);
+  return path;
+}
+
 const CLAIM_STATE: Record<string, ClaimState | null> = { PAID: "PAID", UNCLAIMED: "UNCLAIMED", RETURNED: "RETURNED", FAILED: "FAILED", UNVERIFIED: "UNVERIFIED", IN_FLIGHT: null };
 
 /** Reads a batch back from PayPal item by item, records each outcome, and moves each claim to match. */
@@ -241,12 +302,21 @@ export async function readBack(desk: Desk, pp: PayPalClient, batchId: number): P
     outcomes[outcome] = (outcomes[outcome] ?? 0) + 1;
     await recordItemRead(desk.pool, {
       batchId, senderItemId, paypalItemId: it.payout_item_id, paypalStatus: it.transaction_status ?? null, outcome,
-      feeCents: it.payout_item_fee ? valueToCents(it.payout_item_fee.value) : null, error: it.errors?.name ?? null,
+      feeCents: it.payout_item_fee ? valueToCents(it.payout_item_fee.value) : null, error: it.errors?.name ?? null, paypalTransactionId: it.transaction_id ?? null,
     });
     const to = CLAIM_STATE[outcome];
     const claim = await getClaim(desk.pool, senderItemId);
     // The payout item row is the record; the claim follows only along a legal step.
-    if (to && claim && claim.status !== to && canMoveClaim(claim.status, to)) await moveClaim(desk.pool, claim.id, claim.status, to);
+    const path = to && claim && claim.status !== to ? pathBetween(claim.status, to) : null;
+    if (to && claim && path) {
+      let at = claim.status;
+      for (const step of path) {
+        await moveClaim(desk.pool, claim.id, at, step);
+        at = step;
+      }
+      // Money that came back starts the re-offer window (C4).
+      if (to === "RETURNED" || to === "FAILED") await desk.pool.query("UPDATE claims SET money_back_at = COALESCE(money_back_at, now()) WHERE id = $1", [claim.id]);
+    }
   }
   return { status: b.batch_header.batch_status, outcomes };
 }

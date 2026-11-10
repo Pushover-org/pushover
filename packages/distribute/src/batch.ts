@@ -18,6 +18,8 @@ export interface ClaimBatchArgs {
   payees: Payee[];
   emailSubject: string;
   emailMessage: string;
+  /** Put on every item (plan item P36: the approved plan's digest, so PayPal's own record names it). */
+  note?: string;
   maxItems?: number;
 }
 
@@ -36,7 +38,7 @@ export function buildClaimBatches(a: ClaimBatchArgs): CreatePayoutBatchArgs[] {
       const payee = emails.get(p.claimId);
       if (!payee) throw new Error(`no payee for claim ${p.claimId}`);
       const to = payee.payerId !== undefined ? { receiverPayerId: payee.payerId } : { receiverEmail: payee.email };
-      return { senderItemId: p.claimId, ...to, cents: p.payoutCents, ...(payee.wallet ? { recipientWallet: payee.wallet } : {}) };
+      return { senderItemId: p.claimId, ...to, cents: p.payoutCents, ...(payee.wallet ? { recipientWallet: payee.wallet } : {}), ...(a.note ? { note: a.note } : {}) };
     });
   if (items.length === 0) throw new Error("nothing to pay");
   const out: CreatePayoutBatchArgs[] = [];
@@ -46,13 +48,13 @@ export function buildClaimBatches(a: ClaimBatchArgs): CreatePayoutBatchArgs[] {
   return out;
 }
 
-export function buildCyPresBatch(a: { settlementId: string; round: number; recipientEmail: string; cents: number; emailSubject: string; emailMessage: string }): CreatePayoutBatchArgs {
+export function buildCyPresBatch(a: { settlementId: string; round: number; recipientEmail: string; cents: number; emailSubject: string; emailMessage: string; note?: string }): CreatePayoutBatchArgs {
   assertRound(a.round);
   return {
     senderBatchId: `poc-${a.settlementId}-cypres-r${a.round}`,
     emailSubject: a.emailSubject,
     emailMessage: a.emailMessage,
-    items: [{ senderItemId: `cypres-r${a.round}`, receiverEmail: a.recipientEmail, cents: a.cents }],
+    items: [{ senderItemId: `cypres-r${a.round}`, receiverEmail: a.recipientEmail, cents: a.cents, ...(a.note ? { note: a.note } : {}) }],
   };
 }
 

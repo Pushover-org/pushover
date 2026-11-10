@@ -1,6 +1,6 @@
 import { parseSettlement, type Findings } from "@proofofclaim/claims";
 import { loadTaxTable, PROVISIONAL_CONFIG } from "@proofofclaim/checks";
-import { getClaim, latestDecision, latestFindings, type Pool } from "@proofofclaim/db";
+import { getClaim, latestDecision, latestFindings, recordWebhookEvent, type Pool } from "@proofofclaim/db";
 import type { ExamineResult } from "@proofofclaim/examiner";
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -9,6 +9,7 @@ import { fakePayPal, json, makeClient } from "../../paypal/test/fake.ts";
 import {
   analystFromToken, approveAndDistribute, cancelProposal, claimantReturns, claimByStatusToken, ClaimRejectedError, pseudonymOf, decideClaim, fileClaim, hashPassword, login, logout, MoneyRefusedError, openProposal, planDistribution,
   proposeDistribution, readBack, recheckApproved, reviewClaim, setAnalyst, submitClaim, verifyPassword, type Desk, type FileClaimInput,
+  approveCyPres, checkBalance, confirmInHistory, expireReoffers, planCyPres, processWebhooks, proposeCyPres, requestReoffer,
 } from "../src/index.ts";
 import type { Analyst } from "@proofofclaim/db";
 
@@ -33,6 +34,10 @@ async function photo(seed: number): Promise<Uint8Array> {
 }
 
 const KEYS = { seal: Buffer.alloc(32, 1), pseudonym: Buffer.alloc(32, 2) };
+
+/** PayPal's balance reply, in the shape the sandbox returned (as of two hours ago by default). */
+const balance = (value = "6387.15", asOf = new Date(Date.now() - 2 * 3_600_000)) =>
+  json(200, { balances: [{ currency: "USD", total_balance: { currency_code: "USD", value }, available_balance: { currency_code: "USD", value }, withheld_balance: { currency_code: "USD", value: "0.00" } }], as_of_time: asOf.toISOString() });
 
 let n = 0;
 const claim = (over: Partial<FileClaimInput> = {}): FileClaimInput => {
@@ -146,7 +151,7 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
     let ana: Analyst;
     let lee: Analyst;
     let sol: Analyst;
-    const sendsPB1 = () => fakePayPal([(call) => {
+    const sendsPB1 = () => fakePayPal([balance(), (call) => {
       const body = JSON.parse(call.body ?? "{}") as { sender_batch_header: { sender_batch_id: string } };
       return json(201, { batch_header: { payout_batch_id: "PB1", batch_status: "PENDING", sender_batch_header: body.sender_batch_header } });
     }]);
@@ -195,7 +200,7 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       const pp = sendsPB1();
       const { client } = makeClient(pp.fetch);
       const out = await approveAndDistribute(desk(), client, sol, proposal.id, { capCents: 5000 });
-      expect(pp.calls).toHaveLength(1);
+      expect(pp.calls.map((c) => `${c.method} ${new URL(c.url).pathname}`)).toEqual(["GET /v1/reporting/balances", "POST /v1/payments/payouts"]);
       expect(out.batches).toHaveLength(1);
       expect(out.batches[0]).toMatchObject({ paypalBatchId: "PB1", status: "PENDING", duplicate: false });
       expect(out.batches[0]?.cents).toBe(proposal.totalCents);
@@ -289,6 +294,152 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       expect(await claimByStatusToken(desk(), "A".repeat(32))).toBeNull();
       expect(await claimByStatusToken(desk(), "../../etc/passwd")).toBeNull();
       expect(await row(c.id)).not.toContain(statusToken);
+    });
+  });
+
+  describe("after Distribute: balance, digest, history, webhooks, re-offer, cy-près (R11)", () => {
+    let ana: Analyst;
+    let sol: Analyst;
+    let sentBody: { sender_batch_header: { email_message: string }; items: { note?: string; sender_item_id: string }[] } | null = null;
+    let round2: { batchId: number; paypalBatchId: string; items: string[] } = { batchId: 0, paypalBatchId: "", items: [] };
+    const fresh = (decl: string) => submitClaim(desk(), claim({ declaration: decl }));
+
+    it("refuses a round PayPal can't cover, counting what we sent after the balance's time", async () => {
+      ana = await setAnalyst(pool, { email: "ana2@example.com", name: "Ana", role: "analyst", password: "correct horse battery" }, "test");
+      sol = await setAnalyst(pool, { email: "sol2@example.com", name: "Sol", role: "supervisor", password: "correct horse battery" }, "test");
+      await fresh("A malted milkshake at a soda fountain in Burbank in August 2015, with fries.");
+      const { proposal } = await proposeDistribution(desk(), ana);
+      // The balance predates every batch in this database, so all of them count against it.
+      const pp = fakePayPal([balance("1.00", new Date(Date.now() - 365 * 86_400_000))]);
+      const { client } = makeClient(pp.fetch);
+      await expect(approveAndDistribute(desk(), client, sol, proposal.id)).rejects.toThrow(/available as of .* less \$\d+\.\d\d we've sent since/);
+      expect(pp.calls.map((c) => c.method)).toEqual(["GET"]); // asked for the balance, sent nothing
+      expect((await openProposal(pool, S.id, "CLAIMS"))?.id).toBe(proposal.id); // still open for when the money is there
+    });
+
+    it("puts the approved plan's digest on every payout and in the email", async () => {
+      const open = await openProposal(pool, S.id, "CLAIMS");
+      const pp = fakePayPal([balance(), (call) => {
+        sentBody = JSON.parse(call.body ?? "{}");
+        return json(201, { batch_header: { payout_batch_id: "PB2", batch_status: "PENDING", sender_batch_header: (sentBody as unknown as { sender_batch_header: object }).sender_batch_header } });
+      }]);
+      const { client } = makeClient(pp.fetch);
+      const out = await approveAndDistribute(desk(), client, sol, open?.id ?? -1);
+      const hex = open?.planHash.toString("hex") ?? "";
+      expect(hex).toMatch(/^[0-9a-f]{64}$/);
+      expect(sentBody?.items.length).toBeGreaterThan(0);
+      for (const it of sentBody?.items ?? []) expect(it.note).toBe(`Proof of Claim ${S.id} claims round ${out.round}, plan sha256:${hex}`);
+      expect(sentBody?.sender_batch_header.email_message).toContain(`plan sha256:${hex.slice(0, 16)}`);
+      const { rows } = await pool.query<{ id: string }>("SELECT id FROM payout_batches WHERE paypal_batch_id = 'PB2'");
+      round2 = { batchId: Number(rows[0]?.id), paypalBatchId: "PB2", items: (sentBody?.items ?? []).map((i) => i.sender_item_id) };
+    });
+
+    it("read-back keeps each item's PayPal transaction, and money that came back starts the re-offer clock", async () => {
+      const [back, ...rest] = round2.items;
+      const pp = fakePayPal([json(200, {
+        batch_header: { payout_batch_id: "PB2", batch_status: "SUCCESS", sender_batch_header: {} }, total_pages: 1,
+        items: round2.items.map((id, i) => ({ payout_item_id: `IT2-${i}`, transaction_id: `TX2${String(i).padStart(14, "0")}`, payout_batch_id: "PB2",
+          transaction_status: id === back ? "RETURNED" : "SUCCESS", payout_item_fee: { currency: "USD", value: "0.25" },
+          payout_item: { sender_item_id: id, receiver: "x", amount: { currency: "USD", value: "1.00" } } })),
+      })]);
+      const { client } = makeClient(pp.fetch);
+      await readBack(desk(), client, round2.batchId);
+      const { rows } = await pool.query("SELECT sender_item_id, paypal_transaction_id FROM payout_items WHERE batch_id = $1 ORDER BY id", [round2.batchId]);
+      expect(rows.every((r) => /^TX2\d{14}$/.test(r.paypal_transaction_id))).toBe(true);
+      expect((await getClaim(pool, back ?? ""))?.status).toBe("RETURNED");
+      const { rows: c } = await pool.query("SELECT money_back_at FROM claims WHERE id = $1", [back]);
+      expect(c[0].money_back_at).toBeInstanceOf(Date);
+      expect(rest.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it("checks each payout against PayPal's own history: waiting, confirmed, or flagged after 3 days", async () => {
+      // A Response body can be read once, so each reply is made fresh.
+      const notYet = () => json(404, { name: "INVALID_REQUEST", message: "Data for the given start date is not available." });
+      const found = (id: string) => json(200, { transaction_details: [{ transaction_info: { transaction_id: id, transaction_event_code: "T0001", transaction_status: "S", transaction_amount: { value: "-1.00" }, fee_amount: { value: "-0.25" } } }] });
+      const n = round2.items.length;
+      const first = fakePayPal(Array.from({ length: n }, () => notYet()));
+      expect(await confirmInHistory(desk(), makeClient(first.fetch).client, { limit: n })).toEqual({ WAITING: n });
+      const second = fakePayPal(Array.from({ length: n }, (_, i) => (i === 0 ? json(200, { transaction_details: [] }) : found(`TX2${String(i).padStart(14, "0")}`))));
+      const later = new Date(Date.now() + 4 * 86_400_000);
+      const r = await confirmInHistory(desk(), makeClient(second.fetch).client, { limit: n, now: later });
+      expect(r).toEqual(n > 1 ? { NEVER_CAUGHT_UP: 1, CONFIRMED: n - 1 } : { NEVER_CAUGHT_UP: 1 });
+      const { rows } = await pool.query("SELECT DISTINCT history_code FROM payout_items WHERE history_status = 'CONFIRMED'");
+      if (n > 1) expect(rows).toEqual([{ history_code: "T0001 S" }]);
+    });
+
+    it("a claimant whose payment came back can ask for it again, once in the window", async () => {
+      const id = round2.items[0] ?? "";
+      const never = await fresh("Lemon soda with a burrito at a taqueria in Oakland, spring 2019.");
+      await expect(requestReoffer(desk(), never.claim.id)).rejects.toThrow("Only a payment that came back");
+      await requestReoffer(desk(), id);
+      expect((await getClaim(pool, id))?.status).toBe("APPROVE");
+      const { rows } = await pool.query("SELECT reoffers, money_back_at FROM claims WHERE id = $1", [id]);
+      expect(rows[0]).toEqual({ reoffers: 1, money_back_at: null });
+    });
+
+    it("money not asked for again within the window becomes cy-près eligible, and can't be re-offered", async () => {
+      const id = round2.items[0] ?? "";
+      // Pretend it was sent again and came back long ago.
+      await pool.query("UPDATE claims SET status = 'RETURNED', money_back_at = now() - interval '40 days' WHERE id = $1", [id]);
+      expect(await expireReoffers(desk())).toBe(1);
+      expect((await getClaim(pool, id))?.status).toBe("CY_PRES_ELIGIBLE");
+      await expect(requestReoffer(desk(), id)).rejects.toThrow("Only a payment that came back");
+    });
+
+    it("cy-près: two people send the returned money to the court's nonprofit, once", async () => {
+      const id = round2.items[0] ?? "";
+      // What came back is what we sent, from our own record of the payout.
+      const { rows: sent } = await pool.query<{ cents: string }>("SELECT amount_cents AS cents FROM payout_items WHERE batch_id = $1 AND claim_id = $2", [round2.batchId, id]);
+      const cents = Number(sent[0]?.cents);
+      const plan = await planCyPres(desk());
+      expect(plan.items).toEqual([{ claimId: id, cents }]);
+      expect(plan.recipient).toEqual({ name: S.cyPres.name, email: S.cyPres.payoutEmail });
+      const p = await proposeCyPres(desk(), ana);
+      const never = fakePayPal([]);
+      await expect(approveCyPres(desk(), makeClient(never.fetch).client, ana, p.id)).rejects.toThrow("you proposed this one");
+      let body: { items: { receiver: string; amount: { value: string }; note: string }[] } | null = null;
+      const pp = fakePayPal([balance(), (call) => {
+        body = JSON.parse(call.body ?? "{}");
+        return json(201, { batch_header: { payout_batch_id: "CP1", batch_status: "PENDING", sender_batch_header: (body as unknown as { sender_batch_header: object }).sender_batch_header } });
+      }]);
+      const out = await approveCyPres(desk(), makeClient(pp.fetch).client, sol, p.id);
+      expect(out).toMatchObject({ paypalBatchId: "CP1", cents });
+      expect(body?.items).toEqual([expect.objectContaining({ receiver: S.cyPres.payoutEmail, amount: { currency: "USD", value: (cents / 100).toFixed(2) }, note: expect.stringContaining("cy_pres round 1, plan sha256:") })]);
+      const { rows } = await pool.query("SELECT claim_id, cents FROM cy_pres_claims");
+      expect(rows).toEqual([{ claim_id: id, cents: String(cents) }]);
+      const { rows: t } = await pool.query("SELECT approved_by, cents FROM cy_pres_transfers");
+      expect(t).toEqual([{ approved_by: "analyst:sol2@example.com", cents: String(cents) }]);
+      await expect(proposeCyPres(desk(), ana)).rejects.toThrow("No returned money is waiting");
+    });
+
+    it("the balance check subtracts exactly what we sent after the balance's time, with fees", async () => {
+      const { rows } = await pool.query<{ cents: number; items: number }>(
+        "SELECT COALESCE(sum(amount_cents), 0)::int AS cents, (SELECT count(*)::int FROM payout_items i JOIN payout_batches b ON b.id = i.batch_id WHERE b.paypal_batch_id IS NOT NULL) AS items FROM payout_batches WHERE paypal_batch_id IS NOT NULL",
+      );
+      const sent = (rows[0]?.cents ?? 0) + (rows[0]?.items ?? 0) * 25;
+      expect(sent).toBeGreaterThan(0);
+      const longAgo = new Date(Date.now() - 365 * 86_400_000);
+      // $1.00 plus a $0.25 fee fits only if nothing we sent is subtracted.
+      const short = makeClient(fakePayPal([balance(((sent + 124) / 100).toFixed(2), longAgo)]).fetch).client;
+      await expect(checkBalance(desk(), short, 100, 1)).rejects.toThrow(`less $${(sent / 100).toFixed(2)} we've sent since`);
+      const enough = makeClient(fakePayPal([balance(((sent + 125) / 100).toFixed(2), longAgo)]).fetch).client;
+      await expect(checkBalance(desk(), enough, 100, 1)).resolves.toMatchObject({ sentSinceCents: sent });
+      // A balance newer than every batch subtracts nothing.
+      const fresh = makeClient(fakePayPal([balance("1.25", new Date(Date.now() + 60_000))]).fetch).client;
+      await expect(checkBalance(desk(), fresh, 100, 1)).resolves.toMatchObject({ sentSinceCents: 0 });
+    });
+
+    it("a verified webhook only triggers a read-back of our batch; a replay and an unknown batch do nothing", async () => {
+      const event = { id: "WH-EVT-1", event_type: "PAYMENT.PAYOUTS-ITEM.SUCCEEDED", resource: { payout_batch_id: "PB2", payout_item_id: "IT2-1" } };
+      expect(await recordWebhookEvent(pool, { id: event.id, type: event.event_type, payload: event })).toBe(true);
+      expect(await recordWebhookEvent(pool, { id: event.id, type: event.event_type, payload: event })).toBe(false);
+      await recordWebhookEvent(pool, { id: "WH-EVT-2", type: "PAYMENT.PAYOUTSBATCH.SUCCESS", payload: { id: "WH-EVT-2", resource: { batch_header: { payout_batch_id: "NOT-OURS" } } } });
+      const pp = fakePayPal([json(200, { batch_header: { payout_batch_id: "PB2", batch_status: "SUCCESS", sender_batch_header: {} }, total_pages: 1, items: [] })]);
+      const r = await processWebhooks(pool, makeClient(pp.fetch).client, async (sid) => (sid === S.id ? desk() : null));
+      expect(r).toEqual({ readBacks: 1, ignored: 1 });
+      expect(pp.calls.map((c) => c.url)).toEqual([expect.stringContaining("/v1/payments/payouts/PB2")]);
+      const { rows } = await pool.query("SELECT count(*)::int AS n FROM webhook_events WHERE processed_at IS NULL");
+      expect(rows[0].n).toBe(0);
     });
   });
 

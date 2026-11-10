@@ -5,5 +5,6 @@ export { getCustomer, upsertCustomer } from "./queries/customers.ts";
 export { assignOrder, countPoolCaptures, getOrder, insertPoolOrder, listOrdersForCustomer, type PoolOrderInput } from "./queries/orders.ts";
 export * from "./queries/analysts.ts";
 export * from "./queries/claims.ts";
+export * from "./queries/money.ts";
 export { getActivePolicy } from "./queries/policy.ts";
 export type * from "./types.ts";

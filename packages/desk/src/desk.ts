@@ -24,6 +24,8 @@ export interface Desk {
   read: ((input: ExamineInput) => Promise<ExamineResult>) | null;
   /** Seal and pseudonym keys for PayPal payer IDs. Null only where no claimant logs in (the demo seed). */
   keys: IdentityKeys | null;
+  /** Days a claimant has to ask for returned money again before it goes to cy-près (default 30). */
+  reofferDays?: number;
 }
 
 export interface FileClaimInput {

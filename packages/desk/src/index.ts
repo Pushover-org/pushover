@@ -5,6 +5,8 @@ export {
 export { identityKeysFromEnv, pseudonymOf, type IdentityKeys } from "./payer-id.ts";
 export { analystFromToken, hashPassword, login, logout, MIN_PASSWORD_LENGTH, normalizeEmail, setAnalyst, tokenHash, verifyPassword, type LoginResult } from "./analysts.ts";
 export {
-  approveAndDistribute, cancelProposal, FEE_PER_ITEM_CENTS, MoneyRefusedError, openProposal, planDigest, planDistribution, proposeDistribution, readBack, recheckApproved,
+  approveAndDistribute, cancelProposal, checkBalance, FEE_PER_ITEM_CENTS, MoneyRefusedError, openProposal, planDigest, planDistribution, proposeDistribution, readBack, recheckApproved,
   type DistributionPlan, type DistributionResult, type PlanSummary,
 } from "./payout.ts";
+export { approveCyPres, planCyPres, proposeCyPres, type CyPresPlan } from "./cypres.ts";
+export { confirmInHistory, expireReoffers, MAX_REOFFERS, NEVER_CAUGHT_UP_DAYS, processWebhooks, REOFFER_DAYS, requestReoffer, workerTick, type TickResult } from "./worker.ts";
