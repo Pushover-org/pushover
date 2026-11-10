@@ -100,3 +100,19 @@
   font-size: 13px;
   color: var(--ink-3);
 }
+
+.amount {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px dashed var(--hair-2);
+  background: var(--card);
+}
+.amount b {
+  font-size: 28px;
+}
+.amount p {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}

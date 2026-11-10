@@ -30,7 +30,11 @@ export function ClaimDossier({ S, d, t, back, actions }: { S: Settlement; d: Cla
           <h1 className="display">{c.name}</h1>
           <p className={s.addr}>
             {d.addressLine}, {c.state} {d.zip} · {c.email}
-            {c.paypalVerified !== null ? <span className={s.pp}>{c.paypalVerified ? "PayPal account verified" : "PayPal account not verified"}</span> : null}
+            {c.paypalVerified !== null ? (
+              <span className={s.pp} title={c.paypalPseudonym ? `PayPal account pseudonym ${c.paypalPseudonym}` : undefined}>
+                PayPal account <span className="num">{c.paypalPseudonym?.slice(0, 10)}…</span> {c.paypalVerified ? "verified" : "not verified: paid once it is"}
+              </span>
+            ) : null}
           </p>
         </div>
         <div className={s.verdict}>

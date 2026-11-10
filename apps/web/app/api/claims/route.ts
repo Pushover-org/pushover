@@ -49,11 +49,12 @@ export async function POST(req: NextRequest) {
   if (!d) return fail("This settlement doesn't exist.", 404);
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
   try {
-    const { claim, result } = await submitClaim(d, {
+    const { claim, result, statusToken } = await submitClaim(d, {
       tier: f.tier, unitsClaimed: f.tier === "proof" ? f.units : 1, name: f.name, email: identity.email, addressLine: f.addressLine, city: f.city, state: f.state, zip: f.zip,
       declaration: f.declaration, ip, image, paypal: { payerId: identity.payerId, verified: identity.verified, emailVerified: identity.emailVerified },
     });
-    return NextResponse.json({ id: claim.id, outcome: result?.decision.outcome ?? null });
+    // The private status link's token is returned once, here, and never stored.
+    return NextResponse.json({ id: claim.id, outcome: result?.decision.outcome ?? null, statusToken });
   } catch (err) {
     if (err instanceof ClaimRejectedError) return fail(err.message, 409);
     throw err;

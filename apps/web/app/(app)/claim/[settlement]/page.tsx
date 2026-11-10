@@ -1,9 +1,11 @@
+import { claimIdByPseudonym } from "@proofofclaim/db";
+import { pseudonymOf } from "@proofofclaim/desk";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { ClaimForm } from "@/components/app/ClaimForm.tsx";
 import { dollars } from "@/lib/labels.ts";
-import { settlement } from "@/lib/server/data.ts";
+import { identityKeys, pool, settlement } from "@/lib/server/data.ts";
 import { IDENTITY_COOKIE, openIdentity } from "@/lib/server/paypal-login.ts";
 import s from "./claim.module.css";
 
@@ -21,6 +23,9 @@ export default async function Claim({ params, searchParams }: { params: Promise<
   const S = await settlement(id);
   if (!S) notFound();
   const me = openIdentity((await cookies()).get(IDENTITY_COOKIE)?.value);
+  const keys = identityKeys();
+  // One PayPal account files one claim here: a returning claimant gets their link, not a form that would be refused.
+  const filed = me && keys ? await claimIdByPseudonym(pool(), S.id, pseudonymOf(keys, S.id, me.payerId)) : null;
   const first = me?.name.split(" ")[0];
 
   return (
@@ -72,7 +77,7 @@ export default async function Claim({ params, searchParams }: { params: Promise<
               <div className={s.who}>
                 <p>
                   Signed in as <b>{me.name || me.email}</b>
-                  {me.verified ? <span className={s.ok}>verified account</span> : <span className={s.warn}>not verified: a person will check your claim</span>}
+                  {me.verified ? <span className={s.ok}>verified account</span> : <span className={s.warn}>not verified yet: an approved claim is paid once it is</span>}
                 </p>
                 <form action={`/api/paypal/logout?settlement=${S.id}`} method="post">
                   <button className={s.link}>Use a different account</button>
@@ -101,7 +106,17 @@ export default async function Claim({ params, searchParams }: { params: Promise<
           <span className={`num ${s.stepNo}`}>2</span>
           <div className={s.stepBody}>
             <h2>{first ? `Your claim, ${first}` : "Your claim"}</h2>
-            {me ? (
+            {me && filed ? (
+              <div className={s.filed}>
+                <p>
+                  This PayPal account has already filed a claim in this settlement. Each account files once. Your private status link was shown when you filed;
+                  here&apos;s a new one (the old link stops working).
+                </p>
+                <form action={`/api/claims/status-link?settlement=${S.id}`} method="post">
+                  <button className="pill pill--green">Show my claim&apos;s status</button>
+                </form>
+              </div>
+            ) : me ? (
               <ClaimForm
                 settlementId={S.id}
                 states={[...S.geography.states]}

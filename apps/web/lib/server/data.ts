@@ -5,7 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { CHECK_NAMES, FindingsSchema, parseSettlement, type CheckResult, type Findings, type Settlement } from "@proofofclaim/claims";
 import { loadTaxTable, PROVISIONAL_CONFIG } from "@proofofclaim/checks";
 import { createPool, getSettlementConfig, type Pool } from "@proofofclaim/db";
-import type { Desk } from "@proofofclaim/desk";
+import { identityKeysFromEnv, type Desk, type IdentityKeys } from "@proofofclaim/desk";
 import { allocate } from "@proofofclaim/distribute";
 import { CostGuard, examine } from "@proofofclaim/examiner";
 
@@ -39,7 +39,21 @@ export async function desk(id: string): Promise<Desk | null> {
   return {
     pool: pool(), settlement: s, table: loadTaxTable(TAX_TABLE), config: PROVISIONAL_CONFIG, networkSecret: process.env["NETWORK_SECRET"] ?? "demo-network-secret",
     read: client ? (input) => examine({ client, model: process.env["PUSHOVER_MODEL"] ?? "claude-haiku-5-5", guard }, input) : null,
+    keys: identityKeys(),
   };
+}
+
+/**
+ * The keys that seal and pseudonymise PayPal payer IDs. Required in production; elsewhere a missing
+ * pair only stops PayPal-logged-in claims from being filed or paid, with an error naming the variable.
+ */
+export function identityKeys(): IdentityKeys | null {
+  try {
+    return identityKeysFromEnv();
+  } catch (err) {
+    if (process.env["NODE_ENV"] === "production") throw err;
+    return null;
+  }
 }
 
 export type Outcome = "APPROVE" | "DENY" | "NEED_MORE" | "REVIEW";
@@ -71,16 +85,18 @@ export interface ClaimView {
   /** C7's cluster size, when the template check ran. */
   cluster: number | null;
   paypalVerified: boolean | null;
+  /** The PayPal account's per-settlement pseudonym; the payer ID itself is never shown. */
+  paypalPseudonym: string | null;
 }
 
 interface Row {
   id: string; seq: string; tier: "proof" | "no_proof"; units_claimed: number; claimant_name: string; payout_email: string; state: string; status: string; submitted_at: Date;
   outcome: Outcome | null; reason: string | null; rule: number | null; units: number | null; entitlement_cents: number | null; decided_by: string | null;
-  has_evidence: boolean; findings: unknown; failed: string[] | null; unknown: string[] | null; c7: string | null; paypal_verified: boolean | null;
+  has_evidence: boolean; findings: unknown; failed: string[] | null; unknown: string[] | null; c7: string | null; paypal_verified: boolean | null; paypal_pseudonym: string | null;
 }
 
 const CLAIMS_SQL = `
-SELECT c.id, c.seq, c.tier, c.units_claimed, c.claimant_name, c.payout_email, c.state, c.status, c.submitted_at, c.paypal_verified,
+SELECT c.id, c.seq, c.tier, c.units_claimed, c.claimant_name, c.payout_email, c.state, c.status, c.submitted_at, c.paypal_verified, c.paypal_pseudonym,
        d.outcome, d.reason, d.rule, d.units, d.entitlement_cents, d.decided_by,
        EXISTS (SELECT 1 FROM claim_evidence e WHERE e.claim_id = c.id) AS has_evidence,
        f.findings,
@@ -102,7 +118,7 @@ function toView(r: Row): ClaimView {
     submittedAt: r.submitted_at.toISOString(), outcome: r.outcome, reason: r.reason, rule: r.rule, units: r.units, entitlementCents: r.entitlement_cents, decidedBy: r.decided_by,
     hasEvidence: r.has_evidence, merchant: f?.merchant_name ?? null, purchaseDate: f?.purchase_date ?? null, totalCents: f?.total_cents ?? null,
     confidence: f?.confidence ?? null, modelSaid: f?.model_recommendation ?? null, failed: r.failed ?? [], unknown: r.unknown ?? [],
-    cluster: Number.isFinite(cluster) ? cluster : null, paypalVerified: r.paypal_verified,
+    cluster: Number.isFinite(cluster) ? cluster : null, paypalVerified: r.paypal_verified, paypalPseudonym: r.paypal_pseudonym,
   };
 }
 

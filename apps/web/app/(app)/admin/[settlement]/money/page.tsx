@@ -94,6 +94,17 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
             <li>
               <b className="num">{dollars(plan?.allocation.reservedFeesCents ?? 0)}</b> reserved for PayPal&apos;s fees, $0.25 a payment
             </li>
+            {plan && plan.waitingVerification > 0 ? (
+              <li>
+                <b className="num">{plan.waitingVerification}</b> approved but held: their PayPal account isn&apos;t verified, so they&apos;re paid once the claimant logs
+                in verified
+              </li>
+            ) : null}
+            {plan && plan.deferred > 0 ? (
+              <li>
+                <b className="num">{plan.deferred}</b> more approved claims wait for the next round: today&apos;s sandbox limit is reached
+              </li>
+            ) : null}
             <li>
               Sandbox limit for this public demo: <b className="num">{dollars(DEMO_DAILY_CAP_CENTS, 0)}</b> of play money a day; <b className="num">{dollars(room)}</b> left today, so
               this round pays from that much

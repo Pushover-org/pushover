@@ -45,9 +45,9 @@ export function ClaimForm({ settlementId, states, maxUnits, unitCents, flatCents
     setPhase(0);
     try {
       const res = await fetch("/api/claims", { method: "POST", body: data });
-      const out = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
-      if (!res.ok || !out.id) throw new Error(out.error ?? "Something went wrong. Please try again.");
-      router.push(`/claim/${settlementId}/r/${out.id}`);
+      const out = (await res.json().catch(() => ({}))) as { statusToken?: string; error?: string };
+      if (!res.ok || !out.statusToken) throw new Error(out.error ?? "Something went wrong. Please try again.");
+      router.push(`/status/${out.statusToken}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setBusy(false);

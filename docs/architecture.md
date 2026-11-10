@@ -377,3 +377,34 @@ The admin screens show claimants' details and move money, so nothing there is an
   hours), a decided proposal never changes, one open proposal per settlement and kind, and
   **no payout batch can be inserted without an approved proposal** of the same settlement and kind.
   The `distribute` audit row names both people.
+
+## Claimant privacy (plan items P2, P4–P8; 2026-11-10)
+
+- **No plain payer ID at rest** (migration 0007 drops the column and refuses to run if any plain
+  value exists). Each PayPal-logged-in claim stores:
+  - `paypal_pseudonym`: HMAC-SHA256 of the payer ID under a per-settlement key, itself
+    HMAC-SHA256(`PAYER_PSEUDONYM_KEY`, `settlement:<id>`). It carries the one-claim-per-account
+    unique index, and it is what the admin screens (first 10 hex), the payout record
+    (`pseudonym:<hex>`, enforced by a check constraint) and stored money proposals show. The same
+    account gets unrelated pseudonyms in two settlements, and nobody without the key can test a
+    guessed payer ID.
+  - `paypal_payer_sealed`: AES-256-GCM under `PAYER_SEAL_KEY` (version | 12-byte IV | tag |
+    ciphertext), with `poc-payer-id:v1:<settlement>:<claim>` as associated data, so a sealed value
+    copied to another claim won't open.
+  - Only `packages/desk/src/payout.ts` opens it, to address the payment; the package doesn't export
+    the function, and `test/identity-boundary.test.ts` fails on any other caller.
+- **Keys:** both 32 random bytes, base64, from the environment. Required in production; without them
+  in development, PayPal-logged-in claims can't be filed or paid (the error names the variable).
+  The demo seed needs neither, because the corpus claimants never log in.
+- **Private status link** (`/status/<token>`): 24 random bytes, base64url, returned once when the
+  claim is filed; only its SHA-256 is stored. The page shows the claim's state, reason, checks and
+  expected amount, and nothing personal (no name, address, email or PayPal details); it sets
+  `noindex` and `Referrer-Policy: no-referrer`. A claimant who logs in with PayPal again (or presses
+  "Show my claim's status" within the identity cookie's hour) gets a new link, and the old one stops
+  working.
+- **Unverified PayPal accounts** (P2): the claim is decided on its evidence like any other, but an
+  approved claim from an unverified account is left out of every payout plan (counted on the money
+  screen) until the claimant logs in again and PayPal reports the account verified. We keep no
+  PayPal token, so a fresh login is the only way to re-read verification.
+- **Every state in plain words** (P7) and **the expected amount** (P8): `apps/web/lib/claim-status.ts`,
+  typed over the claim-state enum, so a new state can't ship without its wording.

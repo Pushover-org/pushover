@@ -37,4 +37,7 @@ export const serverEnv: Record<string, string> = {
   PAYPAL_GUARDED_CLIENT_ID: "e2e-client",
   PAYPAL_GUARDED_CLIENT_SECRET: "e2e-secret",
   PAYPAL_RPM: "600",
+  // Throwaway 32-byte keys for sealing and pseudonymising payer IDs in the e2e database only.
+  PAYER_SEAL_KEY: Buffer.alloc(32, 11).toString("base64"),
+  PAYER_PSEUDONYM_KEY: Buffer.alloc(32, 12).toString("base64"),
 };

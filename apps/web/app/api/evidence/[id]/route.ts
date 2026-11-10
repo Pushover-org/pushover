@@ -1,6 +1,7 @@
+import { pseudonymOf } from "@proofofclaim/desk";
 import { cookies } from "next/headers";
 import { currentAnalyst } from "@/lib/server/auth.ts";
-import { demoTruth, evidenceOf, pool } from "@/lib/server/data.ts";
+import { demoTruth, evidenceOf, identityKeys, pool } from "@/lib/server/data.ts";
 import { IDENTITY_COOKIE, openIdentity } from "@/lib/server/paypal-login.ts";
 
 /**
@@ -20,13 +21,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 }
 
 async function mayView(claimId: string): Promise<boolean> {
-  if ((await demoTruth()).has(claimId)) {
-    const { rows } = await pool().query<{ live: boolean }>("SELECT paypal_payer_id IS NOT NULL AS live FROM claims WHERE id = $1", [claimId]);
-    if (rows[0] && !rows[0].live) return true;
-  }
+  const { rows } = await pool().query<{ settlement_id: string; pseudonym: string | null }>("SELECT settlement_id, paypal_pseudonym AS pseudonym FROM claims WHERE id = $1", [claimId]);
+  const c = rows[0];
+  if (!c) return false;
+  if (c.pseudonym === null && (await demoTruth()).has(claimId)) return true;
   if (await currentAnalyst()) return true;
   const me = openIdentity((await cookies()).get(IDENTITY_COOKIE)?.value);
-  if (!me) return false;
-  const { rows } = await pool().query<{ payer: string | null }>("SELECT paypal_payer_id AS payer FROM claims WHERE id = $1", [claimId]);
-  return rows[0]?.payer === me.payerId;
+  const keys = identityKeys();
+  return !!me && !!keys && c.pseudonym === pseudonymOf(keys, c.settlement_id, me.payerId);
 }
