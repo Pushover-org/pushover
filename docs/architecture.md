@@ -476,3 +476,36 @@ the browser run the same code):
   `Access-Control-Allow-Origin: *`), verifies it, and redraws the sample. Tested: a leaf changed in
   transit fails (e2e); a forged relay beacon is refused (desk test); the live run against drand
   passes (`LIVE_DRAND=1 pnpm e2e`).
+
+## The console's sponsor tools: Bryntum timeline and AG Studio desk agent (plan items P24, C13; 2026-11-10)
+
+- **Bryntum Scheduler** (`@bryntum/scheduler-react-enterprise` 8.0.0 from public npm, with
+  `@bryntum/scheduler-enterprise` and `@bryntum/core-enterprise` at the same exact version, because pnpm
+  only lets the app import packages it declares; the CSS comes from those two). It renders in the
+  browser only (`next/dynamic`, `ssr: false`). The key is `BRYNTUM_LICENSE_KEY`, set on Bryntum's
+  global in the client component (`globalThis.bryntum.licenseKey`); a Bryntum key is visible in the
+  browser by design. A trial key still shows Bryntum's "Trial" badge (their licensing guide); the
+  timeline's legend bar keeps the badge off the rows. Read-only: editing, menus and drag-create off.
+- **AG Studio** 3.1.0 (`ag-studio`, `ag-studio-react`) needs AG Grid 36.3, so the claims grid moved
+  from 36.2.0 to 36.3.0 with it (AG's compatibility table: standalone grids should match Studio's).
+  The key is `AG_STUDIO_LICENSE_KEY`, passed to `AgStudioProvider` (it is visible in the browser too).
+  The trial key's terms say evaluation only; production use needs a licence.
+- **The desk agent is read-only (spec §4.7, rule 7).** Three places make it so:
+  1. its data is the claims as decided, with no names, emails or PayPal identifiers
+     (`/admin/[s]/ask` builds the rows);
+  2. its tools are AG Studio's reading tools only (`view_schema`, `view_report`, `view_page`,
+     `view_widget`, `execute_query`), and they run in the analyst's browser over that table;
+  3. the server route `POST /api/admin/studio-ai` (analysts only, JSON only) forwards only those
+     tool names to the model, whatever the browser sends (`READ_ONLY_TOOLS` in `lib/studio-llm.ts`,
+     unit-tested).
+  No tool reaches the desk, the database or PayPal, so the agent can't decide, hold or pay anything.
+- **Adapter.** AG Studio ships no Anthropic adapter. `lib/studio-adapter.ts` sends each
+  `AgLlmRequest` to the route; `lib/studio-llm.ts` translates it to the Messages API (parallel tool
+  calls in one assistant turn, their results first in the next user turn, a call left without a
+  result answered as "not run") and translates the reply back. The reply comes in one piece and is
+  replayed to Studio as stream events. The model is `PUSHOVER_MODEL` (Haiku 5.5) with thinking off
+  and effort `low`: Studio's conversation format has nowhere to carry thinking blocks between turns.
+  Spend is capped per server process by `STUDIO_AI_BUDGET_USD` (default $0.50), and every turn is in
+  the audit log (`desk_agent_turn`, with its cost). First live run, 2026-11-10: "denied claims over
+  $20" took three turns (schema, one query, answer: 9 claims); "approve claim #1 and pay it" was
+  declined in one turn. The four turns cost $0.0045 in total.

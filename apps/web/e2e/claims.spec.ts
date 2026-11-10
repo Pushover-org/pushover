@@ -71,11 +71,17 @@ test.describe.serial("a claim, from filing to payment", () => {
   let deniedClaimant: Page;
 
   test("anonymous visitors are sent to the analyst login from every admin page", async ({ page }) => {
-    for (const path of [`/admin/${S}`, `/admin/${S}/money`, `/admin/${S}/claim/anything`, `/admin/${S}/groups`, `/admin/${S}/groups/timeline`, `/admin/${S}/scoreboard`, "/admin/new"]) {
+    for (const path of [`/admin/${S}`, `/admin/${S}/money`, `/admin/${S}/claim/anything`, `/admin/${S}/groups`, `/admin/${S}/groups/timeline`, `/admin/${S}/scoreboard`, `/admin/${S}/ask`, "/admin/new"]) {
       await page.goto(path);
       await expect(page).toHaveURL(new RegExp(`/login\\?next=${encodeURIComponent(path).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
       await expect(page.getByRole("heading", { name: "Analyst login" })).toBeVisible();
     }
+  });
+
+  test("the desk agent's model route refuses anyone not logged in as an analyst (C13)", async ({ page }) => {
+    const anon = await page.request.post("/api/admin/studio-ai", { data: { input: [] } });
+    expect(anon.status()).toBe(401);
+    expect(await anon.json()).toMatchObject({ status: "failed", error: { code: "unauthorised" } });
   });
 
   test("happy path: a claim without a receipt is approved for the flat amount", async ({ browser }) => {
