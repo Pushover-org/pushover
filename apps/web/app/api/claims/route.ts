@@ -1,5 +1,6 @@
 // Files a claim from the claim form: the claimant must have logged in with PayPal. The desk reads
 // the receipt, runs the checks and decides; this route only collects and validates the input.
+import { randomBytes } from "node:crypto";
 import { US_STATES } from "@proofofclaim/claims";
 import { ClaimRejectedError, submitClaim } from "@proofofclaim/desk";
 import { cookies } from "next/headers";
@@ -9,6 +10,7 @@ import { desk } from "@/lib/server/data.ts";
 import { IDENTITY_COOKIE, openIdentity } from "@/lib/server/paypal-login.ts";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const DEVICE_COOKIE = "poc_device";
 
 const Form = z.object({
   settlement: z.string().regex(/^[a-z0-9-]{1,64}$/),
@@ -48,13 +50,19 @@ export async function POST(req: NextRequest) {
   const d = await desk(f.settlement);
   if (!d) return fail("This settlement doesn't exist.", 404);
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  // A random ID this browser keeps (P25): claims from one device link up. Only its keyed hash is stored.
+  const jar = await cookies();
+  const known = jar.get(DEVICE_COOKIE)?.value;
+  const deviceId = known && /^[A-Za-z0-9_-]{22}$/.test(known) ? known : randomBytes(16).toString("base64url");
   try {
     const { claim, result, statusToken } = await submitClaim(d, {
       tier: f.tier, unitsClaimed: f.tier === "proof" ? f.units : 1, name: f.name, email: identity.email, addressLine: f.addressLine, city: f.city, state: f.state, zip: f.zip,
-      declaration: f.declaration, ip, image, paypal: { payerId: identity.payerId, verified: identity.verified, emailVerified: identity.emailVerified },
+      declaration: f.declaration, ip, image, paypal: { payerId: identity.payerId, verified: identity.verified, emailVerified: identity.emailVerified }, deviceId,
     });
     // The private status link's token is returned once, here, and never stored.
-    return NextResponse.json({ id: claim.id, outcome: result?.decision.outcome ?? null, statusToken });
+    const res = NextResponse.json({ id: claim.id, outcome: result?.decision.outcome ?? null, statusToken });
+    if (known !== deviceId) res.cookies.set(DEVICE_COOKIE, deviceId, { httpOnly: true, sameSite: "lax", secure: req.nextUrl.protocol === "https:", path: "/", maxAge: 400 * 86_400 });
+    return res;
   } catch (err) {
     if (err instanceof ClaimRejectedError) return fail(err.message, 409);
     throw err;

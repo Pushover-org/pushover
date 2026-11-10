@@ -66,9 +66,14 @@ export default async function Admin({ params, searchParams }: { params: Promise<
             <dd className="num">{S.geography.states.length}</dd>
           </div>
         </dl>
-        <a className="pill pill--green" href={`/admin/${S.id}/money`}>
-          Distribute & money
-        </a>
+        <div className={s.headLinks}>
+          <a className="pill pill--quiet" href={`/admin/${S.id}/groups`}>
+            Linked groups
+          </a>
+          <a className="pill pill--green" href={`/admin/${S.id}/money`}>
+            Distribute & money
+          </a>
+        </div>
       </header>
       <ClaimsGrid rows={rows} settlementId={S.id} initial={outcome ?? (review > 0 ? "REVIEW" : "ALL")} />
     </div>
