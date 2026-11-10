@@ -12,7 +12,14 @@ describe("what a claimant reads", () => {
   });
 
   it("covers every state and nothing else", () => {
-    expect(Object.keys(CLAIMANT_STATE).sort()).toEqual([...STORED, "WAITING_VERIFICATION"].sort());
+    expect(Object.keys(CLAIMANT_STATE).sort()).toEqual([...STORED, "WAITING_VERIFICATION", "GROUP_HELD"].sort());
+  });
+
+  it("a claim in a held group is shown as held, never as simply approved", () => {
+    expect(claimantState("APPROVE", true, true)).toBe("GROUP_HELD");
+    expect(claimantState("REVIEW", true, true)).toBe("GROUP_HELD");
+    expect(claimantState("DENY", true, true)).toBe("DENY");
+    expect(CLAIMANT_STATE.GROUP_HELD.detail).toMatch(/Held is not denied/);
   });
 
   it("an approved claim from an unverified PayPal account waits, and says so", () => {
@@ -24,7 +31,7 @@ describe("what a claimant reads", () => {
   });
 
   it("held, in-flight and unconfirmed are never titled as done", () => {
-    for (const s of ["REVIEW", "UNVERIFIED", "SCHEDULED", "UNCLAIMED", "WAITING_VERIFICATION"] as const) expect(CLAIMANT_STATE[s].title).not.toMatch(/\b(paid|safe|done|complete)\b/i);
+    for (const s of ["REVIEW", "UNVERIFIED", "SCHEDULED", "UNCLAIMED", "WAITING_VERIFICATION", "GROUP_HELD"] as const) expect(CLAIMANT_STATE[s].title).not.toMatch(/\b(paid|safe|done|complete)\b/i);
     expect(CLAIMANT_STATE.UNVERIFIED.detail).toMatch(/never as paid/);
   });
 });

@@ -4,22 +4,21 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { ClaimForm } from "@/components/app/ClaimForm.tsx";
+import { LangSwitch } from "@/components/app/LangSwitch.tsx";
 import { dollars } from "@/lib/labels.ts";
 import { identityKeys, pool, settlement } from "@/lib/server/data.ts";
+import { claimantLang } from "@/lib/server/lang.ts";
 import { IDENTITY_COOKIE, openIdentity } from "@/lib/server/paypal-login.ts";
 import s from "./claim.module.css";
 
 export const metadata: Metadata = { title: "File a claim" };
 export const dynamic = "force-dynamic";
 
-const LOGIN_ERROR: Record<string, string> = {
-  expired: "That login link expired. Please log in again.",
-  cancelled: "You cancelled the PayPal login. You need it to file a claim.",
-  failed: "PayPal didn't confirm your account. Please try again.",
-};
+const LOGIN_ERROR = { expired: "claim.loginExpired", cancelled: "claim.loginCancelled", failed: "claim.loginFailed" } as const;
 
-export default async function Claim({ params, searchParams }: { params: Promise<{ settlement: string }>; searchParams: Promise<{ login?: string }> }) {
-  const [{ settlement: id }, { login }] = await Promise.all([params, searchParams]);
+/** The claim page (plan items P1, C11, C12): phone-first, in English, Spanish or Hindi. */
+export default async function Claim({ params, searchParams }: { params: Promise<{ settlement: string }>; searchParams: Promise<{ login?: string; lang?: string }> }) {
+  const [{ settlement: id }, { login, lang: asked }] = await Promise.all([params, searchParams]);
   const S = await settlement(id);
   if (!S) notFound();
   const me = openIdentity((await cookies()).get(IDENTITY_COOKIE)?.value);
@@ -29,81 +28,95 @@ export default async function Claim({ params, searchParams }: { params: Promise<
   const first = me?.name.split(" ")[0];
   const closesAt = S.filing ? new Date(S.filing.closesAt) : null;
   const closed = closesAt !== null && closesAt.getTime() < Date.now();
+  const { lang, t } = await claimantLang(asked);
+  const loginError = login && login in LOGIN_ERROR ? t(LOGIN_ERROR[login as keyof typeof LOGIN_ERROR]) : null;
+  const [judgeBefore, judgeAfter] = t("claim.judgeHint").split("{email}");
+  // The amount stays bold wherever a language puts it in the sentence.
+  const bold = (text: string, amount: string) => {
+    const [a, b] = text.split("{amount}");
+    return (
+      <>
+        {a}
+        <b className="num">{amount}</b>
+        {b}
+      </>
+    );
+  };
 
   return (
-    <div className={s.page}>
+    <div className={s.page} lang={lang}>
       <section className={s.intro}>
-        <p className="label">{S.name}</p>
+        <div className={s.topline}>
+          <p className="label">{S.name}</p>
+          <LangSwitch lang={lang} label={t("lang.choose")} />
+        </div>
         <h1 className="display">
-          Claim your <em>share.</em>
+          {t("claim.title")} <em>{t("claim.titleEm")}</em>
         </h1>
-        <p className={s.lede}>
-          If you bought a non-alcoholic drink at a restaurant in one of the class states between {S.classPeriod.start.slice(0, 4)} and {S.classPeriod.end.slice(0, 4)}, you can
-          claim. It takes about two minutes, and you see the decision straight away.
-        </p>
+        <p className={s.lede}>{t("claim.lede", { from: S.classPeriod.start.slice(0, 4), to: S.classPeriod.end.slice(0, 4) })}</p>
         <dl className={s.terms}>
           <div>
-            <dt>With a receipt</dt>
-            <dd>
-              <b className="num">{dollars(S.tiers.proof.unitCents, 0)}</b> a drink, up to {S.tiers.proof.maxUnits}
-            </dd>
+            <dt>{t("claim.withReceipt")}</dt>
+            <dd>{bold(t("claim.perDrink", { max: S.tiers.proof.maxUnits }), dollars(S.tiers.proof.unitCents, 0))}</dd>
           </div>
           <div>
-            <dt>Without a receipt</dt>
-            <dd>
-              <b className="num">{dollars(S.tiers.noProof.flatCents, 0)}</b> flat
-            </dd>
+            <dt>{t("claim.withoutReceipt")}</dt>
+            <dd>{bold(t("claim.flat"), dollars(S.tiers.noProof.flatCents, 0))}</dd>
           </div>
           {closesAt ? (
             <div>
-              <dt>Filing {closed ? "closed" : "closes"}</dt>
+              <dt>{closed ? t("claim.filingClosed") : t("claim.filingCloses")}</dt>
               <dd className="num">{closesAt.toISOString().slice(0, 10)}</dd>
             </div>
           ) : null}
           <div>
-            <dt>Class states</dt>
+            <dt>{t("claim.classStates")}</dt>
             <dd className="num">{S.geography.states.join(" · ")}</dd>
           </div>
         </dl>
         <div className={s.how}>
-          <p className="label">What happens to your claim</p>
+          <p className="label">{t("claim.howTitle")}</p>
           <ol>
-            <li>You log in with PayPal, so the payment can only go to your own account. One account, one claim.</li>
-            <li>An AI reads your receipt and reports what it shows. It doesn&apos;t decide.</li>
-            <li>Twelve checks and a published rule table decide. If something is unclear, a person looks, or we ask you for one more document.</li>
-            <li>When the court approves the distribution, PayPal pays you directly.</li>
+            <li>{t("claim.how1")}</li>
+            <li>{t("claim.how2")}</li>
+            <li>{t("claim.how3")}</li>
+            <li>{t("claim.how4")}</li>
           </ol>
         </div>
       </section>
 
-      <section className={s.formCard} aria-label="Your claim">
+      <section className={s.formCard} aria-label={t("claim.formLabel")}>
         <div className={s.step} data-done={!!me}>
-          <span className={`num ${s.stepNo}`}>1</span>
+          <span className={`num ${s.stepNo}`} aria-hidden>
+            1
+          </span>
           <div className={s.stepBody}>
-            <h2>Log in with PayPal</h2>
+            <h2>{t("claim.step1")}</h2>
             {me ? (
               <div className={s.who}>
                 <p>
-                  Signed in as <b>{me.name || me.email}</b>
-                  {me.verified ? <span className={s.ok}>verified account</span> : <span className={s.warn}>not verified yet: an approved claim is paid once it is</span>}
+                  {t("claim.signedInAs", { who: me.name || me.email })}
+                  {me.verified ? <span className={s.ok}>{t("claim.verified")}</span> : <span className={s.warn}>{t("claim.notVerified")}</span>}
                 </p>
                 <form action={`/api/paypal/logout?settlement=${S.id}`} method="post">
-                  <button className={s.link}>Use a different account</button>
+                  <button className={s.link}>{t("claim.otherAccount")}</button>
                 </form>
               </div>
             ) : (
               <>
-                <p className={s.muted}>Your payment goes to the PayPal account you log in with. We never see your password, and we keep no PayPal token.</p>
-                {login && LOGIN_ERROR[login] ? (
+                <p className={s.muted}>{t("claim.loginWhy")}</p>
+                {loginError ? (
                   <p role="alert" className={s.err}>
-                    {LOGIN_ERROR[login]}
+                    {loginError}
                   </p>
                 ) : null}
                 <a className={s.paypal} href={`/api/paypal/login?settlement=${S.id}`}>
-                  Log in with PayPal
+                  {t("claim.loginButton")}
                 </a>
                 <p className={s.hint}>
-                  Judging the demo? Use a sandbox buyer from the README, such as <span className="num">po-buyer1-3h8w@personal.example.com</span>. It&apos;s play money.
+                  {judgeBefore}
+                  <span className="num">po-buyer1-3h8w@personal.example.com</span>
+                  {judgeAfter}
                 </p>
               </>
             )}
@@ -111,23 +124,23 @@ export default async function Claim({ params, searchParams }: { params: Promise<
         </div>
 
         <div className={s.step} data-locked={!me}>
-          <span className={`num ${s.stepNo}`}>2</span>
+          <span className={`num ${s.stepNo}`} aria-hidden>
+            2
+          </span>
           <div className={s.stepBody}>
-            <h2>{first ? `Your claim, ${first}` : "Your claim"}</h2>
+            <h2>{first ? t("claim.step2Named", { name: first }) : t("claim.step2")}</h2>
             {closed ? (
-              <p className={s.muted}>Filing for this settlement closed on {closesAt?.toISOString().slice(0, 10)}. No new claims are taken.</p>
+              <p className={s.muted}>{t("claim.closedNote", { date: closesAt?.toISOString().slice(0, 10) ?? "" })}</p>
             ) : me && filed ? (
               <div className={s.filed}>
-                <p>
-                  This PayPal account has already filed a claim in this settlement. Each account files once. Your private status link was shown when you filed;
-                  here&apos;s a new one (the old link stops working).
-                </p>
+                <p>{t("claim.alreadyFiled")}</p>
                 <form action={`/api/claims/status-link?settlement=${S.id}`} method="post">
-                  <button className="pill pill--green">Show my claim&apos;s status</button>
+                  <button className="pill pill--green">{t("claim.showStatus")}</button>
                 </form>
               </div>
             ) : me ? (
               <ClaimForm
+                lang={lang}
                 settlementId={S.id}
                 states={[...S.geography.states]}
                 maxUnits={S.tiers.proof.maxUnits}
@@ -136,7 +149,7 @@ export default async function Claim({ params, searchParams }: { params: Promise<
                 prefill={{ name: me.name, addressLine: me.address?.line ?? "", city: me.address?.city ?? "", state: me.address?.state ?? "", zip: me.address?.zip ?? "" }}
               />
             ) : (
-              <p className={s.muted}>Log in first. Then tell us what you bought and, if you have one, add a photo of the receipt.</p>
+              <p className={s.muted}>{t("claim.loginFirst")}</p>
             )}
           </div>
         </div>

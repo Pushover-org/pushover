@@ -2,10 +2,12 @@
 // The claim form. Phone-first: the receipt can be photographed live (capture="environment").
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { LANG_COOKIE, translator, type Lang } from "@/lib/i18n.ts";
 import { US_STATE_NAMES } from "@/lib/states.ts";
 import s from "./ClaimForm.module.css";
 
 interface Props {
+  lang: Lang;
   settlementId: string;
   states: string[];
   maxUnits: number;
@@ -14,10 +16,10 @@ interface Props {
   prefill: { name: string; addressLine: string; city: string; state: string; zip: string };
 }
 
-const STEPS = ["Reading your receipt", "Checking dates, totals and tax", "Comparing with every other claim", "Applying the rules"];
-
-export function ClaimForm({ settlementId, states, maxUnits, unitCents, flatCents, prefill }: Props) {
+export function ClaimForm({ lang, settlementId, states, maxUnits, unitCents, flatCents, prefill }: Props) {
   const router = useRouter();
+  const t = translator(lang);
+  const STEPS = [t("form.progress1"), t("form.progress2"), t("form.progress3"), t("form.progress4")];
   const [tier, setTier] = useState<"proof" | "no_proof">("proof");
   const [units, setUnits] = useState(1);
   const [preview, setPreview] = useState<string | null>(null);
@@ -29,8 +31,8 @@ export function ClaimForm({ settlementId, states, maxUnits, unitCents, flatCents
   useEffect(() => () => (preview ? URL.revokeObjectURL(preview) : undefined), [preview]);
   useEffect(() => {
     if (!busy) return;
-    const t = window.setInterval(() => setPhase((p) => Math.min(STEPS.length - 1, p + 1)), 1400);
-    return () => window.clearInterval(t);
+    const timer = window.setInterval(() => setPhase((p) => Math.min(3, p + 1)), 1400);
+    return () => window.clearInterval(timer);
   }, [busy]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -46,10 +48,12 @@ export function ClaimForm({ settlementId, states, maxUnits, unitCents, flatCents
     try {
       const res = await fetch("/api/claims", { method: "POST", body: data });
       const out = (await res.json().catch(() => ({}))) as { statusToken?: string; error?: string };
-      if (!res.ok || !out.statusToken) throw new Error(out.error ?? "Something went wrong. Please try again.");
+      if (!res.ok || !out.statusToken) throw new Error(out.error ?? t("form.error"));
+      // The status page opens in the language the claim was filed in, even if that came from ?lang=.
+      document.cookie = `${LANG_COOKIE}=${lang}; path=/; max-age=31536000; samesite=lax`;
       router.push(`/status/${out.statusToken}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(err instanceof Error ? err.message : t("form.error"));
       setBusy(false);
     }
   }
@@ -58,31 +62,39 @@ export function ClaimForm({ settlementId, states, maxUnits, unitCents, flatCents
   return (
     <form className={s.form} onSubmit={submit} aria-busy={busy}>
       <fieldset className={s.tiers}>
-        <legend className="label">Do you have a receipt?</legend>
+        <legend className="label">{t("form.haveReceipt")}</legend>
         <button type="button" aria-pressed={tier === "proof"} onClick={() => setTier("proof")}>
-          <b>Yes, I have one</b>
-          <span>
-            ${unitCents / 100} a drink, up to {maxUnits}
-          </span>
+          <b>{t("form.yesReceipt")}</b>
+          <span>{t("claim.perDrink", { amount: `$${unitCents / 100}`, max: maxUnits })}</span>
         </button>
-        <button type="button" aria-pressed={tier === "no_proof"} onClick={() => setTier("no_proof")}>
-          <b>No receipt</b>
-          <span>${flatCents / 100} flat, once</span>
+        <button
+          type="button"
+          aria-pressed={tier === "no_proof"}
+          onClick={() => {
+            setTier("no_proof");
+            setUnits(1);
+          }}
+        >
+          <b>{t("form.noReceipt")}</b>
+          <span>{t("form.flatOnce", { amount: `$${flatCents / 100}` })}</span>
         </button>
       </fieldset>
 
       {tier === "proof" ? (
         <>
           <div className={s.field}>
-            <span className={s.lbl}>Photo of the receipt</span>
+            <span className={s.lbl} id="receipt-label">
+              {t("form.photo")}
+            </span>
             <label className={s.drop} data-has={!!preview}>
-              {preview ? <img src={preview} alt="Your receipt" /> : <span>Take a photo or choose a file</span>}
+              {preview ? <img src={preview} alt={t("form.photoAlt")} /> : <span>{t("form.photoPick")}</span>}
               <input
                 ref={fileRef}
                 type="file"
                 name="receipt"
                 accept="image/jpeg,image/png,image/webp,image/gif"
                 capture="environment"
+                aria-labelledby="receipt-label"
                 required
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -90,23 +102,23 @@ export function ClaimForm({ settlementId, states, maxUnits, unitCents, flatCents
                 }}
               />
             </label>
-            <span className={s.hint}>JPEG or PNG, up to 8 MB. The whole receipt, flat and in focus.</span>
+            <span className={s.hint}>{t("form.photoHint")}</span>
           </div>
           <div className={s.field}>
             <span className={s.lbl} id="units-label">
-              How many drinks does it show?
+              {t("form.howMany")}
             </span>
             <div className={s.stepper} role="group" aria-labelledby="units-label">
-              <button type="button" aria-label="One fewer" onClick={() => setUnits((u) => Math.max(1, u - 1))}>
+              <button type="button" aria-label={t("form.fewer")} onClick={() => setUnits((u) => Math.max(1, u - 1))}>
                 −
               </button>
               <output className="num" aria-live="polite">
                 {units}
               </output>
-              <button type="button" aria-label="One more" onClick={() => setUnits((u) => Math.min(maxUnits, u + 1))}>
+              <button type="button" aria-label={t("form.more")} onClick={() => setUnits((u) => Math.min(maxUnits, u + 1))}>
                 +
               </button>
-              <span className={s.hint}>We pay for the drinks the receipt shows, up to {maxUnits}.</span>
+              <span className={s.hint}>{t("form.payFor", { max: maxUnits })}</span>
             </div>
           </div>
         </>
@@ -114,24 +126,24 @@ export function ClaimForm({ settlementId, states, maxUnits, unitCents, flatCents
 
       <div className={s.row}>
         <label className={s.field}>
-          <span className={s.lbl}>Full name</span>
+          <span className={s.lbl}>{t("form.name")}</span>
           <input name="name" defaultValue={prefill.name} autoComplete="name" required minLength={2} />
         </label>
       </div>
       <label className={s.field}>
-        <span className={s.lbl}>Street address</span>
+        <span className={s.lbl}>{t("form.street")}</span>
         <input name="addressLine" defaultValue={prefill.addressLine} autoComplete="street-address" required />
       </label>
       <div className={s.row3}>
         <label className={s.field}>
-          <span className={s.lbl}>City</span>
+          <span className={s.lbl}>{t("form.city")}</span>
           <input name="city" defaultValue={prefill.city} autoComplete="address-level2" />
         </label>
         <label className={s.field}>
-          <span className={s.lbl}>State</span>
+          <span className={s.lbl}>{t("form.state")}</span>
           <select name="state" defaultValue={known ? prefill.state : prefill.state || ""} required>
             <option value="" disabled>
-              Choose…
+              {t("form.choose")}
             </option>
             {Object.entries(US_STATE_NAMES).map(([code, name]) => (
               <option key={code} value={code}>
@@ -141,18 +153,18 @@ export function ClaimForm({ settlementId, states, maxUnits, unitCents, flatCents
           </select>
         </label>
         <label className={s.field}>
-          <span className={s.lbl}>ZIP</span>
+          <span className={s.lbl}>{t("form.zip")}</span>
           <input name="zip" defaultValue={prefill.zip} autoComplete="postal-code" inputMode="numeric" pattern="\d{5}(-\d{4})?" required />
         </label>
       </div>
       <label className={s.field}>
-        <span className={s.lbl}>In your own words: what did you buy, where and when?</span>
-        <textarea name="declaration" rows={4} minLength={20} maxLength={2000} required placeholder="I had an iced tea with lunch at a diner on Main Street in Austin in spring 2017." />
-        <span className={s.hint}>Write it yourself. Declarations copied from a template are held for a person to check.</span>
+        <span className={s.lbl}>{t("form.words")}</span>
+        <textarea name="declaration" rows={4} minLength={20} maxLength={2000} required placeholder={t("form.wordsPlaceholder")} />
+        <span className={s.hint}>{t("form.wordsHint")}</span>
       </label>
       <label className={s.sworn}>
         <input type="checkbox" name="sworn" value="yes" required />
-        <span>I declare under penalty of perjury that this is true and that I haven&apos;t filed another claim in this settlement.</span>
+        <span>{t("form.sworn")}</span>
       </label>
 
       {error ? (
@@ -162,7 +174,7 @@ export function ClaimForm({ settlementId, states, maxUnits, unitCents, flatCents
       ) : null}
 
       <button className={`pill pill--green ${s.submit}`} disabled={busy}>
-        {busy ? "Deciding…" : "File my claim"}
+        {busy ? t("form.deciding") : t("form.submit")}
       </button>
 
       {busy ? (

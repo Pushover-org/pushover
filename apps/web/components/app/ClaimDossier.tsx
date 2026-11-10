@@ -2,6 +2,7 @@
 // "model said / rules said", all twelve checks and the append-only record. Used by the analyst's
 // claim page and by the public demo view of labelled corpus claims.
 import { REASONS, type ReasonCode, type Settlement } from "@proofofclaim/claims";
+import type { Followup } from "@proofofclaim/db";
 import { dollars, GROUP_LABEL } from "@/lib/labels.ts";
 import { asFiledCents, type ClaimDetail, type Truth } from "@/lib/server/data.ts";
 import s from "./ClaimDossier.module.css";
@@ -10,7 +11,9 @@ import { Stamp } from "./Stamp.tsx";
 const reasonText = (r: string | null) => (r && r in REASONS ? REASONS[r as ReasonCode] : (r ?? ""));
 const RESULT = { PASS: "Pass", FAIL: "Fail", UNKNOWN: "Can't tell" } as const;
 
-export function ClaimDossier({ S, d, t, back, actions }: { S: Settlement; d: ClaimDetail; t: Truth | undefined; back: { href: string; label: string }; actions: React.ReactNode }) {
+export function ClaimDossier({
+  S, d, t, back, actions, followups = [],
+}: { S: Settlement; d: ClaimDetail; t: Truth | undefined; back: { href: string; label: string }; actions: React.ReactNode; followups?: Followup[] }) {
   const c = d.claim;
   const f = d.findings;
   const modelApproves = f?.model_recommendation === "approve";
@@ -61,6 +64,30 @@ export function ClaimDossier({ S, d, t, back, actions }: { S: Settlement; d: Cla
       </header>
 
       {actions}
+
+      {followups.length > 0 ? (
+        <section className={s.followups} aria-label="From the claimant">
+          <h2 className="label">From the claimant</h2>
+          <ol>
+            {followups.map((f) => (
+              <li key={f.id} data-open={f.open}>
+                <p className={s.fuHead}>
+                  <b>{f.kind === "APPEAL" ? "Appeal" : "Requested document"}</b>
+                  <span className="num">{f.at.toISOString().replace("T", " ").slice(0, 16)}</span>
+                  <span>from {f.fromStatus.toLowerCase().replace("_", " ")}</span>
+                  {f.kind === "APPEAL" ? <span className={s.fuState}>{f.open ? "waiting for a person" : "answered"}</span> : <span className={s.fuState}>read, and the rules decided again</span>}
+                </p>
+                {f.message ? <blockquote className={s.fuText}>{f.message}</blockquote> : null}
+                {f.evidenceId !== null ? (
+                  <a href={`/api/evidence/${c.id}?doc=${f.evidenceId}`} target="_blank" rel="noreferrer" className={s.fuImg}>
+                    <img src={`/api/evidence/${c.id}?doc=${f.evidenceId}`} alt={`Document sent with the ${f.kind === "APPEAL" ? "appeal" : "request"}`} />
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       <div className={s.body}>
         <section className={s.evidence} aria-label="Evidence">

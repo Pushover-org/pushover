@@ -4,6 +4,7 @@
 // for our localhost callback (docs/sandbox-findings.md, 2026-11-10), so the live login is proved
 // on the deployed app instead.
 import { readFileSync } from "node:fs";
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { E2E } from "./env.ts";
 
@@ -89,7 +90,7 @@ test.describe.serial("a claim, from filing to payment", () => {
     approvedPage = page;
     approved = await fileClaim(page, { declaration: "I had an iced tea with lunch at a diner on Main Street in San Jose in spring 2017." });
     await expect(page.getByRole("heading", { name: "Approved", exact: true })).toBeVisible();
-    await expect(page.getByText("Approved at the no-proof tier")).toBeVisible();
+    await expect(page.getByText("Approved at the no-receipt tier")).toBeVisible();
     await expect(page.locator("b.num", { hasText: "$10.00" })).toBeVisible();
     await expectNothingPersonal(page, "Dana Reyes", "E2EAPPRVD2345");
   });
@@ -99,7 +100,45 @@ test.describe.serial("a claim, from filing to payment", () => {
     deniedClaimant = page;
     await fileClaim(page, { declaration: "I bought a lemonade at a cafe near the lake in Cleveland in the summer of 2016." });
     await expect(page.getByRole("heading", { name: "Denied", exact: true })).toBeVisible();
-    await expect(page.getByText("Denied: the claimant or the store is outside the class geography.")).toBeVisible();
+    await expect(page.getByText("Denied: you or the store are outside the class states.")).toBeVisible();
+  });
+
+  test("a denied claimant reads why in plain words and appeals; a person sees the appeal and decides (C3, P9, C9)", async ({ browser }) => {
+    test.setTimeout(90_000);
+    const page = deniedClaimant;
+    const deniedId = /claim\s+(\S+)/.exec((await page.locator("p.label").first().textContent()) ?? "")?.[1] ?? "";
+    await expect(page.getByText(/This settlement covers .*\. Your address is in Ohio\./)).toBeVisible();
+    await page.getByLabel("What should they know?").fill("I lived in San Jose until 2017 and bought the lemonade there; I moved to Ohio later.");
+    await page.getByRole("button", { name: "Send my appeal" }).click();
+    await page.waitForURL(/sent=appeal/);
+    await expect(page.getByText("Your appeal is with a person. You'll see the decision here.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Held for a person", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send my appeal" })).toHaveCount(0);
+
+    const desk = await analyst(browser, E2E.analyst, `/admin/${S}/claim/${deniedId}`);
+    await expect(desk.getByRole("region", { name: "From the claimant" })).toContainText("I lived in San Jose until 2017");
+    await expect(desk.getByText("waiting for a person")).toBeVisible();
+    await desk.getByRole("button", { name: "Deny", exact: true }).click();
+    await expect(desk.getByText("answered")).toBeVisible();
+    await page.goto(new URL(page.url()).pathname);
+    await expect(page.getByText("Denied by a claims analyst after review.")).toBeVisible();
+  });
+
+  test("the claim and status pages in Hindi and Spanish, with the reason in plain words (C12, C3)", async ({ browser }) => {
+    const { page } = await claimant(browser, { payerId: "E2ESPANSH2345", name: "Sofia Ramos", state: "OH", ip: "198.51.100.60" });
+    await page.goto(`/claim/${S}?lang=hi`);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("हिस्सा पाएँ।");
+    await expect(page.locator('div[lang="hi"]').first()).toBeVisible();
+    await page.getByRole("link", { name: "Español" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Reclame su");
+    await page.getByRole("button", { name: /Sin recibo/ }).click();
+    await page.locator('textarea[name="declaration"]').fill("Tomé una limonada en un restaurante de Cleveland en el verano de 2016, con mi familia.");
+    await page.locator('input[name="sworn"]').check();
+    await page.getByRole("button", { name: "Presentar mi reclamo" }).click();
+    await page.waitForURL(/\/status\/[A-Za-z0-9_-]{32}$/);
+    await expect(page.getByRole("heading", { name: "Denegado", exact: true })).toBeVisible();
+    await expect(page.getByText(/Este acuerdo cubre .*\. Su dirección está en Ohio\./)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enviar mi apelación" })).toBeVisible();
   });
 
   test("a made-up status link shows nothing", async () => {
@@ -130,7 +169,7 @@ test.describe.serial("a claim, from filing to payment", () => {
     const { page } = await claimant(browser, { payerId: "E2EREVW234567", name: "Riley Chen", state: "NY", ip: "198.51.100.30" });
     const { id: reviewId } = await fileClaim(page, { receipt: true, state: "NY", declaration: "Two coffees with breakfast at a diner on Broadway in Albany, March 2018. Receipt attached." });
     await expect(page.getByRole("heading", { name: "Held for a person" })).toBeVisible();
-    await expect(page.getByText("Held for review: the evidence has not been read yet.")).toBeVisible();
+    await expect(page.getByText("Held for a person: the receipt hasn't been read yet.")).toBeVisible();
 
     const desk = await analyst(browser, E2E.analyst, `/admin/${S}/claim/${reviewId}`);
     await expect(desk.getByText("A person decides this one.")).toBeVisible();
@@ -244,3 +283,53 @@ test.describe.serial("a claim, from filing to payment", () => {
   });
 });
 
+
+/** No WCAG 2.x A or AA rule axe can check fails (C11). */
+async function expectAccessible(page: Page, what: string) {
+  // Measure the page as it settles: mid fade-in, text is still partly transparent.
+  await page.waitForFunction(() => document.getAnimations().every((x) => x.playState !== "running" || x.effect?.getTiming().iterations === Infinity), null, { timeout: 5000 });
+  const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).exclude("nextjs-portal").analyze();
+  expect(r.violations.map((v) => `${what}: ${v.id} (${v.nodes.length}) ${v.nodes[0]?.target.join(" ") ?? ""}`)).toEqual([]);
+}
+
+test.describe("accessibility (C11)", () => {
+  test("the claimant's pages pass axe on a phone, with nothing wider than the screen", async ({ browser }) => {
+    test.setTimeout(90_000);
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, extraHTTPHeaders: { "x-forwarded-for": "198.51.100.70" } });
+    const value = sealIdentity({
+      payerId: "E2EAXEPHN2345", name: "Ana Axe", email: "e2eaxephn2345@personal.example.com", verified: true, emailVerified: true,
+      address: { line: "70 Elm St", city: "Columbus", state: "OH", zip: "43004", country: "US" },
+    });
+    await ctx.addCookies([{ name: IDENTITY_COOKIE, value, url: E2E.baseURL, httpOnly: true }]);
+    const page = await ctx.newPage();
+    const fits = async () => expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    for (const lang of ["en", "hi"]) {
+      await page.goto(`/claim/${S}?lang=${lang}`);
+      await expectAccessible(page, `claim page (${lang})`);
+      await fits();
+    }
+    await page.goto(`/claim/${S}?lang=en`);
+    await page.getByRole("button", { name: /No receipt/ }).click();
+    await page.locator('textarea[name="declaration"]').fill("A lemonade at a diner in Columbus, summer 2016, with my brother after a game.");
+    await page.locator('input[name="sworn"]').check();
+    await page.getByRole("button", { name: "File my claim" }).click();
+    await page.waitForURL(/\/status\/[A-Za-z0-9_-]{32}$/);
+    await expect(page.getByRole("heading", { name: "Denied", exact: true })).toBeVisible();
+    await expectAccessible(page, "status page with the appeal form");
+    await fits();
+    for (const path of ["/", `/settlements`, "/login", `/report/${S}`]) {
+      await page.goto(path);
+      await expectAccessible(page, path);
+      await fits();
+    }
+  });
+
+  test("the analyst's desk and a claim page pass axe", async ({ browser }) => {
+    const desk = await analyst(browser, E2E.analyst, `/admin/${S}`);
+    await expect(desk.locator(".ag-row").first()).toBeVisible();
+    await expectAccessible(desk, "claims desk");
+    const first = await desk.locator(".ag-row[row-id]").first().getAttribute("row-id");
+    await desk.goto(`/admin/${S}/claim/${first}`);
+    await expectAccessible(desk, "claim page");
+  });
+});

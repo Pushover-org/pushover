@@ -34,6 +34,10 @@ export interface GridRow {
   paypalVerified: boolean | null;
   /** The PayPal account's pseudonym, first 10 hex: never the payer ID. */
   paypal: string | null;
+  /** Waiting for a person's decision (status REVIEW): the rules' hold, or an appealed denial. */
+  waiting: boolean;
+  /** The claimant appealed and no person has decided since (plan item P9). */
+  appealed: boolean;
   /** The linked group this claim is in, if any (plan items P20, P26). */
   group: { id: number; size: number; status: "HELD" | "CLEARED" | "DENIED"; href: string } | null;
 }
@@ -60,7 +64,12 @@ const Claim = ({ data }: ICellRendererParams<GridRow>) => (
   </span>
 );
 
-const Decision = ({ value }: P<"outcome">) => <Stamp outcome={value ?? null} />;
+const Decision = ({ value, data }: P<"outcome">) => (
+  <span className={s.decision}>
+    <Stamp outcome={value ?? null} />
+    {data?.appealed ? <span className={s.appealed}>Appealed</span> : null}
+  </span>
+);
 
 const Reason = ({ data }: ICellRendererParams<GridRow>) => (
   <span className={s.reason}>
@@ -125,7 +134,8 @@ const Group = ({ data }: ICellRendererParams<GridRow>) =>
 
 const FILTERS: { key: string; label: string; test: (r: GridRow) => boolean }[] = [
   { key: "ALL", label: "All claims", test: () => true },
-  { key: "REVIEW", label: "Review queue", test: (r) => r.outcome === "REVIEW" },
+  { key: "REVIEW", label: "Review queue", test: (r) => r.waiting },
+  { key: "APPEALED", label: "Appealed", test: (r) => r.appealed },
   { key: "APPROVE", label: OUTCOME_LABEL.APPROVE, test: (r) => r.outcome === "APPROVE" },
   { key: "DENY", label: OUTCOME_LABEL.DENY, test: (r) => r.outcome === "DENY" },
   { key: "NEED_MORE", label: OUTCOME_LABEL.NEED_MORE, test: (r) => r.outcome === "NEED_MORE" },

@@ -70,7 +70,8 @@
 .step + .step {
   border-top: 1px solid var(--hair);
 }
-.step[data-locked="true"] {
+/* Locked until login: the number fades, the words stay readable (C11, contrast). */
+.step[data-locked="true"] .stepNo {
   opacity: 0.55;
 }
 .stepNo {
@@ -183,4 +184,11 @@
   justify-items: start;
   font-size: 15px;
   color: var(--ink-2);
+}
+.topline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
 }

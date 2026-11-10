@@ -1,0 +1,23 @@
+.switch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--r-pill);
+  background: var(--paper-2);
+  font-size: 13.5px;
+}
+.switch a {
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  text-decoration: none;
+  color: var(--ink-2);
+}
+.switch a[aria-current="true"] {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--hair-2);
+}
+.switch a:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}

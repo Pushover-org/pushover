@@ -9,11 +9,14 @@ import { IDENTITY_COOKIE, openIdentity } from "@/lib/server/paypal-login.ts";
  * analyst or the claimant who filed it may see one. The labelled demo corpus (a public receipt
  * dataset and our own renders) is public, so the demo works without a login.
  */
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   if (!/^[A-Za-z0-9._-]{1,63}$/.test(id)) return new Response("bad claim id", { status: 400 });
+  const doc = new URL(req.url).searchParams.get("doc");
+  if (doc !== null && !/^\d{1,18}$/.test(doc)) return new Response("bad document id", { status: 400 });
   if (!(await mayView(id))) return new Response("log in to see this evidence", { status: 401 });
-  const e = await evidenceOf(id);
+  // ?doc= picks one document of this claim (a requested document, or one sent with an appeal).
+  const e = await evidenceOf(id, doc === null ? null : Number(doc));
   if (!e) return new Response("no evidence", { status: 404 });
   return new Response(new Uint8Array(e.bytes), {
     headers: { "Content-Type": e.contentType, "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" },

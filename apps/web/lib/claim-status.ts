@@ -1,9 +1,13 @@
 // What a claimant reads about their claim, for every state it can be in (plan items P7, P8).
 // Plain words; held and unconfirmed are never presented as done.
 import type { ClaimState } from "@proofofclaim/db";
+import { translator, type Translate } from "./i18n.ts";
 
-/** A claim's state as its claimant sees it: the stored state, plus approval that waits for PayPal verification. */
-export type ClaimantState = ClaimState | "WAITING_VERIFICATION";
+/**
+ * A claim's state as its claimant sees it: the stored state, plus approval that waits for PayPal
+ * verification, and a claim held with a linked group (plan item P9).
+ */
+export type ClaimantState = ClaimState | "WAITING_VERIFICATION" | "GROUP_HELD";
 
 export const CLAIMANT_STATE: Record<ClaimantState, { title: string; detail: string }> = {
   SUBMITTED: { title: "Filed", detail: "We have your claim. The checks run within seconds." },
@@ -12,6 +16,10 @@ export const CLAIMANT_STATE: Record<ClaimantState, { title: string; detail: stri
   WAITING_VERIFICATION: {
     title: "Approved, waiting for PayPal verification",
     detail: "Your claim is approved, but your PayPal account isn't verified yet, so nothing is sent. Verify it with PayPal, then log in with PayPal on the claim page again. We pay once it's verified.",
+  },
+  GROUP_HELD: {
+    title: "Held for a person, with linked claims",
+    detail: "Your claim shares something, such as a device, an inbox or its wording, with other claims, so a person checks them together. Held is not denied.",
   },
   DENY: { title: "Denied", detail: "A published rule ruled this claim out. The reason below is the whole reason, and it's on the court's record." },
   NEED_MORE: { title: "One more document needed", detail: "Nothing is decided against you. The rules need one more document before they can decide." },
@@ -34,27 +42,35 @@ export const CLAIMANT_STATE: Record<ClaimantState, { title: string; detail: stri
   },
 };
 
-export function claimantState(status: ClaimState, paypalVerified: boolean | null): ClaimantState {
+export function claimantState(status: ClaimState, paypalVerified: boolean | null, heldInGroup = false): ClaimantState {
+  // A held group stops its money (P23), so an approved claim in one is not shown as simply approved.
+  if (heldInGroup && (status === "APPROVE" || status === "REVIEW")) return "GROUP_HELD";
   return status === "APPROVE" && paypalVerified === false ? "WAITING_VERIFICATION" : status;
 }
 
 const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
-/** What the claim can pay, in the settlement's own terms (P8). Approved claims show their amount. */
+/** What the claim can pay, in the settlement's own terms (P8), in the claimant's language. Approved claims show their amount. */
 export function expectedAmount(
   t: { tier: "proof" | "no_proof"; entitlementCents: number | null; units: number | null; approved: boolean },
   tiers: { proof: { unitCents: number; maxUnits: number }; noProof: { flatCents: number } },
+  tr: Translate = translator("en"),
 ): { amount: string; basis: string } {
-  const share = "Your payment is your share of the fund: the full amount if the fund covers every valid claim, or otherwise every approved claim reduced by the same proportion.";
+  const share = tr("money.share");
   if (t.approved && t.entitlementCents !== null) {
-    const basis = t.tier === "proof" && t.units ? `${t.units} qualifying ${t.units === 1 ? "drink" : "drinks"} at ${usd(tiers.proof.unitCents)} each.` : "The flat amount for a claim without a receipt.";
+    const basis =
+      t.tier === "proof" && t.units
+        ? t.units === 1
+          ? tr("money.approvedProofOne", { unit: usd(tiers.proof.unitCents) })
+          : tr("money.approvedProof", { units: t.units, unit: usd(tiers.proof.unitCents) })
+        : tr("money.approvedFlat");
     return { amount: usd(t.entitlementCents), basis: `${basis} ${share}` };
   }
   if (t.tier === "proof") {
     return {
-      amount: `up to ${usd(tiers.proof.unitCents * tiers.proof.maxUnits)}`,
-      basis: `If approved: ${usd(tiers.proof.unitCents)} for each qualifying drink your receipt shows, up to ${tiers.proof.maxUnits}. ${share}`,
+      amount: tr("money.upTo", { amount: usd(tiers.proof.unitCents * tiers.proof.maxUnits) }),
+      basis: `${tr("money.ifProof", { unit: usd(tiers.proof.unitCents), max: tiers.proof.maxUnits })} ${share}`,
     };
   }
-  return { amount: usd(tiers.noProof.flatCents), basis: `If approved: a flat ${usd(tiers.noProof.flatCents)} for a claim without a receipt. ${share}` };
+  return { amount: usd(tiers.noProof.flatCents), basis: `${tr("money.ifFlat", { amount: usd(tiers.noProof.flatCents) })} ${share}` };
 }

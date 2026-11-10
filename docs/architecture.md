@@ -509,3 +509,38 @@ the browser run the same code):
   the audit log (`desk_agent_turn`, with its cost). First live run, 2026-11-10: "denied claims over
   $20" took three turns (schema, one query, answer: 9 claims); "approve claim #1 and pay it" was
   declined in one turn. The four turns cost $0.0045 in total.
+
+## Claimant upgrades: plain reasons, appeals, documents, languages, accessibility (plan items C3, P9, C9, B3, C11, C12; 2026-11-10)
+
+- **After a decision (migration 0011, `claim_followups`, append-only).** Two things a claimant can send
+  from their private status page (`POST /api/claims/followup?token=`):
+  - *The document the rules asked for* (NEED_MORE, receipt claims, at most 3). The examiner reads it
+    and the checks and decision table run again, exactly as at filing. The checks read the latest
+    *requested* document (`checkedEvidence`); a photo sent with an appeal never feeds the checks.
+  - *An appeal* (denied claims, claims with a person, claims in a held group; words required, a new
+    photo optional; one open at a time, 3 in all). An appeal writes **no decision**: a denied claim's
+    status moves DENY → REVIEW and the denial stays the decision on record (and in the ledger) until a
+    person decides. The model and the rules never decide an appeal. It closes when an analyst decides
+    the claim, or a group holding it, after it. The analyst's claim page shows the words and the photo
+    ("From the claimant"); the review buttons and the review queue go by status, so an appealed
+    denial is in the queue; the grid has an "Appealed" filter.
+- **Plain-word reasons (C3)** come from `lib/plain-reasons.ts`: per failed check, a sentence filled
+  only from the claimant's own receipt and the settlement's terms (date, period, store state, tax), and
+  a fix that points at a form only if that form is on the page. The checks' internal details name
+  other claims, so they are never shown to a claimant. A claim in a held group is shown as "held, with
+  linked claims", never as simply approved.
+- **Languages (C12).** The claim page, claim form and status page read from message tables
+  (`lib/messages/en.ts`, `es.ts`, `hi.ts`); the type makes a missing key a compile error, and a test
+  checks every `{slot}` matches English. The language comes from `?lang=`, then the `poc_lang`
+  cookie, then Accept-Language. **The Spanish and Hindi were written for this demo and are not
+  reviewed by a professional translator.** A real settlement must have its claim form, and above all
+  the sworn declaration, translated and certified before use. Server-side rejections on the claim form
+  itself are still English; the follow-up form's errors are codes shown in the claimant's language.
+- **Accessibility (C11).** `@axe-core/playwright` runs the WCAG 2.0/2.1/2.2 A and AA rules in e2e on
+  the claim page (English and Hindi), the status page with the appeal form, the landing, settlements,
+  login and report pages at 390 px (nothing wider than the screen), and on the claims desk and a claim
+  page. What it found and what changed: `--ink-3` was 2.8:1 (now 62% ink, at least 4.6:1 on every
+  paper tone), `--review` amber 4.0:1 (now `#845b00`, at least 4.9:1), and the locked claim step faded
+  its text (now only its number fades). Third-party widgets, audited separately: AG Studio's default
+  send button was 3.1:1 (fixed by theming Studio with the app's tokens); Bryntum's grid still reports
+  one `aria-required-children` rule inside its own markup, which the e2e suite doesn't cover.

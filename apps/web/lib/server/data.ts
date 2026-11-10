@@ -170,8 +170,14 @@ export async function claimDetail(id: string): Promise<ClaimDetail | null> {
   };
 }
 
-export async function evidenceOf(claimId: string): Promise<{ contentType: string; bytes: Buffer } | null> {
-  const { rows } = await pool().query<{ content_type: string; bytes: Buffer }>("SELECT content_type, bytes FROM claim_evidence WHERE claim_id = $1 ORDER BY id LIMIT 1", [claimId]);
+/** A claim's first document (what it was filed with), or the one with this id, if it belongs to the claim. */
+export async function evidenceOf(claimId: string, docId: number | null = null): Promise<{ contentType: string; bytes: Buffer } | null> {
+  const { rows } = await pool().query<{ content_type: string; bytes: Buffer }>(
+    docId === null
+      ? "SELECT content_type, bytes FROM claim_evidence WHERE claim_id = $1 ORDER BY id LIMIT 1"
+      : "SELECT content_type, bytes FROM claim_evidence WHERE claim_id = $1 AND id = $2",
+    docId === null ? [claimId] : [claimId, docId],
+  );
   return rows[0] ? { contentType: rows[0].content_type, bytes: rows[0].bytes } : null;
 }
 
