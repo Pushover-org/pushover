@@ -7,7 +7,8 @@ import { buildCyPresBatch, sendBatch } from "@proofofclaim/distribute";
 import { decideProposal, getProposal, insertProposal, markBatchSent, planBatch, recordCyPres, withTransaction, type Analyst, type MoneyProposal } from "@proofofclaim/db";
 import { valueToCents, type PayPalClient } from "@proofofclaim/paypal";
 import type { Desk } from "./desk.ts";
-import { checkBalance, MoneyRefusedError, planNote, PROPOSAL_TTL_MINUTES } from "./payout.ts";
+import { commitLedger, ledgerNote } from "./ledger.ts";
+import { checkBalance, MoneyRefusedError, PROPOSAL_TTL_MINUTES } from "./payout.ts";
 
 export interface CyPresPlan {
   settlementId: string;
@@ -62,19 +63,21 @@ export async function approveCyPres(desk: Desk, pp: PayPalClient, approver: Anal
     throw new MoneyRefusedError("The returned money changed since this was proposed. Nothing was sent; propose it again.");
   }
   await checkBalance(desk, pp, plan.totalCents, 1);
+  if (!desk.rulesFiles) throw new MoneyRefusedError("The rules' fingerprint isn't configured, so the ledger can't be committed. Nothing was sent.");
   const won = await withTransaction(desk.pool, (tx) => decideProposal(tx, { id: p.id, status: "APPROVED", by: approver }));
   if (!won) throw new MoneyRefusedError("Someone else decided this proposal first.");
+  const ledger = await commitLedger(desk, { proposalId: p.id, kind: "CY_PRES", round: plan.round, planHash: hash, by: `analyst:${approver.email}` });
 
   const s = desk.settlement;
   const batch = buildCyPresBatch({
-    settlementId: s.id, round: plan.round, recipientEmail: plan.recipient.email, cents: plan.totalCents, note: planNote(s.id, "CY_PRES", plan.round, hash),
+    settlementId: s.id, round: plan.round, recipientEmail: plan.recipient.email, cents: plan.totalCents, note: ledgerNote(s.id, "CY_PRES", plan.round, ledger, hash),
     emailSubject: `Cy-près distribution from the ${s.name}`,
-    emailMessage: `Settlement money that could not be delivered to class members, sent to ${plan.recipient.name} as the court directed. Plan sha256:${hash.toString("hex").slice(0, 16)}.`,
+    emailMessage: `Settlement money that could not be delivered to class members, sent to ${plan.recipient.name} as the court directed. Ledger sha256:${ledger.digest.slice(0, 16)}.`,
   });
   // Written before PayPal is called, like every batch.
   const batchId = await withTransaction(desk.pool, async (tx) => {
     const id = await planBatch(tx, {
-      settlementId: s.id, kind: "CY_PRES", round: plan.round, part: 1, senderBatchId: batch.senderBatchId, proposalId: p.id,
+      settlementId: s.id, kind: "CY_PRES", round: plan.round, part: 1, senderBatchId: batch.senderBatchId, proposalId: p.id, ledgerCommitmentId: ledger.id,
       items: batch.items.map((it) => ({ senderItemId: it.senderItemId, claimId: null, receiver: plan.recipient.email, cents: it.cents })),
     });
     await recordCyPres(tx, {

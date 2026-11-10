@@ -9,6 +9,7 @@ import {
 } from "@proofofclaim/db";
 import { getBalance, getPayoutBatch, payoutItemOutcome, valueToCents, type PayPalClient } from "@proofofclaim/paypal";
 import { decideClaim } from "./desk.ts";
+import { commitLedger, ledgerNote } from "./ledger.ts";
 import { openPayerId } from "./payer-id.ts";
 import type { Desk } from "./desk.ts";
 
@@ -142,9 +143,6 @@ export async function checkBalance(desk: Desk, pp: PayPalClient, needCents: numb
   return { availableCents: b.availableCents, sentSinceCents, asOf: b.asOf };
 }
 
-/** Plan item P36: the approved plan's digest rides on every payout, so PayPal's own record names it. */
-export const planNote = (settlementId: string, kind: string, round: number, hash: Buffer) =>
-  `Proof of Claim ${settlementId} ${kind.toLowerCase()} round ${round}, plan sha256:${hash.toString("hex")}`;
 
 /** What a proposal fixes: every payee, amount and receiver. The approver's plan must hash the same. */
 export function planDigest(settlementId: string, plan: DistributionPlan): { hash: Buffer; summary: PlanSummary } {
@@ -212,9 +210,12 @@ export async function approveAndDistribute(desk: Desk, pp: PayPalClient, approve
     throw new MoneyRefusedError("Claims changed since this was proposed, so the plan is different. Nothing was sent; propose the round again.");
   }
   await checkBalance(desk, pp, p.totalCents, plan.allocation.payouts.length);
+  if (!desk.rulesFiles) throw new MoneyRefusedError("The rules' fingerprint isn't configured, so the ledger can't be committed. Nothing was sent.");
   const won = await withTransaction(desk.pool, (tx) => decideProposal(tx, { id: p.id, status: "APPROVED", by: approver }));
   if (!won) throw new MoneyRefusedError("Someone else decided this proposal first.");
-  return distribute(desk, pp, plan, { proposalId: p.id, planHash: p.planHash, proposedBy: p.proposedBy, approvedBy: approver });
+  // The decision ledger is fixed before any batch exists; the database refuses a batch without it.
+  const ledger = await commitLedger(desk, { proposalId: p.id, kind: "CLAIMS", round: plan.round, planHash: p.planHash, by: `analyst:${approver.email}` });
+  return distribute(desk, pp, plan, { proposalId: p.id, planHash: p.planHash, ledger, proposedBy: p.proposedBy, approvedBy: approver });
 }
 
 export { openProposal };
@@ -223,19 +224,24 @@ export { openProposal };
  * Plans each batch in the database, then sends it. Only `approveAndDistribute` calls this: the
  * database refuses a batch without an approved proposal.
  */
-async function distribute(desk: Desk, pp: PayPalClient, plan: DistributionPlan, who: { proposalId: number; planHash: Buffer; proposedBy: Analyst; approvedBy: Analyst }): Promise<DistributionResult> {
+async function distribute(
+  desk: Desk,
+  pp: PayPalClient,
+  plan: DistributionPlan,
+  who: { proposalId: number; planHash: Buffer; ledger: { id: number; digest: string; drandRound: number }; proposedBy: Analyst; approvedBy: Analyst },
+): Promise<DistributionResult> {
   const s = desk.settlement;
-  const note = planNote(s.id, "CLAIMS", plan.round, who.planHash);
+  const note = ledgerNote(s.id, "CLAIMS", plan.round, who.ledger, who.planHash);
   const batches = buildClaimBatches({
     settlementId: s.id, round: plan.round, allocation: plan.allocation, payees: plan.payees, note,
     emailSubject: `Your payment from the ${s.name}`,
-    emailMessage: `Your claim was approved. This is your share of the settlement fund. Round ${plan.round}, plan sha256:${who.planHash.toString("hex").slice(0, 16)}.`,
+    emailMessage: `Your claim was approved. This is your share of the settlement fund. Round ${plan.round}, ledger sha256:${who.ledger.digest.slice(0, 16)}.`,
   });
   const out: DistributionResult = { round: plan.round, batches: [] };
   for (const [i, b] of batches.entries()) {
     await withTransaction(desk.pool, async (tx) => {
       await planBatch(tx, {
-        settlementId: s.id, kind: "CLAIMS", round: plan.round, part: i + 1, senderBatchId: b.senderBatchId, proposalId: who.proposalId,
+        settlementId: s.id, kind: "CLAIMS", round: plan.round, part: i + 1, senderBatchId: b.senderBatchId, proposalId: who.proposalId, ledgerCommitmentId: who.ledger.id,
         items: b.items.map((it) => ({
           senderItemId: it.senderItemId, claimId: it.senderItemId, cents: it.cents,
           receiver: plan.receivers[it.senderItemId] ?? it.receiverEmail ?? "", recipientType: it.receiverPayerId ? "PAYPAL_ID" : "EMAIL",
@@ -243,7 +249,7 @@ async function distribute(desk: Desk, pp: PayPalClient, plan: DistributionPlan, 
       });
       await tx.query("INSERT INTO audit_log (actor, action, subject, detail) VALUES ($1, 'distribute', $2, $3)", [
         `analyst:${who.approvedBy.email}`, b.senderBatchId,
-        JSON.stringify({ round: plan.round, fund_cents: plan.fundCents, proposal_id: who.proposalId, proposed_by: who.proposedBy.email, approved_by: who.approvedBy.email }),
+        JSON.stringify({ round: plan.round, fund_cents: plan.fundCents, proposal_id: who.proposalId, ledger_commitment_id: who.ledger.id, proposed_by: who.proposedBy.email, approved_by: who.approvedBy.email }),
       ]);
     });
     const sent = await sendBatch(pp, b);
@@ -302,7 +308,7 @@ export async function readBack(desk: Desk, pp: PayPalClient, batchId: number): P
     outcomes[outcome] = (outcomes[outcome] ?? 0) + 1;
     await recordItemRead(desk.pool, {
       batchId, senderItemId, paypalItemId: it.payout_item_id, paypalStatus: it.transaction_status ?? null, outcome,
-      feeCents: it.payout_item_fee ? valueToCents(it.payout_item_fee.value) : null, error: it.errors?.name ?? null, paypalTransactionId: it.transaction_id ?? null,
+      feeCents: it.payout_item_fee ? valueToCents(it.payout_item_fee.value) : null, error: it.errors?.name ?? null, paypalTransactionId: it.transaction_id ?? null, paypalNote: it.payout_item.note ?? null,
     });
     const to = CLAIM_STATE[outcome];
     const claim = await getClaim(desk.pool, senderItemId);

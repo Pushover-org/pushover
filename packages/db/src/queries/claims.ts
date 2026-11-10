@@ -279,6 +279,8 @@ export interface PlannedBatch {
   senderBatchId: string;
   /** The approved money proposal this batch carries out (migration 0006). */
   proposalId: number;
+  /** The ledger commitment made for that proposal before this batch (migration 0009). */
+  ledgerCommitmentId: number;
   items: { senderItemId: string; claimId: string | null; receiver: string; cents: number; recipientType?: "EMAIL" | "PAYPAL_ID" }[];
 }
 
@@ -289,8 +291,8 @@ export interface PlannedBatch {
 export async function planBatch(c: PoolClient, b: PlannedBatch): Promise<number> {
   const amount = b.items.reduce((s, i) => s + i.cents, 0);
   const { rows } = await c.query<{ id: string }>(
-    "INSERT INTO payout_batches (settlement_id, kind, round, part, sender_batch_id, amount_cents, proposal_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
-    [b.settlementId, b.kind, b.round, b.part, b.senderBatchId, amount, b.proposalId],
+    "INSERT INTO payout_batches (settlement_id, kind, round, part, sender_batch_id, amount_cents, proposal_id, ledger_commitment_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+    [b.settlementId, b.kind, b.round, b.part, b.senderBatchId, amount, b.proposalId, b.ledgerCommitmentId],
   );
   const id = toNumber((rows[0] as { id: string }).id);
   for (const i of b.items) {
@@ -306,12 +308,12 @@ export async function markBatchSent(db: Queryable, senderBatchId: string, a: { p
   if (res.rowCount !== 1) throw new Error(`no planned batch ${senderBatchId}`);
 }
 
-export async function recordItemRead(db: Queryable, a: { batchId: number; senderItemId: string; paypalItemId: string | null; paypalStatus: string | null; outcome: "PAID" | "UNCLAIMED" | "RETURNED" | "FAILED" | "IN_FLIGHT" | "UNVERIFIED"; feeCents: number | null; error: string | null; paypalTransactionId?: string | null }): Promise<void> {
+export async function recordItemRead(db: Queryable, a: { batchId: number; senderItemId: string; paypalItemId: string | null; paypalStatus: string | null; outcome: "PAID" | "UNCLAIMED" | "RETURNED" | "FAILED" | "IN_FLIGHT" | "UNVERIFIED"; feeCents: number | null; error: string | null; paypalTransactionId?: string | null; paypalNote?: string | null }): Promise<void> {
   const res = await db.query(
     `UPDATE payout_items SET paypal_item_id = $3, paypal_status = $4, outcome = $5, fee_cents = $6, error = $7, read_at = now(),
-       paypal_transaction_id = COALESCE($8, paypal_transaction_id)
+       paypal_transaction_id = COALESCE($8, paypal_transaction_id), paypal_note = COALESCE($9, paypal_note)
      WHERE batch_id = $1 AND sender_item_id = $2`,
-    [a.batchId, a.senderItemId, a.paypalItemId, a.paypalStatus, a.outcome, a.feeCents, a.error, a.paypalTransactionId ?? null],
+    [a.batchId, a.senderItemId, a.paypalItemId, a.paypalStatus, a.outcome, a.feeCents, a.error, a.paypalTransactionId ?? null, a.paypalNote ?? null],
   );
   if (res.rowCount !== 1) throw new Error(`no payout item ${a.senderItemId} on batch ${a.batchId}`);
 }

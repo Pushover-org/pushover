@@ -34,7 +34,7 @@ describe.skipIf(!DATABASE_URL)("packages/db against Postgres", () => {
     it("is a no-op the second time", async () => {
       expect(await migrate(pool)).toEqual([]);
       const { rows } = await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-      expect(rows.map((r) => r.version)).toEqual(["0001_init.sql", "0002_roles.sql", "0003_policy_v1.sql", "0004_claims.sql", "0005_identity.sql", "0006_analysts.sql", "0007_claimant_privacy.sql", "0008_money_path.sql"]);
+      expect(rows.map((r) => r.version)).toEqual(["0001_init.sql", "0002_roles.sql", "0003_policy_v1.sql", "0004_claims.sql", "0005_identity.sql", "0006_analysts.sql", "0007_claimant_privacy.sql", "0008_money_path.sql", "0009_ledger.sql"]);
     });
 
     it("refuses to continue when an applied migration was edited", async () => {

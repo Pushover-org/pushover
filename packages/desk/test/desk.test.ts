@@ -1,6 +1,7 @@
 import { parseSettlement, type Findings } from "@proofofclaim/claims";
 import { loadTaxTable, PROVISIONAL_CONFIG } from "@proofofclaim/checks";
-import { getClaim, latestDecision, latestFindings, recordWebhookEvent, type Pool } from "@proofofclaim/db";
+import { decideProposal, getClaim, getCommitment, insertCommitment, insertProposal, latestDecision, latestFindings, recordWebhookEvent, withTransaction, type Pool } from "@proofofclaim/db";
+import { auditSample, commitmentDigest, merkleRoot, QUICKNET, roundTime, type Commitment, type DecisionLeaf } from "@proofofclaim/ledger";
 import type { ExamineResult } from "@proofofclaim/examiner";
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -10,6 +11,7 @@ import {
   analystFromToken, approveAndDistribute, cancelProposal, claimantReturns, claimByStatusToken, ClaimRejectedError, pseudonymOf, decideClaim, fileClaim, hashPassword, login, logout, MoneyRefusedError, openProposal, planDistribution,
   proposeDistribution, readBack, recheckApproved, reviewClaim, setAnalyst, submitClaim, verifyPassword, type Desk, type FileClaimInput,
   approveCyPres, checkBalance, confirmInHistory, expireReoffers, planCyPres, processWebhooks, proposeCyPres, requestReoffer,
+  decisionLeaves, recordBeacons, SAMPLE_SIZE,
 } from "../src/index.ts";
 import type { Analyst } from "@proofofclaim/db";
 
@@ -34,6 +36,12 @@ async function photo(seed: number): Promise<Uint8Array> {
 }
 
 const KEYS = { seal: Buffer.alloc(32, 1), pseudonym: Buffer.alloc(32, 2) };
+const RULES = { decisionTable: "11".repeat(32), taxTable: "22".repeat(32) };
+// A real quicknet beacon (api.drand.sh, 2026-11-10), as in packages/ledger/test/drand.test.ts.
+const REAL_BEACON = {
+  round: 33829302, randomness: "25ae9ff34b07d5526d6cd59da4b113f829ad6b268c5e7d0fe4451ecb0977b537",
+  signature: "b1053a1468736f65fe1e772b96d16df1ed6af4928ffdb4fb7f9c2444ffabb808f364bf702c43d84d8ccfb9f89506b278",
+};
 
 /** PayPal's balance reply, in the shape the sandbox returned (as of two hours ago by default). */
 const balance = (value = "6387.15", asOf = new Date(Date.now() - 2 * 3_600_000)) =>
@@ -54,7 +62,7 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
   let reads = 0;
   let reading: (() => ExamineResult) | null = null;
   const desk = (): Desk => ({
-    pool, settlement: S, table: loadTaxTable(), config: PROVISIONAL_CONFIG, networkSecret: "desk-test", keys: KEYS,
+    pool, settlement: S, table: loadTaxTable(), config: PROVISIONAL_CONFIG, networkSecret: "desk-test", keys: KEYS, rulesFiles: RULES,
     read: async () => {
       reads++;
       return reading ? reading() : { status: "OK", findings: findings(), model: "fake", stopReason: "end_turn", inputTokens: 0, outputTokens: 0, costUsd: 0, error: null };
@@ -303,6 +311,10 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
     let sentBody: { sender_batch_header: { email_message: string }; items: { note?: string; sender_item_id: string }[] } | null = null;
     let round2: { batchId: number; paypalBatchId: string; items: string[] } = { batchId: 0, paypalBatchId: "", items: [] };
     const fresh = (decl: string) => submitClaim(desk(), claim({ declaration: decl }));
+    const commitmentFor = async (proposalId: number) => {
+      const { rows } = await pool.query<{ digest: Buffer; drand_round: string }>("SELECT digest, drand_round FROM ledger_commitments WHERE proposal_id = $1", [proposalId]);
+      return { digest: rows[0]?.digest.toString("hex") ?? "", drandRound: Number(rows[0]?.drand_round) };
+    };
 
     it("refuses a round PayPal can't cover, counting what we sent after the balance's time", async () => {
       ana = await setAnalyst(pool, { email: "ana2@example.com", name: "Ana", role: "analyst", password: "correct horse battery" }, "test");
@@ -328,8 +340,11 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       const hex = open?.planHash.toString("hex") ?? "";
       expect(hex).toMatch(/^[0-9a-f]{64}$/);
       expect(sentBody?.items.length).toBeGreaterThan(0);
-      for (const it of sentBody?.items ?? []) expect(it.note).toBe(`Proof of Claim ${S.id} claims round ${out.round}, plan sha256:${hex}`);
-      expect(sentBody?.sender_batch_header.email_message).toContain(`plan sha256:${hex.slice(0, 16)}`);
+      // The ledger was committed for this proposal before the batch, and every note names it.
+      const c = await commitmentFor(open?.id ?? -1);
+      const note = `Proof of Claim ${S.id} claims round ${out.round}, ledger sha256:${c.digest}, drand quicknet round ${c.drandRound}, plan sha256:${hex}`;
+      for (const it of sentBody?.items ?? []) expect(it.note).toBe(note);
+      expect(sentBody?.sender_batch_header.email_message).toContain(`ledger sha256:${c.digest.slice(0, 16)}`);
       const { rows } = await pool.query<{ id: string }>("SELECT id FROM payout_batches WHERE paypal_batch_id = 'PB2'");
       round2 = { batchId: Number(rows[0]?.id), paypalBatchId: "PB2", items: (sentBody?.items ?? []).map((i) => i.sender_item_id) };
     });
@@ -406,7 +421,7 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       const body = () => seen.body;
       const out = await approveCyPres(desk(), makeClient(pp.fetch).client, sol, p.id);
       expect(out).toMatchObject({ paypalBatchId: "CP1", cents });
-      expect(body()?.items).toEqual([expect.objectContaining({ receiver: S.cyPres.payoutEmail, amount: { currency: "USD", value: (cents / 100).toFixed(2) }, note: expect.stringContaining("cy_pres round 1, plan sha256:") })]);
+      expect(body()?.items).toEqual([expect.objectContaining({ receiver: S.cyPres.payoutEmail, amount: { currency: "USD", value: (cents / 100).toFixed(2) }, note: expect.stringMatching(/cy_pres round 1, ledger sha256:[0-9a-f]{64}, drand quicknet round \d+, plan sha256:[0-9a-f]{64}$/) })]);
       const { rows } = await pool.query("SELECT claim_id, cents FROM cy_pres_claims");
       expect(rows).toEqual([{ claim_id: id, cents: String(cents) }]);
       const { rows: t } = await pool.query("SELECT approved_by, cents FROM cy_pres_transfers");
@@ -442,6 +457,64 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       expect(pp.calls.map((c) => c.url)).toEqual([expect.stringContaining("/v1/payments/payouts/PB2")]);
       const { rows } = await pool.query("SELECT count(*)::int AS n FROM webhook_events WHERE processed_at IS NULL");
       expect(rows[0].n).toBe(0);
+    });
+  });
+
+  describe("the decision ledger (P33, C1, C2, P44)", () => {
+    it("every payout batch comes from a ledger committed before it, covering every decided claim", async () => {
+      const { rows } = await pool.query<{ id: string; proposal_id: string; created_at: Date; committed_at: Date; root: Buffer; digest: Buffer; commitment: Commitment; leaves: DecisionLeaf[] }>(
+        `SELECT b.id, b.proposal_id, b.created_at, l.committed_at, l.root, l.digest, l.commitment, l.leaves
+         FROM payout_batches b JOIN ledger_commitments l ON l.id = b.ledger_commitment_id ORDER BY b.id`,
+      );
+      expect(rows.length).toBeGreaterThanOrEqual(2);
+      for (const r of rows) {
+        expect(r.committed_at.getTime()).toBeLessThanOrEqual(r.created_at.getTime());
+        expect(merkleRoot(r.leaves)).toBe(r.root.toString("hex"));
+        expect(commitmentDigest(r.commitment)).toBe(r.digest.toString("hex"));
+        expect(r.commitment.rules).toEqual({ ...RULES, settlement: expect.stringMatching(/^[0-9a-f]{64}$/) });
+        expect(r.commitment.drand.chain).toBe(QUICKNET.hash);
+      }
+      // The latest commitment covers every claim decided before it, with no personal data in a leaf.
+      const last = rows[rows.length - 1];
+      const { rows: decided } = await pool.query<{ n: number }>("SELECT count(DISTINCT claim_id)::int AS n FROM decisions WHERE created_at <= $1", [last?.committed_at]);
+      expect(last?.leaves.length).toBe(decided[0]?.n);
+      expect(JSON.stringify(last?.leaves)).not.toMatch(/@example\.com|Main St|Person \d/);
+    });
+
+    it("without the rules' fingerprint, nothing is approved and nothing is sent", async () => {
+      await submitClaim(desk(), claim({ declaration: "Cream soda at a pizza place in Yonkers, a Friday night in 2017." }));
+      const una = await setAnalyst(pool, { email: "una@example.com", name: "Una", role: "analyst", password: "correct horse battery" }, "test");
+      const vic = await setAnalyst(pool, { email: "vic@example.com", name: "Vic", role: "supervisor", password: "correct horse battery" }, "test");
+      const { proposal } = await proposeDistribution(desk(), una);
+      const pp = fakePayPal([balance()]);
+      await expect(approveAndDistribute({ ...desk(), rulesFiles: null }, makeClient(pp.fetch).client, vic, proposal.id)).rejects.toThrow("rules' fingerprint");
+      expect(pp.calls.map((c) => c.method)).toEqual(["GET"]);
+      expect((await openProposal(pool, S.id, "CLAIMS"))?.id).toBe(proposal.id);
+      await cancelProposal(desk(), una, proposal.id);
+    });
+
+    it("once its drand round is out, the worker verifies the beacon and records the sample it picks", async () => {
+      const p = await setAnalyst(pool, { email: "wes@example.com", name: "Wes", role: "analyst", password: "correct horse battery" }, "test");
+      const q = await setAnalyst(pool, { email: "xan@example.com", name: "Xan", role: "supervisor", password: "correct horse battery" }, "test");
+      const leaves = await decisionLeaves(desk());
+      const root = merkleRoot(leaves);
+      const id = await withTransaction(pool, async (tx) => {
+        const pid = await insertProposal(tx, { settlementId: S.id, kind: "CY_PRES", planHash: Buffer.alloc(32, 5), plan: {}, totalCents: 1, by: p, ttlMinutes: 60 });
+        await decideProposal(tx, { id: pid, status: "APPROVED", by: q });
+        return insertCommitment(tx, { settlementId: S.id, proposalId: pid, kind: "CY_PRES", round: 9, root, digest: "9f".repeat(32), commitment: {}, leaves, drandRound: REAL_BEACON.round, by: "test" });
+      });
+      const after = roundTime(REAL_BEACON.round + 1);
+      const relay = (body: unknown, status = 200) => (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
+      // Not published yet: wait.
+      expect(await recordBeacons(pool, { now: after, fetchFn: relay({}, 404) })).toBe(0);
+      // A relay serving a forged beacon is refused; nothing is recorded.
+      await expect(recordBeacons(pool, { now: after, fetchFn: relay({ ...REAL_BEACON, randomness: "00".repeat(32) }) })).rejects.toThrow("fails verification");
+      expect((await getCommitment(pool, id))?.beacon).toBeNull();
+      // The real one is recorded with its sample.
+      expect(await recordBeacons(pool, { now: after, fetchFn: relay(REAL_BEACON) })).toBe(1);
+      const c = await getCommitment(pool, id);
+      expect(c?.beacon).toEqual(REAL_BEACON);
+      expect(c?.sample).toEqual(auditSample(leaves, root, REAL_BEACON.randomness, Math.min(SAMPLE_SIZE, leaves.length)));
     });
   });
 

@@ -2,7 +2,7 @@ import { CHECKS_FOR_TIER, decide, parseSettlement, type Findings } from "@proofo
 import { hashRotations, loadTaxTable, PROVISIONAL_CONFIG, runChecks } from "@proofofclaim/checks";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  allArrivals, allDeclarations, analystForLogin, appendAudit, canMoveClaim, claimIdByPseudonym, claimIdByStatusToken, setStatusTokenHash, updatePaypalVerified, decideProposal, deleteSession, getProposal, insertAnalyst, insertProposal, insertSession, openProposal,
+  allArrivals, allDeclarations, analystForLogin, appendAudit, canMoveClaim, commitmentsAwaitingBeacon, getCommitment, insertCommitment, recordBeacon, claimIdByPseudonym, claimIdByStatusToken, setStatusTokenHash, updatePaypalVerified, decideProposal, deleteSession, getProposal, insertAnalyst, insertProposal, insertSession, openProposal,
   recentFailedLogins, sessionAnalyst, type Analyst, checkResultsOf, earlierIdentities, earlierImageHashes, earlierReceiptDetails, getClaim, getEvidence, getSettlementConfig,
   insertClaim, insertEvidence, insertFindings, insertSettlement, latestDecision, latestFindings, listClaims, markBatchSent, moveClaim, payoutItemsOf, planBatch, recordAnalystDecision,
   recordCyPres, recordDecision, recordItemRead, withSettlementLock, type ClaimRow, type NewClaim, type Pool,
@@ -46,13 +46,18 @@ describe.skipIf(!DATABASE_URL)("claims schema on real Postgres", () => {
 
   let proposer: Analyst;
   let supervisor: Analyst;
-  /** An approved money proposal, as the two-person flow leaves it (migration 0006). */
+  /** An approved money proposal, as the two-person flow leaves it (migration 0006), with its ledger commitment (0009). */
+  const ledgerOf = new Map<number, number>();
+  let digestNo = 0;
   const approvedProposal = (kind: "CLAIMS" | "CY_PRES" = "CLAIMS") =>
     withTransaction(pool, async (tx) => {
       const id = await insertProposal(tx, { settlementId: S.id, kind, planHash: Buffer.alloc(32, 7), plan: { test: true }, totalCents: 1500, by: proposer, ttlMinutes: 60 });
       expect(await decideProposal(tx, { id, status: "APPROVED", by: supervisor })).toBe(true);
+      const digest = (++digestNo).toString(16).padStart(64, "0");
+      ledgerOf.set(id, await insertCommitment(tx, { settlementId: S.id, proposalId: id, kind, round: 1, root: "ab".repeat(32), digest, commitment: { test: true }, leaves: [], drandRound: 1000, by: "test" }));
       return id;
     });
+  const ledger = (proposalId: number) => ledgerOf.get(proposalId) ?? -1;
 
   beforeAll(async () => {
     ({ pool, drop } = await freshDatabase());
@@ -240,7 +245,7 @@ describe.skipIf(!DATABASE_URL)("claims schema on real Postgres", () => {
     const plan = async (claimIds: string[], over: Partial<{ senderBatchId: string; round: number }> = {}) => {
       batchNo++;
       const proposalId = await approvedProposal();
-      const batch = { settlementId: S.id, kind: "CLAIMS" as const, round: over.round ?? batchNo, part: 1, senderBatchId: over.senderBatchId ?? `rs-test-${batchNo}`, proposalId, items: claimIds.map((id) => ({ senderItemId: id, claimId: id, receiver: `${id}@example.com`, cents: 1500 })) };
+      const batch = { settlementId: S.id, kind: "CLAIMS" as const, round: over.round ?? batchNo, part: 1, senderBatchId: over.senderBatchId ?? `rs-test-${batchNo}`, proposalId, ledgerCommitmentId: ledger(proposalId), items: claimIds.map((id) => ({ senderItemId: id, claimId: id, receiver: `${id}@example.com`, cents: 1500 })) };
       return withTransaction(pool, (tx) => planBatch(tx, batch));
     };
 
@@ -266,7 +271,8 @@ describe.skipIf(!DATABASE_URL)("claims schema on real Postgres", () => {
     it("a claim can hold only one live payout: the database refuses a second", async () => {
       const c = await approved();
       const first = await plan([c.id]);
-      const { rows } = await pool.query("INSERT INTO payout_batches (settlement_id, kind, round, sender_batch_id, amount_cents, proposal_id) VALUES ($1, 'CLAIMS', 9999, 'rs-second', 1500, $2) RETURNING id", [S.id, await approvedProposal()]);
+      const second = await approvedProposal();
+      const { rows } = await pool.query("INSERT INTO payout_batches (settlement_id, kind, round, sender_batch_id, amount_cents, proposal_id, ledger_commitment_id) VALUES ($1, 'CLAIMS', 9999, 'rs-second', 1500, $2, $3) RETURNING id", [S.id, second, ledger(second)]);
       const insertSecond = () => pool.query("INSERT INTO payout_items (batch_id, claim_id, sender_item_id, receiver, amount_cents) VALUES ($1, $2, $3, 'x@example.com', 1500)", [rows[0].id, c.id, c.id]);
       await expect(insertSecond()).rejects.toThrow("payout_items_one_live_per_claim");
       // Money that came back frees it, for a retry a person chooses.
@@ -275,7 +281,8 @@ describe.skipIf(!DATABASE_URL)("claims schema on real Postgres", () => {
     });
     it("a zero or negative payout cannot be stored", async () => {
       const c = await approved();
-      const batch = { settlementId: S.id, kind: "CLAIMS" as const, round: 8888, part: 1, senderBatchId: "rs-zero", proposalId: await approvedProposal(), items: [{ senderItemId: c.id, claimId: c.id, receiver: "x@example.com", cents: 0 }] };
+      const zero = await approvedProposal();
+      const batch = { settlementId: S.id, kind: "CLAIMS" as const, round: 8888, part: 1, senderBatchId: "rs-zero", proposalId: zero, ledgerCommitmentId: ledger(zero), items: [{ senderItemId: c.id, claimId: c.id, receiver: "x@example.com", cents: 0 }] };
       await expect(withTransaction(pool, (tx) => planBatch(tx, batch))).rejects.toThrow();
     });
     it("reads back what PayPal says; an unreported fee stays unknown", async () => {
@@ -289,7 +296,7 @@ describe.skipIf(!DATABASE_URL)("claims schema on real Postgres", () => {
     });
     it("cy-près: one transfer per batch, approved by a named person", async () => {
       const proposalId = await approvedProposal("CY_PRES");
-      const batchId = await withTransaction(pool, (tx) => planBatch(tx, { settlementId: S.id, kind: "CY_PRES", round: 1, part: 1, senderBatchId: "rs-cypres-1", proposalId, items: [{ senderItemId: "cypres-r1", claimId: null, receiver: S.cyPres.payoutEmail, cents: 500 }] }));
+      const batchId = await withTransaction(pool, (tx) => planBatch(tx, { settlementId: S.id, kind: "CY_PRES", round: 1, part: 1, senderBatchId: "rs-cypres-1", proposalId, ledgerCommitmentId: ledger(proposalId), items: [{ senderItemId: "cypres-r1", claimId: null, receiver: S.cyPres.payoutEmail, cents: 500 }] }));
       const t = { settlementId: S.id, batchId, recipientName: S.cyPres.name, recipientEmail: S.cyPres.payoutEmail, cents: 500, approvedBy: "analyst:sam" };
       await withTransaction(pool, (tx) => recordCyPres(tx, t));
       await expect(withTransaction(pool, (tx) => recordCyPres(tx, t))).rejects.toThrow();
@@ -375,7 +382,7 @@ describe.skipIf(!DATABASE_URL)("claims schema on real Postgres", () => {
       await withSettlementLock(pool, S.id, (tx) => tx.query("UPDATE claims SET status = 'APPROVE' WHERE id = $1", [c.id]));
       const proposalId = await approvedProposal();
       const item = (receiver: string) => ({ senderItemId: c.id, claimId: c.id, receiver, cents: 100, recipientType: "PAYPAL_ID" as const });
-      const batch = (receiver: string, id: string) => ({ settlementId: S.id, kind: "CLAIMS" as const, round: 90, part: 1, senderBatchId: id, proposalId, items: [item(receiver)] });
+      const batch = (receiver: string, id: string) => ({ settlementId: S.id, kind: "CLAIMS" as const, round: 90, part: 1, senderBatchId: id, proposalId, ledgerCommitmentId: ledger(proposalId), items: [item(receiver)] });
       await expect(withTransaction(pool, (tx) => planBatch(tx, batch("ZZZZZZZZZZZZ9", "rs-identity-plain")))).rejects.toThrow(/payout_items_paypal_id_is_pseudonym/);
       const batchId = await withTransaction(pool, (tx) => planBatch(tx, batch(`pseudonym:${hex("c")}`, "rs-identity-r90-p1")));
       const { rows } = await pool.query("SELECT recipient_type, receiver FROM payout_items WHERE batch_id = $1", [batchId]);
@@ -436,8 +443,8 @@ describe.skipIf(!DATABASE_URL)("claims schema on real Postgres", () => {
     });
 
     it("a payout batch needs an approved proposal of the same settlement and kind", async () => {
-      const insert = (proposalId: number | null, kind = "CLAIMS") =>
-        raw("INSERT INTO payout_batches (settlement_id, kind, round, sender_batch_id, amount_cents, proposal_id) VALUES ($1, $2, 777, $3, 100, $4)", [S.id, kind, `guard-${Math.random()}`, proposalId]);
+      const insert = (proposalId: number | null, kind = "CLAIMS", ledgerId: number | null = proposalId ? ledger(proposalId) : null) =>
+        raw("INSERT INTO payout_batches (settlement_id, kind, round, sender_batch_id, amount_cents, proposal_id, ledger_commitment_id) VALUES ($1, $2, 777, $3, 100, $4, $5)", [S.id, kind, `guard-${Math.random()}`, proposalId, ledgerId]);
       await expect(insert(null)).rejects.toThrow("has no approved proposal");
       const open = await openProposal(pool, S.id, "CY_PRES");
       await expect(insert(open?.id ?? -1, "CY_PRES")).rejects.toThrow("has no approved proposal");
@@ -446,6 +453,30 @@ describe.skipIf(!DATABASE_URL)("claims schema on real Postgres", () => {
       const { rows } = await insert(claims, "CLAIMS");
       expect(rows).toEqual([]);
       await expect(raw("UPDATE payout_batches SET proposal_id = NULL WHERE round = 777")).rejects.toThrow("cannot change");
+    });
+
+    it("a payout batch needs the ledger commitment of its own proposal, made before it (0009)", async () => {
+      const a = await approvedProposal("CLAIMS");
+      const b = await approvedProposal("CLAIMS");
+      const insert = (proposalId: number, ledgerId: number | null) =>
+        raw("INSERT INTO payout_batches (settlement_id, kind, round, sender_batch_id, amount_cents, proposal_id, ledger_commitment_id) VALUES ($1, 'CLAIMS', 778, $2, 100, $3, $4)", [S.id, `ledger-${Math.random()}`, proposalId, ledgerId]);
+      await expect(insert(a, null)).rejects.toThrow("has no ledger commitment for its proposal");
+      await expect(insert(a, ledger(b))).rejects.toThrow("has no ledger commitment for its proposal");
+      await insert(a, ledger(a));
+      await expect(raw("UPDATE payout_batches SET ledger_commitment_id = $1 WHERE round = 778", [ledger(b)])).rejects.toThrow("cannot change");
+    });
+
+    it("a ledger commitment is frozen; its drand beacon is recorded once", async () => {
+      const p = await approvedProposal("CY_PRES");
+      const id = ledger(p);
+      await expect(raw("UPDATE ledger_commitments SET root = $2 WHERE id = $1", [id, Buffer.alloc(32, 9)])).rejects.toThrow("is frozen");
+      await expect(raw("UPDATE ledger_commitments SET leaves = '[{\"claim\":\"x\"}]' WHERE id = $1", [id])).rejects.toThrow("is frozen");
+      await expect(raw("DELETE FROM ledger_commitments WHERE id = $1", [id])).rejects.toThrow("never deleted");
+      const beacon = { round: 1000, randomness: "aa".repeat(32), signature: "bb".repeat(48) };
+      await recordBeacon(pool, id, beacon, ["c1"]);
+      expect((await getCommitment(pool, id))?.beacon).toEqual(beacon);
+      await expect(recordBeacon(pool, id, { ...beacon, randomness: "cc".repeat(32) }, ["c2"])).rejects.toThrow("already recorded");
+      expect(await commitmentsAwaitingBeacon(pool, 1000)).not.toContainEqual({ id, drandRound: 1000 });
     });
 
     it("a session opens nothing once expired, logged out, or for a disabled analyst", async () => {

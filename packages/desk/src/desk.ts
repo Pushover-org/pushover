@@ -26,6 +26,11 @@ export interface Desk {
   keys: IdentityKeys | null;
   /** Days a claimant has to ask for returned money again before it goes to cy-près (default 30). */
   reofferDays?: number;
+  /**
+   * SHA-256 of the decision table's source and the tax table, as deployed (C2). Committed with the
+   * ledger before any payout; without it, money can't be sent.
+   */
+  rulesFiles?: { decisionTable: string; taxTable: string } | null;
 }
 
 export interface FileClaimInput {

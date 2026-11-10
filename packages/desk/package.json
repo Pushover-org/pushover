@@ -15,6 +15,7 @@
     "@proofofclaim/db": "workspace:*",
     "@proofofclaim/distribute": "workspace:*",
     "@proofofclaim/examiner": "workspace:*",
+    "@proofofclaim/ledger": "workspace:*",
     "@proofofclaim/paypal": "workspace:*"
   },
   "devDependencies": {
