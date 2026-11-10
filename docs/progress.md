@@ -54,15 +54,18 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 2 Finish R10: e2e, live login, first Distribute from the app | done except the live Log in with PayPal, which needs the deployed URL (below) |
 | 3 Identity and privacy (P2, P4–P8) | done (`1dab995`, `0023e45`) |
 | 4 Money path: the R11 worker (P34, P36, P38–P40, C4, B5) | done (`bb4c15c`..`e8ef04d`); webhook registration waits for the deployed URL |
-| 5 The decision ledger (P33, P42–P45, C1, C2) | next |
-| 6–14 | not started |
+| 5 The decision ledger (P33, P42–P45, C1, C2) | done (`ad497ea`, `7bdeeee`, `5b7d484`) |
+| 6 Rings and the AI investigator (P25–P32, C8) | next |
+| 7–14 | not started |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
 **C7** two-person approval (enforced in code and in the database), P35/P37 (already had),
 **P2** unverified accounts wait, **P4** sealed payer ID, **P5** per-settlement pseudonyms, **P6** private
 status link, **P7** every state in plain words, **P8** expected amount, **P34** balance check, **P36** plan
 digest on every payout (verified in the sandbox), **P38** verified webhooks (code; registration after deploy),
-**P39** PayPal history check, **P40** where the money went, **C4** re-offer, **B5** cy-près with two people.
+**P39** PayPal history check, **P40** where the money went, **C4** re-offer, **B5** cy-près with two people,
+**P33** ledger committed before paying with a drand round, **C1** decision leaves, **C2** rules by hash,
+**P42** public ledger page, **P43** verify in the browser, **P44** audit sample, **P45** one shared package.
 
 - **Phase 1 evidence (2026-11-10):** migration 0006 (analysts, sessions as token hashes, money
   proposals; database guards: no self-approval, supervisor only, no approval after expiry, no
@@ -94,6 +97,15 @@ digest on every payout (verified in the sandbox), **P38** verified webhooks (cod
   a first read-back of RETURNED left the claim stuck at SCHEDULED. Live: one worker pass read
   `2HMAKHX862SAE` back and recorded 10 payouts as waiting for history; sandbox batch `JX2JYNCASDVQG`
   kept the plan-digest note. `pnpm test` 803/803 in 29 files; e2e 8/8.
+- **Phase 5 evidence (2026-11-10):** research first (drand chains, quicknet info and relays read from
+  api.drand.sh; relays send `Access-Control-Allow-Origin: *`; `npm view` of `@noble/curves` 2.4.0).
+  `packages/ledger` 15 tests (a real quicknet beacon verifies; a 300-run proof property test).
+  Migration 0009 (+2 db tests: batch needs its proposal's commitment; a commitment is frozen, its
+  beacon recorded once). 3 desk tests (committed before every batch and covering every decision;
+  no rules fingerprint, no money; forged beacon refused, real one recorded with its sample).
+  Planted: trust the relay; a sample the randomness doesn't drive; both failed. e2e 10/10 (public
+  verify passes; a ledger changed in transit fails) and the live drand run passed. `pnpm test`
+  820/820 in 31 files. CI green again after `65668a6` (fixed a test type error that `652c857` pushed).
 - **Live Log in with PayPal (P1) waits for the deployed URL:** PayPal's authorize page answers
   `invalid_redirect_uri` for `http://localhost:3100/api/paypal/callback` (checked 2026-11-10,
   `docs/sandbox-findings.md`). After the first deploy the owner adds
@@ -123,10 +135,9 @@ digest on every payout (verified in the sandbox), **P38** verified webhooks (cod
 
 ## In progress
 
-- **Next: Phase 5, the decision ledger** (P33 Merkle root committed before paying, with a drand round;
-  C1 leaves hold evidence, findings, checks, table version and amount; C2 rules hashed in advance;
-  P42 public ledger page; P43 verify in the browser; P44 audit sample; P45 one shared package). Research
-  first: drand quicknet chain info, relays, a JS client and BLS library (`npm view`).
+- **Next: Phase 6, rings and the AI investigator** (P25 signals and strong-core clustering, P26 group
+  page, P27/P28 investigator with stand-in labels, P29 rejected-answer banner, P30 replay mode, P31/C8
+  fairness cases and a measured false-hold rate, P32 a 5,000-claim generator with receipts).
 - **Run the worker** next to the web app: `pnpm worker` (`--once` for one pass). Env: `REOFFER_DAYS`
   (30; shorter on the demo so returned money reaches cy-près during judging), `WORKER_INTERVAL_SECONDS`.
 - **Demo timing to watch:** the 27 unclaimed items of `2HMAKHX862SAE` (Nov 10) should come back
@@ -217,7 +228,7 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- `../FULL-BUILD-PLAN.md` Phase 5 (the decision ledger), then Phase 6 (rings and the investigator).
+- `../FULL-BUILD-PLAN.md` Phase 6 (rings and the investigator), then Phase 7 (the console).
 
 ## Pushover history (kept for the record)
 
