@@ -19,6 +19,7 @@
     "@proofofclaim/desk": "workspace:*",
     "@proofofclaim/distribute": "workspace:*",
     "@proofofclaim/examiner": "workspace:*",
+    "@proofofclaim/ledger": "workspace:*",
     "@proofofclaim/paypal": "workspace:*",
     "ag-grid-community": "36.2.0",
     "ag-grid-react": "36.2.0",

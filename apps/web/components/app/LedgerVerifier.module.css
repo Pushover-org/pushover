@@ -1,0 +1,38 @@
+.box {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+.result {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1.5px solid var(--hair-2);
+  background: var(--card);
+  font-size: 13.5px;
+}
+.result[data-state="fail"] {
+  border-color: var(--deny);
+}
+.result[data-state="wait"] {
+  border-color: var(--review);
+}
+.verdict {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.result ol {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+.result li span {
+  color: var(--ink-2);
+}
+.result li[data-s="fail"] b {
+  color: var(--deny);
+}
+.result li[data-s="wait"] b {
+  color: var(--review);
+}

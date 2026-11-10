@@ -6,6 +6,7 @@ import { CHECK_NAMES, FindingsSchema, parseSettlement, type CheckResult, type Fi
 import { loadTaxTable, PROVISIONAL_CONFIG } from "@proofofclaim/checks";
 import { createPool, getSettlementConfig, type Pool } from "@proofofclaim/db";
 import { identityKeysFromEnv, REOFFER_DAYS, type Desk, type IdentityKeys } from "@proofofclaim/desk";
+import { rulesFiles } from "./rules.ts";
 import { allocate } from "@proofofclaim/distribute";
 import { CostGuard, examine } from "@proofofclaim/examiner";
 
@@ -41,6 +42,7 @@ export async function desk(id: string): Promise<Desk | null> {
     read: client ? (input) => examine({ client, model: process.env["PUSHOVER_MODEL"] ?? "claude-haiku-5-5", guard }, input) : null,
     keys: identityKeys(),
     reofferDays: Number(process.env["REOFFER_DAYS"] ?? REOFFER_DAYS),
+    rulesFiles: rulesFiles(),
   };
 }
 

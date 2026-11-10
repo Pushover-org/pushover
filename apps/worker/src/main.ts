@@ -6,7 +6,7 @@
 import { parseSettlement } from "@proofofclaim/claims";
 import { loadTaxTable, PROVISIONAL_CONFIG } from "@proofofclaim/checks";
 import { createPool, getSettlementConfig, PgRateLimiter } from "@proofofclaim/db";
-import { identityKeysFromEnv, processWebhooks, REOFFER_DAYS, workerTick, type Desk } from "@proofofclaim/desk";
+import { identityKeysFromEnv, processWebhooks, recordBeacons, REOFFER_DAYS, workerTick, type Desk } from "@proofofclaim/desk";
 import { paypalClientFromEnv } from "@proofofclaim/paypal";
 
 const ONCE = process.argv.includes("--once");
@@ -40,6 +40,9 @@ async function deskFor(settlementId: string): Promise<Desk | null> {
 async function pass(): Promise<void> {
   const hooks = await processWebhooks(pool, pp, deskFor);
   if (hooks.readBacks + hooks.ignored > 0) log("webhooks", hooks);
+  // Each ledger's drand round, once out: verified against quicknet's key, then its audit sample.
+  const beacons = await recordBeacons(pool).catch((err: unknown) => (log("beacons failed", { error: err instanceof Error ? err.message : String(err) }), 0));
+  if (beacons) log("beacons", { recorded: beacons });
   const { rows } = await pool.query<{ id: string }>("SELECT id FROM settlements ORDER BY id");
   for (const { id } of rows) {
     const desk = await deskFor(id);

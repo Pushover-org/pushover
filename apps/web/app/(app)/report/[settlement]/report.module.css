@@ -88,3 +88,9 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}

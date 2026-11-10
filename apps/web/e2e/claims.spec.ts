@@ -159,4 +159,46 @@ test.describe.serial("a claim, from filing to payment", () => {
     await expect(sol.getByText("PayPal account (logged in)").first()).toBeVisible();
     await expect(sol.locator(".ag-row").filter({ hasText: approved.id })).toContainText("SUCCESS");
   });
+
+  test("anyone can verify the decision ledger in their own browser", async ({ page }) => {
+    // drand's relays are stubbed: the committed round is ~30 s ahead, and e2e must not need the network.
+    await page.route(/drand\.(sh|cloudflare\.com)\//, (r) => r.fulfill({ status: 404, body: "{}" }));
+    await page.goto(`/report/${S}/ledger`);
+    await expect(page.getByRole("heading", { name: /fixed before the money moved/ })).toBeVisible();
+    await page.getByRole("button", { name: "Verify in my browser" }).first().click();
+    const result = page.locator('[role="status"]').filter({ hasText: "Every decision hashes" }).first();
+    await expect(result).toContainText("PASS Every decision hashes to the committed root");
+    await expect(result).toContainText("PASS The commitment's digest matches");
+    await expect(result).toContainText("PASS PayPal's record names this ledger: 2 of 2 payouts read back from PayPal carry this digest in their note");
+    await expect(result).toContainText("PASS The drand round didn't exist when the root was fixed");
+    await expect(result).not.toContainText("FAIL");
+  });
+
+  test("a ledger changed after the fact fails the check", async ({ page }) => {
+    await page.route(/\/api\/ledger\//, async (r) => {
+      const res = await r.fetch();
+      const j = (await res.json()) as { leaves: { amountCents: number | null }[] };
+      const first = j.leaves[0];
+      if (first) first.amountCents = (first.amountCents ?? 0) + 100_000; // one claim quietly given $1,000 more
+      await r.fulfill({ response: res, json: j });
+    });
+    await page.route(/drand\.(sh|cloudflare\.com)\//, (r) => r.fulfill({ status: 404, body: "{}" }));
+    await page.goto(`/report/${S}/ledger`);
+    await page.getByRole("button", { name: "Verify in my browser" }).first().click();
+    await expect(page.getByText("FAILED: this ledger doesn't check out.").first()).toBeVisible();
+    await expect(page.locator('[role="status"]').first()).toContainText("FAIL Every decision hashes to the committed root");
+  });
+
+  test("live: the browser fetches the committed drand round from drand's relays and verifies it (LIVE_DRAND=1)", async ({ page }) => {
+    test.skip(!process.env["LIVE_DRAND"], "needs the real drand network; run with LIVE_DRAND=1");
+    test.setTimeout(120_000);
+    await page.waitForTimeout(40_000); // the committed round is ~30 s after the payout
+    await page.goto(`/report/${S}/ledger`);
+    await page.getByRole("button", { name: "Verify in my browser" }).first().click();
+    const result = page.locator('[role="status"]').filter({ hasText: "Every decision hashes" }).first();
+    await expect(result).toContainText(/PASS drand's beacon, from drand's relays: round \d+ verified against quicknet's public key/, { timeout: 30_000 });
+    await expect(result).toContainText("PASS The audit sample nobody could pick");
+    await expect(result).toContainText("Every check passes.");
+  });
 });
+

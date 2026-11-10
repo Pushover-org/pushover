@@ -8,6 +8,7 @@ interface Item {
   receiver: string;
   sender_item_id: string;
   amount: { currency: string; value: string };
+  note?: string;
 }
 
 export async function startFakePayPal(port: number): Promise<{ close: () => Promise<void>; batches: Map<string, { header: unknown; items: Item[] }> }> {
@@ -45,7 +46,8 @@ export async function startFakePayPal(port: number): Promise<{ close: () => Prom
           batch_header: { payout_batch_id: id, batch_status: "SUCCESS", sender_batch_header: b.header, fees: { currency: "USD", value: fee } },
           items: b.items.map((it, i) => ({
             payout_item_id: `${id}I${i}`, payout_batch_id: id, transaction_status: "SUCCESS", payout_item_fee: { currency: "USD", value: "0.25" },
-            payout_item: { recipient_type: it.recipient_type, receiver: it.receiver, sender_item_id: it.sender_item_id, amount: it.amount },
+            // The sandbox returns each item's note as sent (docs/sandbox-findings.md, batch JX2JYNCASDVQG).
+            payout_item: { recipient_type: it.recipient_type, receiver: it.receiver, sender_item_id: it.sender_item_id, amount: it.amount, ...(it.note ? { note: it.note } : {}) },
           })),
         });
       }

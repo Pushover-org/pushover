@@ -443,3 +443,36 @@ Facts behind these choices are in `docs/sandbox-findings.md` (2026-11-10).
   `WORKER_INTERVAL_SECONDS` (60): webhooks → read-backs, unsettled batches → read-backs (every 10
   minutes), up to 10 history lookups, re-offer expiry. It shares the sandbox request budget with the
   web app through `PgRateLimiter`. It never sends money.
+
+## The decision ledger (plan items P33, P42–P45, C1, C2; 2026-11-10)
+
+`packages/ledger` (pure TypeScript on `@noble/hashes` and `@noble/curves` 2.4.0, so the server and
+the browser run the same code):
+
+- **Leaves (C1):** one per decided claim, from its latest decision: claim ID, outcome, reason, rule,
+  table version, rules-or-analyst, entitlement, SHA-256 of the evidence file, SHA-256 of the
+  canonical findings, and the check results. No personal data. Canonical JSON (keys sorted).
+- **Tree:** SHA-256, leaves prefixed 0x00 and inner nodes 0x01, leaves in claim-ID order, an odd
+  node carried up unpaired. Inclusion proofs let one claimant check their own leaf.
+- **Commitment:** version, settlement, kind, round, the approved plan's SHA-256, the root, leaf
+  count, **the rules' fingerprint (C2)** (SHA-256 of `packages/claims/src/decision-v1.ts`, of
+  `data/tax-rates.json`, and of the settlement's canonical configuration), and a **drand quicknet
+  round** 30 seconds ahead (chain `52db9ba7…e971`, 3-second period, genesis 1692803367, scheme
+  `bls-unchained-g1-rfc9380`, read from api.drand.sh on 2026-11-10). Its SHA-256 is the
+  commitment digest.
+- **When:** at the second person's approval, after the balance check and before any batch. The
+  database refuses a payout batch without the commitment of its own proposal (migration 0009) and
+  refuses any change to a commitment, except recording its beacon once.
+- **PayPal's record names it:** each payout's note carries
+  `ledger sha256:<digest>, drand quicknet round <n>, plan sha256:<hex>` (PayPal keeps notes as
+  sent: batch `JX2JYNCASDVQG`); read-back stores the note.
+- **Beacon and audit sample (P44):** the worker fetches the round from drand's relays once it's
+  out, verifies the BLS signature against quicknet's key (and that the randomness is the
+  signature's SHA-256), and records it with the sample: the 5 leaves with the lowest
+  HMAC-SHA256(randomness, root ‖ leaf hash). Nobody could pick them: the root was fixed first.
+- **Public ledger and "Verify in my browser" (P42, P43):** `/report/[s]/ledger` and
+  `/api/ledger/[s]/[id]`. The browser recomputes the root and digest, checks PayPal's notes, checks
+  the round was published after the commitment, fetches it from drand's relays (they send
+  `Access-Control-Allow-Origin: *`), verifies it, and redraws the sample. Tested: a leaf changed in
+  transit fails (e2e); a forged relay beacon is refused (desk test); the live run against drand
+  passes (`LIVE_DRAND=1 pnpm e2e`).

@@ -28,9 +28,14 @@ export default async function Report({ params }: { params: Promise<{ settlement:
           In re <em>{S.name.replace(" (fictional demo)", "")}</em>
         </h1>
         <p className={s.fict}>A fictional settlement for demonstration. No real company, court or class is involved.</p>
-        <a className="pill pill--quiet" href={`/api/report/${S.id}`} download>
-          Download CSV
-        </a>
+        <div className={s.actions}>
+          <a className="pill pill--quiet" href={`/api/report/${S.id}`} download>
+            Download CSV
+          </a>
+          <a className="pill pill--quiet" href={`/report/${S.id}/ledger`}>
+            Public ledger: verify in your browser
+          </a>
+        </div>
       </header>
 
       <section className={s.grid2}>
