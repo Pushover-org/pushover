@@ -2,11 +2,16 @@
 // detection (plan items P31, P32, C8). About a third are in rings; the rest are honest, including
 // the look-alikes ring detection must not hold: households, dorms, cafés and people who write alike.
 // Deterministic (seeded). Labels are committed before any measurement (README).
-//   node packages/eval/scripts/build-rings-v1.ts
+//   node packages/eval/scripts/build-rings-v1.ts [seed] [corpus folder name] [legacy-networks]
+// The same recipe with another seed makes a development set or a fresh held-out set.
+// rings-v1 was built with `legacy-networks`: its IPv4 test networks were numbered inside one
+// range, so 256 "different" networks shared each /24 prefix (the prefix the network signal keys).
+// That flaw is kept only to rebuild rings-v1 exactly; every later set gets one /24 per network.
 import { mkdirSync, writeFileSync } from "node:fs";
 
-const OUT = new URL("../corpus/rings-v1/", import.meta.url);
-const SEED = 20261110;
+const SEED = Number(process.argv[2] ?? 20261110);
+const OUT = new URL(`../corpus/${process.argv[3] ?? "rings-v1"}/`, import.meta.url);
+const LEGACY_NETWORKS = process.argv[4] === "legacy-networks";
 
 function mulberry32(a: number) {
   return () => {
@@ -63,7 +68,9 @@ let nextNet = 0;
 const device = () => `dev-${(nextDevice++).toString(36)}-${int(1000, 9999)}`;
 const network = () => {
   const n = nextNet++;
-  return rand() < 0.5 ? `198.${18 + (n >> 16) % 2}.${(n >> 8) & 255}.${n & 255}` : `2001:db8:${(n & 0xffff).toString(16)}::${int(1, 999).toString(16)}`;
+  if (LEGACY_NETWORKS) return rand() < 0.5 ? `198.${18 + (n >> 16) % 2}.${(n >> 8) & 255}.${n & 255}` : `2001:db8:${(n & 0xffff).toString(16)}::${int(1, 999).toString(16)}`;
+  // One /24 (or /48) per network, so different networks never share the prefix the signal keys.
+  return rand() < 0.5 ? `10.${(n >> 8) & 255}.${n & 255}.${int(1, 254)}` : `2001:db8:${(n & 0xffff).toString(16)}::${int(1, 999).toString(16)}`;
 };
 const home = () => {
   const [state, z] = pick(STATES);

@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { findRings, normaliseBuilding, normaliseInbox, type RingClaim } from "../src/rings.ts";
+import { findRings, normaliseBuilding, normaliseInbox, RING_CONFIG_V1, type RingClaim } from "../src/rings.ts";
 
 let n = 0;
 // Honest claimants write their own words: each story here is drawn from its own mix of words.
@@ -79,6 +79,30 @@ describe("rings form around a strong core", () => {
     const g = findRings([a, b, c, d, e]);
     expect(g).toHaveLength(1);
     expect(g[0]?.members).toEqual([a, b, c].map((x) => x.claimId).sort());
+  });
+});
+
+describe("story links don't chain (rings v2)", () => {
+  // Each sentence shares most of its words with the next, but the first and last share almost none.
+  const chain = [
+    "late one night I had iced tea at a diner in Austin with my sister around 2016",
+    "late one night I had iced tea at a diner in Austin with my roommate around 2017",
+    "on payday I had iced tea at a diner in Austin with my roommate around 2017",
+    "on payday I had a latte at a bakery in Austin with my roommate around 2017",
+    "on payday I had a latte at a bakery in Tampa with a client around 2018",
+  ];
+  it("a chain of look-alikes is not a group; v1 grouped it", () => {
+    const claims = chain.map((declaration) => claim({ declaration }));
+    expect(findRings(claims)).toEqual([]);
+    expect(findRings(claims, RING_CONFIG_V1)).toHaveLength(1);
+  });
+  it("a lone look-alike pair (two strangers writing alike) is not a group", () => {
+    const s = "I bought a lemonade at a taqueria in Laredo and I would like my share please";
+    expect(findRings([claim({ declaration: s }), claim({ declaration: `${s} thanks` })])).toEqual([]);
+  });
+  it("a crew of three or more copying one text still is", () => {
+    const t = "Throughout the settlement period I regularly bought soft drinks and coffee with meals at restaurants near my home";
+    expect(findRings([0, 1, 2].map((i) => claim({ declaration: `${t} ${["ok", "yes", "thanks"][i]}` }))).map((g) => g.members.length)).toEqual([3]);
   });
 });
 

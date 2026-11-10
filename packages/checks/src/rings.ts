@@ -25,11 +25,21 @@ export interface RingConfig {
   /** Story: word-shingle length and the Jaccard similarity that counts as the same story (C7's). */
   storyShingle: number;
   storyThreshold: number;
+  /**
+   * A story link is strong only between claims that each resemble at least this many others that
+   * also qualify (the story graph's k-core). A crew copying one text is dense and survives; honest
+   * look-alikes form sparse chains and lone pairs, which peel away. Measured on rings-v1 without
+   * it: chains of single links joined 249 strangers into one group (docs/methodology.md).
+   */
+  storyMinDegree: number;
   /** A claim joins a core through weak links only if it shares them with at least this many core members. */
   attachMinMembers: number;
 }
 
-export const RING_CONFIG: RingConfig = { storyShingle: 3, storyThreshold: 0.5, attachMinMembers: 2 };
+/** rings v2 (2026-11-10): v1 plus storyMinDegree 2, chosen on the rings-dev set, measured on rings-v2. */
+export const RING_CONFIG: RingConfig = { storyShingle: 3, storyThreshold: 0.5, storyMinDegree: 2, attachMinMembers: 2 };
+/** rings v1 as pre-registered and measured on rings-v1: story links chain. Kept to reproduce that result. */
+export const RING_CONFIG_V1: RingConfig = { storyShingle: 3, storyThreshold: 0.5, storyMinDegree: 1, attachMinMembers: 2 };
 
 export interface RingGroup {
   /** SHA-256 of the sorted member IDs: the same members, the same group. */
@@ -118,7 +128,23 @@ function storyPairs(claims: RingClaim[], cfg: RingConfig): [number, number][] {
       }
     }
   }
-  return out;
+  return storyCore(out, cfg.storyMinDegree);
+}
+
+/** Keeps only links among claims that each keep at least `k` links (peeling the rest away). */
+function storyCore(pairs: [number, number][], k: number): [number, number][] {
+  if (k <= 1) return pairs;
+  let live = pairs;
+  for (;;) {
+    const degree = new Map<number, number>();
+    for (const [a, b] of live) {
+      degree.set(a, (degree.get(a) ?? 0) + 1);
+      degree.set(b, (degree.get(b) ?? 0) + 1);
+    }
+    const next = live.filter(([a, b]) => (degree.get(a) ?? 0) >= k && (degree.get(b) ?? 0) >= k);
+    if (next.length === live.length) return next;
+    live = next;
+  }
 }
 
 // --- Grouping ---
