@@ -23,6 +23,11 @@ export async function startFakePayPal(port: number): Promise<{ close: () => Prom
       };
       const url = new URL(req.url ?? "/", "http://localhost");
       if (req.method === "POST" && url.pathname === "/v1/oauth2/token") return send(200, { access_token: "e2e-token", token_type: "Bearer", expires_in: 32400 });
+      // Shaped like the sandbox's answer: a balance as of a couple of hours ago.
+      if (req.method === "GET" && url.pathname === "/v1/reporting/balances") {
+        const value = { currency_code: "USD", value: "6387.15" };
+        return send(200, { balances: [{ currency: "USD", total_balance: value, available_balance: value, withheld_balance: { currency_code: "USD", value: "0.00" } }], as_of_time: new Date(Date.now() - 2 * 3_600_000).toISOString() });
+      }
       if (req.method === "POST" && url.pathname === "/v1/payments/payouts") {
         const body = JSON.parse(raw) as { sender_batch_header: { sender_batch_id: string }; items: Item[] };
         const id = `E2EBATCH${++n}`;

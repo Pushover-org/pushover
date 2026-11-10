@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { approveNow, cancelNow, proposeNow, readBackNow, type ActionResult } from "@/app/(app)/admin/money-actions.ts";
+import { approveCyPresNow, approveNow, cancelNow, proposeCyPresNow, proposeNow, readBackNow, type ActionResult } from "@/app/(app)/admin/money-actions.ts";
 import { HoldButton } from "./HoldButton.tsx";
 import s from "./MoneyActions.module.css";
 
@@ -17,13 +17,14 @@ function Result({ res }: { res: ActionResult | null }) {
   );
 }
 
-/** Step one: an analyst records the exact round. Nothing is sent. */
-export function ProposeButton({ settlementId, label, disabled }: { settlementId: string; label: string; disabled: boolean }) {
+/** Step one: an analyst records the exact round (or cy-près transfer). Nothing is sent. */
+export function ProposeButton({ settlementId, label, disabled, kind = "CLAIMS" }: { settlementId: string; label: string; disabled: boolean; kind?: "CLAIMS" | "CY_PRES" }) {
   const [pending, start] = useTransition();
   const [res, setRes] = useState<ActionResult | null>(null);
+  const act = kind === "CY_PRES" ? proposeCyPresNow : proposeNow;
   return (
     <div className={s.wrap}>
-      <button className="pill pill--green" disabled={disabled || pending} onClick={() => start(async () => setRes(await proposeNow(settlementId)))}>
+      <button className="pill pill--green" disabled={disabled || pending} onClick={() => start(async () => setRes(await act(settlementId)))}>
         {pending ? "Re-checking and planning…" : label}
       </button>
       <Result res={res} />
@@ -32,12 +33,13 @@ export function ProposeButton({ settlementId, label, disabled }: { settlementId:
 }
 
 /** Step two: a different supervisor approves, and only then does PayPal get called. */
-export function ApproveButton({ settlementId, proposalId, label }: { settlementId: string; proposalId: number; label: string }) {
+export function ApproveButton({ settlementId, proposalId, label, kind = "CLAIMS" }: { settlementId: string; proposalId: number; label: string; kind?: "CLAIMS" | "CY_PRES" }) {
   const [pending, start] = useTransition();
   const [res, setRes] = useState<ActionResult | null>(null);
+  const act = kind === "CY_PRES" ? approveCyPresNow : approveNow;
   return (
     <div className={s.wrap}>
-      <HoldButton label={pending ? "Sending to PayPal…" : label} disabled={pending} onConfirm={() => start(async () => setRes(await approveNow(settlementId, proposalId)))} />
+      <HoldButton label={pending ? "Sending to PayPal…" : label} disabled={pending} onConfirm={() => start(async () => setRes(await act(settlementId, proposalId)))} />
       <Result res={res} />
     </div>
   );

@@ -74,7 +74,7 @@ export default async function Report({ params }: { params: Promise<{ settlement:
                 <td className="num">{dollars(m.inFlightCents + m.unverifiedCents)}</td>
               </tr>
               <tr>
-                <td>Returned or failed, awaiting the cy-près recipient</td>
+                <td>Came back from PayPal: claimants can ask again, then it goes to cy-près</td>
                 <td className="num">{dollars(m.returnedCents)}</td>
               </tr>
               <tr>

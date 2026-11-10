@@ -1,6 +1,6 @@
 import { DOCUMENT_REQUEST, REASONS, type CheckId, type ReasonCode } from "@proofofclaim/claims";
-import type { ClaimState } from "@proofofclaim/db";
-import { claimByStatusToken } from "@proofofclaim/desk";
+import { moneyBack, type ClaimState } from "@proofofclaim/db";
+import { claimByStatusToken, MAX_REOFFERS, REOFFER_DAYS } from "@proofofclaim/desk";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Stamp } from "@/components/app/Stamp.tsx";
@@ -17,8 +17,8 @@ export const dynamic = "force-dynamic";
  * they filed (or again after logging in with PayPal), and it shows nothing personal: no name,
  * address, email or PayPal details, so a forwarded link exposes only the claim's progress.
  */
-export default async function Status({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
+export default async function Status({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ reoffer?: string }> }) {
+  const [{ token }, { reoffer }] = await Promise.all([params, searchParams]);
   const id = await claimByStatusToken({ pool: pool() }, token);
   const d = id ? await claimDetail(id) : null;
   const S = d ? await settlement(d.claim.settlementId) : null;
@@ -30,6 +30,11 @@ export default async function Status({ params }: { params: Promise<{ token: stri
   const failed = d.checks.filter((k) => k.result === "FAIL");
   const unknown = d.checks.filter((k) => k.result === "UNKNOWN");
   const request = c.outcome === "NEED_MORE" ? unknown.map((k) => DOCUMENT_REQUEST[k.id as CheckId]).find(Boolean) : null;
+  // C4: a payment that came back can be asked for again, once the account is fixed, within the window.
+  const back = c.status === "RETURNED" || c.status === "FAILED" ? await moneyBack(pool(), c.id) : null;
+  const days = Number(process.env["REOFFER_DAYS"] ?? REOFFER_DAYS);
+  const until = back?.at ? new Date(back.at.getTime() + days * 86_400_000) : null;
+  const canAsk = back !== null && back.reoffers < MAX_REOFFERS && (until === null || until.getTime() > Date.now());
   const money = expectedAmount({ tier: c.tier, entitlementCents: c.entitlementCents, units: c.units, approved: c.outcome === "APPROVE" }, S.tiers);
 
   return (
@@ -45,6 +50,17 @@ export default async function Status({ params }: { params: Promise<{ token: stri
         <p className={s.next}>{words.detail}</p>
         {decided ? <p className={s.reason}>{c.reason && c.reason in REASONS ? REASONS[c.reason as ReasonCode] : c.reason}</p> : null}
         {request ? <p className={s.request}>Please send: {request}</p> : null}
+        {reoffer === "asked" ? <p className={s.request}>Done: your payment goes out again in the next payout round, which two people approve.</p> : null}
+        {reoffer === "refused" ? <p className={s.request}>It can&apos;t be sent again now. The reason is above.</p> : null}
+        {canAsk ? (
+          <form action={`/api/claims/reoffer?token=${token}`} method="post" className={s.reoffer}>
+            <p>
+              Check that your PayPal account can receive money (log in to PayPal and accept any pending payment), then ask for it again
+              {until ? ` by ${until.toISOString().slice(0, 10)}` : ""}. After that, it goes to the court&apos;s chosen nonprofit.
+            </p>
+            <button className="pill pill--green">Send my payment again</button>
+          </form>
+        ) : null}
 
         <div className={s.amount}>
           <span className="label">{c.outcome === "APPROVE" ? "Your claim" : "What this claim can pay"}</span>

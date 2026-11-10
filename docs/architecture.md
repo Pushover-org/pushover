@@ -408,3 +408,38 @@ The admin screens show claimants' details and move money, so nothing there is an
   PayPal token, so a fresh login is the only way to re-read verification.
 - **Every state in plain words** (P7) and **the expected amount** (P8): `apps/web/lib/claim-status.ts`,
   typed over the claim-state enum, so a new state can't ship without its wording.
+
+## The money path after Distribute (R11; plan items P34, P36, P38–P40, C4, B5; 2026-11-10)
+
+Facts behind these choices are in `docs/sandbox-findings.md` (2026-11-10).
+
+- **Balance check (P34):** before a supervisor's approval sends anything, `GET /v1/reporting/balances`.
+  The sandbox's balance was about two hours old, so everything we sent after its `as_of_time` (all
+  settlements, plus $0.25 a payout) is subtracted first; short means refused, and the proposal stays
+  open.
+- **The plan's digest travels with the money (P36):** every payout item's `note` is
+  `Proof of Claim <settlement> <kind> round <n>, plan sha256:<64 hex>`, and the batch email carries the
+  first 16 hex. The hash is the one the second person approved (money proposals, migration 0006).
+- **Read-back** stores each item's PayPal `transaction_id`, and walks the claim through every legal
+  state to the one PayPal reports (a first read 30 days late can say RETURNED straight away).
+- **PayPal's own history (P39):** the worker looks each payout up by `transaction_id` in Transaction
+  Search. A window the history hasn't reached is `404 … not available`, recorded as WAITING; found is
+  CONFIRMED with its code (`T0001 S`); still missing after 3 days is NEVER_CAUGHT_UP. Shown per item.
+- **Webhooks (P38):** `POST /api/paypal/webhook` asks PayPal to verify every delivery
+  (`verify-webhook-signature`, webhook ID `PAYPAL_GUARDED_WEBHOOK_ID`), stores each event once by its
+  ID, and audit-logs refusals. A stored event only makes the worker read that batch back; its content
+  never moves a claim. Needs the deployed URL: the owner creates the webhook after the first deploy.
+- **Re-offer (C4):** a claim whose payment came back (RETURNED or FAILED) can be asked for again from
+  the claimant's private link for `REOFFER_DAYS` (default 30), at most twice. It returns to approved
+  and is paid in the next two-person round.
+- **Cy-près (B5):** after the window, the worker moves the claim to CY_PRES_ELIGIBLE. An analyst
+  proposes sending that money to the settlement's chosen nonprofit; a different supervisor approves
+  (same hash and balance rules); one Payouts batch goes out. Each claim's money is recorded against the
+  transfer that carried it (`cy_pres_claims`), so it goes once.
+- **Where the money went (P40):** on the money screen. Each cent sits in one bucket: paid, unclaimed,
+  in flight, unconfirmed, came back (re-offer window, then cy-près eligible), sent to cy-près, fees,
+  held.
+- **The worker** (`apps/worker`, `pnpm worker [--once]`): one at a time (Postgres advisory lock), every
+  `WORKER_INTERVAL_SECONDS` (60): webhooks → read-backs, unsettled batches → read-backs (every 10
+  minutes), up to 10 history lookups, re-offer expiry. It shares the sandbox request budget with the
+  web app through `PgRateLimiter`. It never sends money.

@@ -1,7 +1,7 @@
 "use server";
 // Money leaves the fund in two steps by two people: an analyst proposes the exact round, and a
 // different supervisor approves and sends it. Code alone calls PayPal; the model is not involved.
-import { approveAndDistribute, cancelProposal, MoneyRefusedError, proposeDistribution, readBack } from "@proofofclaim/desk";
+import { approveAndDistribute, approveCyPres, cancelProposal, MoneyRefusedError, proposeCyPres, proposeDistribution, readBack } from "@proofofclaim/desk";
 import { limiterFromEnv, paypalClientFromEnv } from "@proofofclaim/paypal";
 import { revalidatePath } from "next/cache";
 import { requireAnalyst } from "@/lib/server/auth.ts";
@@ -77,4 +77,31 @@ export async function readBackNow(settlementId: string, batchId: number): Promis
   const r = await readBack(d, paypalClientFromEnv("guarded", limiterFromEnv()), batchId);
   revalidatePath(`/admin/${settlementId}/money`);
   return { error: null, message: `Batch ${r.status}: ${Object.entries(r.outcomes).map(([k, v]) => `${v} ${k.toLowerCase()}`).join(", ") || "no items"}.` };
+}
+
+export async function proposeCyPresNow(settlementId: string): Promise<ActionResult> {
+  const analyst = await requireAnalyst(`/admin/${settlementId}/money`);
+  const d = await desk(settlementId);
+  if (!d) return { error: "Settlement not found.", message: null };
+  try {
+    const p = await proposeCyPres(d, analyst);
+    revalidatePath(`/admin/${settlementId}/money`);
+    return { error: null, message: `Cy-près proposal ${p.id} recorded. A supervisor other than you approves it before anything is sent.` };
+  } catch (err) {
+    return refused(err);
+  }
+}
+
+export async function approveCyPresNow(settlementId: string, proposalId: number): Promise<ActionResult> {
+  const analyst = await requireAnalyst(`/admin/${settlementId}/money`);
+  const d = await desk(settlementId);
+  if (!d) return { error: "Settlement not found.", message: null };
+  try {
+    const out = await approveCyPres(d, paypalClientFromEnv("guarded", limiterFromEnv()), analyst, proposalId);
+    revalidatePath(`/admin/${settlementId}/money`);
+    return { error: null, message: `Cy-près sent: ${out.paypalBatchId} (${out.status}).` };
+  } catch (err) {
+    revalidatePath(`/admin/${settlementId}/money`);
+    return refused(err);
+  }
 }

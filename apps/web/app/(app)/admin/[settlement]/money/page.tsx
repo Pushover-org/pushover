@@ -1,4 +1,4 @@
-import { openProposal, planDigest, planDistribution, type PlanSummary } from "@proofofclaim/desk";
+import { openProposal, planCyPres, planDigest, planDistribution, REOFFER_DAYS, type CyPresPlan, type PlanSummary } from "@proofofclaim/desk";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ApproveButton, ProposeButton, ReadBackButton, WithdrawButton } from "@/components/app/MoneyActions.tsx";
@@ -26,6 +26,11 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
   const byId = plan?.payees.filter((p) => p.payerId && payable.some((x) => x.claimId === p.claimId)).length ?? 0;
   const batches = [...new Map(m.rows.map((r) => [r.batchId, r])).values()];
   const open = await openProposal(d.pool, S.id, "CLAIMS");
+  const cy = await planCyPres(d);
+  const cyOpen = await openProposal(d.pool, S.id, "CY_PRES");
+  const cyOpenPlan = cyOpen?.plan as CyPresPlan | undefined;
+  const cyExpired = cyOpen !== null && cyOpen.expiresAt.getTime() <= Date.now();
+  const sentItems = m.rows.filter((r) => r.claimId !== null && r.paypalItemId !== null).length;
   const expired = open !== null && open.expiresAt.getTime() <= Date.now();
   const proposed = open?.plan as PlanSummary | undefined;
   // Shown before anyone presses: approval refuses a plan that no longer hashes the same.
@@ -140,6 +145,64 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
           <p className={s.you}>
             You: {me.name} ({me.role})
           </p>
+        </div>
+      </section>
+
+      <section className={s.flow} aria-labelledby="where">
+        <div>
+          <p className="label" id="where">
+            Where the money went
+          </p>
+          <ol className={s.steps}>
+            <li>
+              <b className="num">{dollars(m.paidCents)}</b> paid and confirmed by PayPal. Of {sentItems} payouts read back,{" "}
+              <b className="num">{m.history["CONFIRMED"] ?? 0}</b> already show in PayPal&apos;s own transaction history; {m.history["WAITING"] ?? 0} are waiting for it
+              (it runs hours behind){m.history["NEVER_CAUGHT_UP"] ? `, and ${m.history["NEVER_CAUGHT_UP"]} never caught up` : ""}.
+            </li>
+            <li>
+              <b className="num">{dollars(m.unclaimedCents)}</b> waiting for claimants to accept it in PayPal. Unaccepted money comes back to the fund after 30 days.
+            </li>
+            <li>
+              <b className="num">{dollars(m.awaitingReofferCents)}</b> came back and can be sent again: the claimant fixes their PayPal account and asks from their private
+              link, for {Number(process.env["REOFFER_DAYS"] ?? REOFFER_DAYS)} days.
+            </li>
+            <li>
+              <b className="num">{dollars(m.cyPresEligibleCents)}</b> came back and wasn&apos;t asked for in time: it goes to {S.cyPres.name}, the nonprofit the court chose
+              (cy-près). <b className="num">{dollars(m.cyPresCents)}</b> sent so far.
+            </li>
+          </ol>
+          <p className={s.note}>
+            Undelivered money only ever goes back to the fund or to the court&apos;s nonprofit. {m.webhooks.verified} PayPal webhook events verified and stored (
+            {m.webhooks.processed} turned into read-backs); a webhook never moves a claim by itself.
+          </p>
+        </div>
+        <div className={s.approval}>
+          <p className="label">Cy-près, two people</p>
+          {cyOpen && !cyExpired ? (
+            <>
+              <p className={s.proposal}>
+                <b>{cyOpen.proposedBy.name}</b> proposed sending <b className="num">{dollars(cyOpen.totalCents)}</b> from {cyOpenPlan?.items.length ?? 0} returned payments to{" "}
+                {cyOpenPlan?.recipient.name ?? S.cyPres.name}.
+              </p>
+              {cyOpen.proposedBy.id === me.id ? (
+                <p className={s.wait}>Waiting for a supervisor other than you to approve.</p>
+              ) : me.role === "supervisor" ? (
+                <ApproveButton settlementId={S.id} proposalId={cyOpen.id} kind="CY_PRES" label={`Hold to send ${dollars(cyOpen.totalCents)} to ${S.cyPres.name}`} />
+              ) : (
+                <p className={s.wait}>Waiting for a supervisor to approve.</p>
+              )}
+              {cyOpen.proposedBy.id === me.id || me.role === "supervisor" ? <WithdrawButton settlementId={S.id} proposalId={cyOpen.id} /> : null}
+            </>
+          ) : (
+            <>
+              <p className={s.wait}>
+                {cy.totalCents > 0
+                  ? `${dollars(cy.totalCents)} from ${cy.items.length} returned ${cy.items.length === 1 ? "payment is" : "payments are"} past the re-offer window.`
+                  : "No returned money is past its re-offer window yet."}
+              </p>
+              <ProposeButton settlementId={S.id} kind="CY_PRES" label={`Propose sending ${dollars(cy.totalCents)} to cy-près`} disabled={cy.totalCents === 0} />
+            </>
+          )}
         </div>
       </section>
 

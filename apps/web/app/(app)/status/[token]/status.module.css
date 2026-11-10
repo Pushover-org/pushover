@@ -116,3 +116,14 @@
   font-size: 13.5px;
   color: var(--ink-2);
 }
+
+.reoffer {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1.5px solid var(--more);
+  font-size: 14px;
+  color: var(--ink-2);
+}
