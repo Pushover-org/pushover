@@ -71,7 +71,7 @@ test.describe.serial("a claim, from filing to payment", () => {
   let deniedClaimant: Page;
 
   test("anonymous visitors are sent to the analyst login from every admin page", async ({ page }) => {
-    for (const path of [`/admin/${S}`, `/admin/${S}/money`, `/admin/${S}/claim/anything`]) {
+    for (const path of [`/admin/${S}`, `/admin/${S}/money`, `/admin/${S}/claim/anything`, `/admin/${S}/groups`, `/admin/${S}/scoreboard`, "/admin/new"]) {
       await page.goto(path);
       await expect(page).toHaveURL(new RegExp(`/login\\?next=${encodeURIComponent(path).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
       await expect(page.getByRole("heading", { name: "Analyst login" })).toBeVisible();

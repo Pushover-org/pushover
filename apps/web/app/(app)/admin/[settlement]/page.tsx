@@ -72,6 +72,9 @@ export default async function Admin({ params, searchParams }: { params: Promise<
           <a className="pill pill--quiet" href={`/admin/${S.id}/groups`}>
             Linked groups
           </a>
+          <a className="pill pill--quiet" href={`/admin/${S.id}/scoreboard`}>
+            Scoreboard
+          </a>
           <a className="pill pill--green" href={`/admin/${S.id}/money`}>
             Distribute & money
           </a>

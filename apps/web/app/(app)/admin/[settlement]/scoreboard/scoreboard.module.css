@@ -1,0 +1,68 @@
+.page {
+  display: grid;
+  gap: 24px;
+}
+.page h1 {
+  margin-top: 10px;
+  font-size: clamp(2.2rem, 1.4rem + 2.8vw, 3.6rem);
+  line-height: 0.95;
+}
+.lede,
+.note {
+  color: var(--ink-2);
+  font-size: 15px;
+  max-width: 80ch;
+}
+.scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 14.5px;
+  background: var(--card);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  border: 1px solid var(--hair-2);
+}
+.table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-3);
+  padding: 10px 14px;
+  background: var(--paper-2);
+}
+.table td {
+  padding: 12px 14px;
+  border-top: 1px solid var(--hair);
+  vertical-align: top;
+}
+.table td small {
+  display: block;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.table tr[data-k="now"] td {
+  background: var(--more-wash);
+}
+.lone {
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+  border-radius: var(--r-card);
+  background: var(--ink);
+  color: var(--paper);
+}
+.lone :global(.label) {
+  color: rgb(244 241 232 / 0.6);
+}
+.lone h2 {
+  font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.4rem);
+}
+.lone p {
+  color: rgb(244 241 232 / 0.8);
+  font-size: 15px;
+}
