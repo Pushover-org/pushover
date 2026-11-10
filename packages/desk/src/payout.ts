@@ -11,6 +11,7 @@ import { getBalance, getPayoutBatch, payoutItemOutcome, valueToCents, type PayPa
 import { decideClaim } from "./desk.ts";
 import { commitLedger, ledgerNote } from "./ledger.ts";
 import { openPayerId } from "./payer-id.ts";
+import { detectRings, heldGroupCount } from "./rings.ts";
 import type { Desk } from "./desk.ts";
 
 /** PayPal's fee per payout item, as the sandbox charged it. Reserved per item; actual fees come from PayPal. */
@@ -109,6 +110,15 @@ export interface DistributionResult {
   batches: { senderBatchId: string; paypalBatchId: string; status: string; items: number; cents: number; duplicate: boolean }[];
 }
 
+/** P23: no money while any group of linked claims waits for a person. Groups are looked for again first. */
+async function refuseWhileGroupsHeld(desk: Desk): Promise<void> {
+  await detectRings(desk);
+  const held = await heldGroupCount(desk);
+  if (held > 0) {
+    throw new MoneyRefusedError(`${held} group${held === 1 ? "" : "s"} of linked claims ${held === 1 ? "is" : "are"} still held for a person. Clear or deny ${held === 1 ? "it" : "each"} before paying.`);
+  }
+}
+
 /** How long a proposal waits for its second person. */
 export const PROPOSAL_TTL_MINUTES = 24 * 60;
 
@@ -171,6 +181,7 @@ export interface PlanSummary {
  * second person to approve. Nothing is sent.
  */
 export async function proposeDistribution(desk: Desk, by: Analyst, opt: { capCents?: number } = {}): Promise<{ proposal: MoneyProposal; moved: Awaited<ReturnType<typeof recheckApproved>> }> {
+  await refuseWhileGroupsHeld(desk);
   const moved = await recheckApproved(desk);
   const plan = await planDistribution(desk, opt);
   const { hash, summary } = planDigest(desk.settlement.id, plan);
@@ -202,6 +213,7 @@ export async function approveAndDistribute(desk: Desk, pp: PayPalClient, approve
   if (p.proposedBy.id === approver.id) throw new MoneyRefusedError("A different person has to approve: you proposed this one.");
   if (approver.role !== "supervisor") throw new MoneyRefusedError("Only a supervisor can approve money leaving the fund.");
   if (p.expiresAt.getTime() <= Date.now()) throw new MoneyRefusedError("This proposal expired. Propose the round again.");
+  await refuseWhileGroupsHeld(desk);
   await recheckApproved(desk);
   const plan = await planDistribution(desk, opt);
   const { hash } = planDigest(desk.settlement.id, plan);

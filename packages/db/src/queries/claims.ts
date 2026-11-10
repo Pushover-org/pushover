@@ -250,15 +250,18 @@ export async function recordDecision(c: PoolClient, a: { claimId: string; from: 
 }
 
 /** A person's decision on a REVIEW claim. Never carries a rule number. */
-export async function recordAnalystDecision(c: PoolClient, a: { claimId: string; outcome: "APPROVE" | "DENY"; analyst: string; reason: "ANALYST_APPROVED" | "ANALYST_DENIED"; units?: number; entitlementCents?: number }): Promise<number> {
+export async function recordAnalystDecision(
+  c: PoolClient,
+  a: { claimId: string; outcome: "APPROVE" | "DENY"; analyst: string; reason: "ANALYST_APPROVED" | "ANALYST_DENIED"; units?: number; entitlementCents?: number; from?: ClaimState; detail?: Record<string, unknown> },
+): Promise<number> {
   const { rows } = await c.query<{ id: string }>(
     `INSERT INTO decisions (claim_id, decision_version, outcome, rule, reason, units, entitlement_cents, decided_by)
      VALUES ($1, 'decision-v1', $2, NULL, $3, $4, $5, $6) RETURNING id`,
     [a.claimId, a.outcome, a.reason, a.units ?? null, a.entitlementCents ?? null, `analyst:${a.analyst}`],
   );
   const id = toNumber((rows[0] as { id: string }).id);
-  await moveClaim(c, a.claimId, "REVIEW", a.outcome);
-  await appendAudit(c, { actor: `analyst:${a.analyst}`, action: "review", subject: a.claimId, detail: { decision_id: id, outcome: a.outcome } });
+  await moveClaim(c, a.claimId, a.from ?? "REVIEW", a.outcome);
+  await appendAudit(c, { actor: `analyst:${a.analyst}`, action: "review", subject: a.claimId, detail: { decision_id: id, outcome: a.outcome, ...a.detail } });
   return id;
 }
 

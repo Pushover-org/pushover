@@ -3,7 +3,10 @@
 // labels, and stores what it was shown and what it said.
 import { createHmac } from "node:crypto";
 import { findRings, jaccard, normaliseBuilding, normaliseInbox, RING_CONFIG, shingles, type RingGroup } from "@proofofclaim/checks";
-import { getGroup, insertInvestigation, ringClaims, setSignalKeys, syncGroups, withTransaction, type RingClaimRow } from "@proofofclaim/db";
+import {
+  appendAudit, getClaim, getGroup, insertInvestigation, recordAnalystDecision, ringClaims, setSignalKeys, syncGroups, withSettlementLock, withTransaction, type ClaimState,
+  type RingClaimRow,
+} from "@proofofclaim/db";
 import { investigate, type Answers, type GroupFacts, type InvestigationResult, type InvestigatorDeps } from "@proofofclaim/examiner";
 import type { Desk } from "./desk.ts";
 
@@ -104,3 +107,51 @@ export async function investigateGroup(
   });
   return { ...r, facts };
 }
+
+/** States a group decision can still change: nothing paid, nothing scheduled. */
+const UNDECIDED_OR_DECIDED: readonly ClaimState[] = ["SUBMITTED", "EXAMINED", "APPROVE", "NEED_MORE", "REVIEW"];
+
+export class GroupDecisionError extends Error {
+  override name = "GroupDecisionError";
+}
+
+/**
+ * A person decides a held group (plan item P22). CLEARED: the group is released and each claim
+ * stands on its own checks. DENIED: each member that hasn't been paid or denied gets a person's
+ * denial, recorded claim by claim; members already in a payout are left alone and reported.
+ */
+export async function decideGroup(desk: Desk, groupId: number, decision: "CLEARED" | "DENIED", analyst: string): Promise<{ denied: string[]; alreadyDenied: string[]; untouched: string[] }> {
+  return withSettlementLock(desk.pool, desk.settlement.id, async (tx) => {
+    const g = await getGroup(tx, groupId);
+    if (!g || g.settlementId !== desk.settlement.id || !g.active) throw new GroupDecisionError("That group no longer exists as it was; look for groups again.");
+    if (g.status !== "HELD") throw new GroupDecisionError(`That group is already ${g.status.toLowerCase()}.`);
+    const denied: string[] = [];
+    const alreadyDenied: string[] = [];
+    /** Members whose money is already scheduled or sent: a group decision doesn't reach them. */
+    const untouched: string[] = [];
+    if (decision === "DENIED") {
+      for (const id of g.members) {
+        const c = await getClaim(tx, id);
+        if (c && UNDECIDED_OR_DECIDED.includes(c.status)) {
+          await recordAnalystDecision(tx, { claimId: id, outcome: "DENY", analyst, reason: "ANALYST_DENIED", from: c.status, detail: { group_id: groupId } });
+          denied.push(id);
+        } else if (c?.status === "DENY") {
+          alreadyDenied.push(id);
+        } else {
+          untouched.push(id);
+        }
+      }
+    }
+    const res = await tx.query("UPDATE ring_groups SET status = $2, decided_by = $3, decided_at = now() WHERE id = $1 AND status = 'HELD'", [groupId, decision, `analyst:${analyst}`]);
+    if (res.rowCount !== 1) throw new GroupDecisionError("Someone else decided this group first.");
+    await appendAudit(tx, { actor: `analyst:${analyst}`, action: decision === "DENIED" ? "group_denied" : "group_cleared", subject: String(groupId), detail: { members: g.members, denied, already_denied: alreadyDenied, untouched } });
+    return { denied, alreadyDenied, untouched };
+  });
+}
+
+/** Active groups still held for a person: Distribute waits for every one (plan item P23). */
+export async function heldGroupCount(desk: Desk): Promise<number> {
+  const { rows } = await desk.pool.query<{ n: number }>("SELECT count(*)::int AS n FROM ring_groups WHERE settlement_id = $1 AND active AND status = 'HELD'", [desk.settlement.id]);
+  return rows[0]?.n ?? 0;
+}
+

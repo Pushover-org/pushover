@@ -11,7 +11,7 @@ import {
   analystFromToken, approveAndDistribute, cancelProposal, claimantReturns, claimByStatusToken, ClaimRejectedError, pseudonymOf, decideClaim, fileClaim, hashPassword, login, logout, MoneyRefusedError, openProposal, planDistribution,
   proposeDistribution, readBack, recheckApproved, reviewClaim, setAnalyst, submitClaim, verifyPassword, type Desk, type FileClaimInput,
   approveCyPres, checkBalance, confirmInHistory, expireReoffers, planCyPres, processWebhooks, proposeCyPres, requestReoffer,
-  decisionLeaves, recordBeacons, SAMPLE_SIZE, detectRings, groupFacts, investigateGroup,
+  decisionLeaves, recordBeacons, SAMPLE_SIZE, detectRings, groupFacts, investigateGroup, decideGroup, heldGroupCount, GroupDecisionError,
 } from "../src/index.ts";
 import { CostGuard } from "@proofofclaim/examiner";
 import type { Analyst } from "@proofofclaim/db";
@@ -48,12 +48,25 @@ const REAL_BEACON = {
 const balance = (value = "6387.15", asOf = new Date(Date.now() - 2 * 3_600_000)) =>
   json(200, { balances: [{ currency: "USD", total_balance: { currency_code: "USD", value }, available_balance: { currency_code: "USD", value }, withheld_balance: { currency_code: "USD", value: "0.00" } }], as_of_time: asOf.toISOString() });
 
+// Honest claimants write their own words, so only deliberate templates form story groups.
+const WORDS = {
+  drink: ["iced tea", "lemonade", "a cola", "root beer", "hot cocoa", "an espresso", "cream soda", "orange juice", "ginger ale", "a milkshake", "sweet tea", "a latte", "horchata"],
+  place: ["diner", "ballpark stand", "bakery", "drive-in", "ferry cafe", "pizza place", "taqueria", "hotel buffet", "noodle bar", "truck stop", "food court", "bistro"],
+  city: ["Austin", "Fresno", "Albany", "Buffalo", "Tampa", "Spokane", "Newark", "Laredo", "Flint", "Orlando", "Yonkers", "Tacoma", "Syracuse", "Modesto", "Miami", "Detroit", "Hartford"],
+  when: ["one rainy Tuesday", "after a game", "on my lunch break", "late one night", "before a flight", "on a birthday", "during a snowstorm", "on a road trip", "on payday"],
+};
+const at = <T,>(xs: T[], k: number) => xs[k % xs.length] as T;
+const ownWords = (k: number) =>
+  [`${at(WORDS.when, k * 3)} I had ${at(WORDS.drink, k)} at a ${at(WORDS.place, k * 7)} in ${at(WORDS.city, k * 5)}, ${2015 + (k % 5)}.`,
+    `Bought ${at(WORDS.drink, k * 11)} at the ${at(WORDS.place, k)} in ${at(WORDS.city, k * 13)}; it was ${at(WORDS.when, k * 5)}.`,
+    `My claim is for ${at(WORDS.drink, k * 7)}, ${at(WORDS.city, k * 3)}, a ${at(WORDS.place, k * 5)}, ${at(WORDS.when, k)}.`][k % 3] as string;
+
 let n = 0;
 const claim = (over: Partial<FileClaimInput> = {}): FileClaimInput => {
   n++;
   return {
     tier: "no_proof", unitsClaimed: 1, name: `Person ${n}`, email: `p${n}@example.com`, addressLine: `${n} Main St`, city: "Long Beach", state: "CA", zip: "90804",
-    declaration: `I bought drink number ${n} at a diner near my office in ${2015 + (n % 5)}.`, ip: `2001:db8:${n.toString(16)}::1`, image: null, paypal: null, ...over,
+    declaration: `${ownWords(n)} Claim ${n * 7919}.`, ip: `2001:db8:${n.toString(16)}::1`, image: null, paypal: null, ...over,
   };
 };
 
@@ -165,10 +178,19 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       return json(201, { batch_header: { payout_batch_id: "PB1", batch_status: "PENDING", sender_batch_header: body.sender_batch_header } });
     }]);
 
-    it("money needs two people: a proposer, then a different supervisor", async () => {
+    it("no money moves while a group of linked claims is held; a person clearing them lets it (P23)", async () => {
       ana = await setAnalyst(pool, { email: "Ana@Example.com", name: "Ana", role: "analyst", password: "correct horse battery" }, "test");
       lee = await setAnalyst(pool, { email: "lee@example.com", name: "Lee", role: "analyst", password: "correct horse battery" }, "test");
       sol = await setAnalyst(pool, { email: "sol@example.com", name: "Sol", role: "supervisor", password: "correct horse battery" }, "test");
+      // The template crews filed above are held groups.
+      await expect(proposeDistribution(desk(), ana, { capCents: 5000 })).rejects.toThrow(/groups? of linked claims (is|are) still held/);
+      expect(await heldGroupCount(desk())).toBeGreaterThan(0);
+      const { rows } = await pool.query<{ id: string }>("SELECT id FROM ring_groups WHERE settlement_id = $1 AND active AND status = 'HELD'", [S.id]);
+      for (const r of rows) await decideGroup(desk(), Number(r.id), "CLEARED", "ana@example.com");
+      expect(await heldGroupCount(desk())).toBe(0);
+    }, 60_000);
+
+    it("money needs two people: a proposer, then a different supervisor", async () => {
       expect(ana.email).toBe("ana@example.com");
       const { proposal } = await proposeDistribution(desk(), ana, { capCents: 5000 });
       expect(proposal).toMatchObject({ status: "PROPOSED", proposedBy: { email: "ana@example.com" } });
@@ -224,7 +246,7 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
     });
 
     it("a cap pays claims in filing order, each in full, and leaves the rest approved for the next round", async () => {
-      for (let i = 0; i < 3; i++) await submitClaim(desk(), claim({ declaration: `Capped claim ${i}: a ginger ale with supper at a grill in Sacramento, ${2015 + i}.` }));
+      for (let i = 0; i < 3; i++) await submitClaim(desk(), claim()); // each in their own words
       const cap = 2500;
       const plan = await planDistribution(desk(), { capCents: cap });
       const uncapped = await planDistribution(desk());
@@ -590,6 +612,22 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       expect(r).toMatchObject({ status: "INVALID", answers: null, recommendation: "PERSON_DECIDES" });
       const { rows: inv } = await pool.query("SELECT status, answers, recommendation FROM investigations ORDER BY id DESC LIMIT 1");
       expect(inv[0]).toEqual({ status: "INVALID", answers: null, recommendation: "PERSON_DECIDES" });
+    });
+
+    it("a person denying a group denies each unpaid member, one recorded decision each (P22)", async () => {
+      const { rows } = await pool.query<{ id: string }>("SELECT id FROM ring_groups WHERE settlement_id = $1 AND active", [R.id]);
+      const groupId = Number(rows[0]?.id);
+      const before = await Promise.all(ids.map((id) => getClaim(pool, id)));
+      const r = await decideGroup(rdesk(), groupId, "DENIED", "rhea@example.com");
+      // C8 had already denied the repeat identities; the rest get a person's denial, one decision each.
+      expect([...r.denied, ...r.alreadyDenied].sort()).toEqual([...ids].sort());
+      expect(r.alreadyDenied.sort()).toEqual(before.filter((c) => c?.status === "DENY").map((c) => c?.id).sort());
+      expect(r.denied.length).toBeGreaterThan(0);
+      expect(r.untouched).toEqual([]);
+      for (const id of r.denied) expect(await latestDecision(pool, id)).toMatchObject({ outcome: "DENY", reason: "ANALYST_DENIED", decidedBy: "analyst:rhea@example.com" });
+      const { rows: audit } = await pool.query("SELECT count(*)::int AS n FROM audit_log WHERE action = 'review' AND detail->>'group_id' = $1", [String(groupId)]);
+      expect(audit[0].n).toBe(r.denied.length);
+      await expect(decideGroup(rdesk(), groupId, "CLEARED", "rhea@example.com")).rejects.toThrow(GroupDecisionError);
     });
 
     it("facts carry the real link counts, so the memo's numbers come from code", async () => {
