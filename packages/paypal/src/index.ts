@@ -26,3 +26,4 @@ export {
   type PayoutItemStatus,
   type PayoutMoney,
 } from "./payouts.ts";
+export { findInHistory, getBalance, verifyWebhookSignature, type Balance, type HistoryLookup, type WebhookHeaders } from "./reporting.ts";
