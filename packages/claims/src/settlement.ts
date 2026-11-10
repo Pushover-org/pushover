@@ -31,6 +31,12 @@ export const SettlementSchema = z
       noProof: z.strictObject({ flatCents: cents }),
     }),
     cyPres: z.strictObject({ name: z.string().min(3).max(200), payoutEmail: z.email() }),
+    /**
+     * Plan item P19. Claims are refused after `closesAt`. With `decideAfterClose`, claims are read
+     * as they arrive but decided together once filing closes, so cluster checks see every claim.
+     * Optional: without it, filing stays open and claims are decided as they arrive.
+     */
+    filing: z.strictObject({ closesAt: z.iso.datetime(), decideAfterClose: z.boolean() }).optional(),
   })
   .superRefine((s, ctx) => {
     if (s.classPeriod.start > s.classPeriod.end) ctx.addIssue({ code: "custom", path: ["classPeriod"], message: "start is after end" });

@@ -11,7 +11,7 @@ import {
   analystFromToken, approveAndDistribute, cancelProposal, claimantReturns, claimByStatusToken, ClaimRejectedError, pseudonymOf, decideClaim, fileClaim, hashPassword, login, logout, MoneyRefusedError, openProposal, planDistribution,
   proposeDistribution, readBack, recheckApproved, reviewClaim, setAnalyst, submitClaim, verifyPassword, type Desk, type FileClaimInput,
   approveCyPres, checkBalance, confirmInHistory, expireReoffers, planCyPres, processWebhooks, proposeCyPres, requestReoffer,
-  decisionLeaves, recordBeacons, SAMPLE_SIZE, detectRings, groupFacts, investigateGroup, decideGroup, heldGroupCount, GroupDecisionError,
+  decideAfterClose, decisionLeaves, recordBeacons, SAMPLE_SIZE, detectRings, groupFacts, investigateGroup, decideGroup, heldGroupCount, GroupDecisionError,
 } from "../src/index.ts";
 import { CostGuard } from "@proofofclaim/examiner";
 import type { Analyst } from "@proofofclaim/db";
@@ -538,6 +538,32 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
       const c = await getCommitment(pool, id);
       expect(c?.beacon).toEqual(REAL_BEACON);
       expect(c?.sample).toEqual(auditSample(leaves, root, REAL_BEACON.randomness, Math.min(SAMPLE_SIZE, leaves.length)));
+    });
+  });
+
+  describe("a filing deadline (P19)", () => {
+    const closed = parseSettlement({ ...S, id: "closed-test", name: "Closed Test Settlement (fictional demo)", filing: { closesAt: "2026-01-31T23:59:59.000Z", decideAfterClose: false } });
+    const later = parseSettlement({ ...S, id: "later-test", name: "Later Test Settlement (fictional demo)", filing: { closesAt: new Date(Date.now() + 3_600_000).toISOString(), decideAfterClose: true } });
+    beforeAll(async () => {
+      for (const x of [closed, later]) await pool.query("INSERT INTO settlements (id, name, config, fund_cents) VALUES ($1, $2, $3, $4)", [x.id, x.name, JSON.stringify(x), x.fundCents]);
+    });
+
+    it("refuses a claim after filing closed, and keeps one filed before it", async () => {
+      await expect(submitClaim({ ...desk(), settlement: closed }, claim())).rejects.toThrow("closed on 2026-01-31");
+      await expect(fileClaim({ ...desk(), settlement: closed }, claim({ submittedAt: new Date("2026-01-15T10:00:00Z") }))).resolves.toMatchObject({ status: "SUBMITTED" });
+    });
+
+    it("decide-after-close: claims wait while filing is open, then are decided together", async () => {
+      const d = { ...desk(), settlement: later };
+      const a = await submitClaim(d, claim());
+      const b = await submitClaim(d, claim());
+      expect(a.result).toBeNull();
+      expect((await getClaim(pool, a.claim.id))?.status).toBe("SUBMITTED");
+      expect(await decideAfterClose(d)).toBe(0); // still open
+      const decided = await decideAfterClose(d, new Date(Date.now() + 2 * 3_600_000));
+      expect(decided).toBe(2);
+      for (const c of [a.claim, b.claim]) expect((await getClaim(pool, c.id))?.status).toBe("APPROVE");
+      expect(await decideAfterClose(d, new Date(Date.now() + 2 * 3_600_000))).toBe(0); // nothing left
     });
   });
 

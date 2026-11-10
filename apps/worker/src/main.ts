@@ -6,7 +6,7 @@
 import { parseSettlement } from "@proofofclaim/claims";
 import { loadTaxTable, PROVISIONAL_CONFIG } from "@proofofclaim/checks";
 import { createPool, getSettlementConfig, PgRateLimiter } from "@proofofclaim/db";
-import { identityKeysFromEnv, processWebhooks, recordBeacons, REOFFER_DAYS, workerTick, type Desk } from "@proofofclaim/desk";
+import { decideAfterClose, identityKeysFromEnv, processWebhooks, recordBeacons, REOFFER_DAYS, workerTick, type Desk } from "@proofofclaim/desk";
 import { paypalClientFromEnv } from "@proofofclaim/paypal";
 
 const ONCE = process.argv.includes("--once");
@@ -48,6 +48,9 @@ async function pass(): Promise<void> {
     const desk = await deskFor(id);
     if (!desk) continue;
     try {
+      // A decide-after-close settlement whose filing just closed: decide every waiting claim.
+      const decided = await decideAfterClose(desk);
+      if (decided) log("decided after close", { settlement: id, decided });
       const r = await workerTick(desk, pp);
       if (r.readBacks || r.expired || Object.keys(r.history).length) log("tick", { settlement: id, ...r });
     } catch (err) {

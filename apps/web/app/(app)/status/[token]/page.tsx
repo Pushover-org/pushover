@@ -47,7 +47,11 @@ export default async function Status({ params, searchParams }: { params: Promise
           <Stamp outcome={c.outcome} size="lg" />
         </div>
         <h1 className="display">{words.title}</h1>
-        <p className={s.next}>{words.detail}</p>
+        <p className={s.next}>
+          {S.filing?.decideAfterClose && (c.status === "SUBMITTED" || c.status === "EXAMINED") && new Date(S.filing.closesAt).getTime() > Date.now()
+            ? `Filed. Every claim in this settlement is decided together when filing closes on ${S.filing.closesAt.slice(0, 10)}, so the checks see them all.`
+            : words.detail}
+        </p>
         {decided ? <p className={s.reason}>{c.reason && c.reason in REASONS ? REASONS[c.reason as ReasonCode] : c.reason}</p> : null}
         {request ? <p className={s.request}>Please send: {request}</p> : null}
         {reoffer === "asked" ? <p className={s.request}>Done: your payment goes out again in the next payout round, which two people approve.</p> : null}

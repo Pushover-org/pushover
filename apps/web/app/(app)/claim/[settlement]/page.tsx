@@ -27,6 +27,8 @@ export default async function Claim({ params, searchParams }: { params: Promise<
   // One PayPal account files one claim here: a returning claimant gets their link, not a form that would be refused.
   const filed = me && keys ? await claimIdByPseudonym(pool(), S.id, pseudonymOf(keys, S.id, me.payerId)) : null;
   const first = me?.name.split(" ")[0];
+  const closesAt = S.filing ? new Date(S.filing.closesAt) : null;
+  const closed = closesAt !== null && closesAt.getTime() < Date.now();
 
   return (
     <div className={s.page}>
@@ -52,6 +54,12 @@ export default async function Claim({ params, searchParams }: { params: Promise<
               <b className="num">{dollars(S.tiers.noProof.flatCents, 0)}</b> flat
             </dd>
           </div>
+          {closesAt ? (
+            <div>
+              <dt>Filing {closed ? "closed" : "closes"}</dt>
+              <dd className="num">{closesAt.toISOString().slice(0, 10)}</dd>
+            </div>
+          ) : null}
           <div>
             <dt>Class states</dt>
             <dd className="num">{S.geography.states.join(" · ")}</dd>
@@ -106,7 +114,9 @@ export default async function Claim({ params, searchParams }: { params: Promise<
           <span className={`num ${s.stepNo}`}>2</span>
           <div className={s.stepBody}>
             <h2>{first ? `Your claim, ${first}` : "Your claim"}</h2>
-            {me && filed ? (
+            {closed ? (
+              <p className={s.muted}>Filing for this settlement closed on {closesAt?.toISOString().slice(0, 10)}. No new claims are taken.</p>
+            ) : me && filed ? (
               <div className={s.filed}>
                 <p>
                   This PayPal account has already filed a claim in this settlement. Each account files once. Your private status link was shown when you filed;

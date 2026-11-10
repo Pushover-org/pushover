@@ -70,6 +70,10 @@ export const statusTokenHash = (token: string): Buffer => createHash("sha256").u
 
 /** Files a claim. The status token is returned once, for the claimant's private link, and never stored. */
 export async function fileClaim(desk: Desk, f: FileClaimInput): Promise<ClaimRow & { statusToken: string }> {
+  const closes = desk.settlement.filing ? new Date(desk.settlement.filing.closesAt) : null;
+  if (closes && (f.submittedAt ?? new Date()).getTime() > closes.getTime()) {
+    throw new ClaimRejectedError(`Filing for this settlement closed on ${closes.toISOString().slice(0, 10)}.`);
+  }
   if (f.tier === "proof" && !f.image) throw new ClaimRejectedError("A claim with proof needs a photo of the receipt.");
   const type = f.image ? sniffImageType(f.image) : null;
   if (f.image && !type) throw new ClaimRejectedError("The receipt must be a JPEG, PNG, GIF or WebP photo.");
@@ -216,8 +220,29 @@ export async function reviewClaim(desk: Desk, claimId: string, outcome: "APPROVE
 export async function submitClaim(desk: Desk, f: FileClaimInput): Promise<{ claim: ClaimRow; result: DeskDecision | null; statusToken: string }> {
   const { statusToken, ...claim } = await fileClaim(desk, f);
   await readEvidence(desk, claim.id);
-  const result = await decideClaim(desk, claim.id);
+  // Decide-after-close: read now, decide with everyone else once filing closes.
+  const result = filingOpenForDecisions(desk) ? null : await decideClaim(desk, claim.id);
   return { claim, result, statusToken };
+}
+
+/** True while a decide-after-close settlement is still taking claims: decisions wait. */
+export function filingOpenForDecisions(desk: Pick<Desk, "settlement">, now = new Date()): boolean {
+  const f = desk.settlement.filing;
+  return !!f && f.decideAfterClose && now.getTime() <= new Date(f.closesAt).getTime();
+}
+
+/**
+ * Once a decide-after-close settlement's filing has closed: reads any evidence not yet read and
+ * decides every claim still waiting, in filing order. Safe to run again; the worker runs it.
+ */
+export async function decideAfterClose(desk: Desk, now = new Date()): Promise<number> {
+  const f = desk.settlement.filing;
+  if (!f?.decideAfterClose || now.getTime() <= new Date(f.closesAt).getTime()) return 0;
+  const { rows } = await desk.pool.query<{ id: string }>("SELECT id FROM claims WHERE settlement_id = $1 AND status IN ('SUBMITTED', 'EXAMINED') ORDER BY seq", [desk.settlement.id]);
+  for (const r of rows) await readEvidence(desk, r.id);
+  let decided = 0;
+  for (const r of rows) if (await decideClaim(desk, r.id)) decided++;
+  return decided;
 }
 
 /** The claim behind a private status link, or null. */
