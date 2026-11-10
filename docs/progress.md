@@ -58,7 +58,7 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 6 Rings and the AI investigator (P25–P32, C8) | done (`e125701`..`270e259`) |
 | 7 The console (P17–P24, C6, C13) | done (`3fc0cec`..`f1d26ae`) |
 | 8 Claimant upgrades (P9, C9, C3, B3, C11, C12) | done (`4f6f196`, `f3430d8`, `a03e4e1`) |
-| 9 Assistants: MCP server and OpenAPI (P11–P15, C14) | done (`c442fec`..`d27da57`) |
+| 9 Assistants: MCP server and OpenAPI (P11–P15, C14) | done (`c442fec`..`2700ac9`) |
 | 10 APIMatic (from `docs/openapi.json`) | next, on the other laptop |
 | 11–14 | not started |
 
@@ -164,7 +164,19 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
   claim over HTTP, it waits UNBOUND on the desk and is not in the report, confirming without a PayPal login is refused,
   the person confirms under oath and the table decides (REVIEW: e2e has no reader), the assistant's token stops, an
   out-of-class confirmed claim is denied, "not mine" closes it, the confirm page passes axe at 390 px (en, hi).
-  Checks at the end of Phase 9: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 985/985 in 41 files, `pnpm e2e` 24 passed,
+  **Live test before pushing** (production build on a fresh database, real `.env.local`):
+  - Raw MCP over curl: initialize, tools/list (3 tools with annotations), unknown tool refused, protocol errors 406/400.
+  - JSON API: 20 cases (415, bad JSON, every field rule, unknown settlement, proof without receipt, non-base64, non-image,
+    9.05 MB refused, 6.48 MB accepted, rate limit 10/min per network then 429 with Retry-After, another network unaffected).
+  - **Real reader:** an MCP client filed rendered receipt r-001 (Michigan 2017, two drinks); the person confirmed with a
+    PayPal identity; Haiku 5.5 read it and the rules approved 2 drinks for $30.00 with all 12 checks passing (6.8 s;
+    under $0.01). The money page then planned 1 payee to the PayPal account and counted none of the 16 unconfirmed filings.
+  - The worker lapsed a backdated filing (`"lapsed":1`, audit row). By hand in SQL, the database refused: an unconfirmed
+    filing to APPROVE, a payout for it, a payout of a confirmed assistant claim to an email, binding without PayPal.
+  - Found and fixed (`76cec7d`, `2700ac9`): an unknown field like `sworn` was silently ignored (now refused); GET/DELETE
+    on `/api/mcp` opened an empty stream (now 405); the grid said "all pass" on unchecked filings; the stamp overlapped
+    the label on desktop; the confirm page said "your receipt is read" on no-receipt filings.
+  Checks at the end of Phase 9: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 990/990 in 42 files, `pnpm e2e` 24 passed,
   1 skipped (live drand).
 - **Live Log in with PayPal (P1) waits for the deployed URL:** PayPal's authorize page answers
   `invalid_redirect_uri` for `http://localhost:3100/api/paypal/callback` (checked 2026-11-10,
