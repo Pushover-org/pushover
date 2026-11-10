@@ -148,6 +148,16 @@ button {
   background: var(--ink);
   border-color: var(--ink);
 }
+/* For actions that deny claims: deliberate, never the default. */
+.pill--danger {
+  background: var(--deny);
+  border-color: var(--deny);
+  color: var(--paper);
+}
+.pill--danger:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+}
 .pill--quiet {
   border-color: var(--hair-2);
 }

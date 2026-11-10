@@ -1,4 +1,4 @@
-import { openProposal, planCyPres, planDigest, planDistribution, REOFFER_DAYS, type CyPresPlan, type PlanSummary } from "@proofofclaim/desk";
+import { heldGroupCount, openProposal, planCyPres, planDigest, planDistribution, REOFFER_DAYS, type CyPresPlan, type PlanSummary } from "@proofofclaim/desk";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ApproveButton, ProposeButton, ReadBackButton, WithdrawButton } from "@/components/app/MoneyActions.tsx";
@@ -26,6 +26,7 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
   const byId = plan?.payees.filter((p) => p.payerId && payable.some((x) => x.claimId === p.claimId)).length ?? 0;
   const batches = [...new Map(m.rows.map((r) => [r.batchId, r])).values()];
   const open = await openProposal(d.pool, S.id, "CLAIMS");
+  const held = await heldGroupCount(d);
   const cy = await planCyPres(d);
   const cyOpen = await openProposal(d.pool, S.id, "CY_PRES");
   const cyOpenPlan = cyOpen?.plan as CyPresPlan | undefined;
@@ -118,6 +119,12 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
         </div>
         <div className={s.approval}>
           <p className="label">Two people, every time</p>
+          {held > 0 ? (
+            <p className={s.stale}>
+              {held} group{held === 1 ? "" : "s"} of linked claims {held === 1 ? "is" : "are"} still held. Payouts wait until a person decides{" "}
+              <a href={`/admin/${S.id}/groups`}>{held === 1 ? "it" : "each"}</a>.
+            </p>
+          ) : null}
           {open && !expired ? (
             <>
               <p className={s.proposal}>

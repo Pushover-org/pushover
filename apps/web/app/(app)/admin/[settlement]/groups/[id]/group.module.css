@@ -67,3 +67,13 @@
     grid-template-columns: 1fr;
   }
 }
+
+.decide {
+  display: grid;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--r-card);
+  border: 1.5px solid var(--review);
+  background: var(--review-wash);
+  font-size: 14.5px;
+}

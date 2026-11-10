@@ -2,7 +2,7 @@ import { getGroup, latestInvestigation } from "@proofofclaim/db";
 import { memo, type GroupFacts, type InvestigationResult } from "@proofofclaim/examiner";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { InvestigateButton } from "@/components/app/RingActions.tsx";
+import { GroupDecisionButtons, InvestigateButton } from "@/components/app/RingActions.tsx";
 import { Stamp } from "@/components/app/Stamp.tsx";
 import type { Outcome } from "@/lib/pilot-shared.ts";
 import { requireAnalyst } from "@/lib/server/auth.ts";
@@ -47,6 +47,20 @@ export default async function Group({ params }: { params: Promise<{ settlement: 
           {grp.sharedSignals} shared signals among <em>{grp.members.length} claims</em>
         </h1>
       </header>
+
+      {grp.status === "HELD" && grp.active ? (
+        <section className={g.decide} aria-label="Decide this group">
+          <p>
+            <b>A person decides this group.</b> Clearing releases it and each claim stands on its own checks; denying records your denial on every claim not yet paid.
+            Payouts wait until every held group is decided.
+          </p>
+          <GroupDecisionButtons settlementId={S.id} groupId={grp.id} members={grp.members.length} />
+        </section>
+      ) : grp.decidedBy ? (
+        <p className={g.muted}>
+          {grp.status === "CLEARED" ? "Cleared" : "Denied"} by {grp.decidedBy.replace("analyst:", "")}.
+        </p>
+      ) : null}
 
       <section className={g.cols}>
         <div className={g.panel}>

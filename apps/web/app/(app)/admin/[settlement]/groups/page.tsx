@@ -1,7 +1,7 @@
 import { listGroups, latestInvestigation } from "@proofofclaim/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { DetectButton } from "@/components/app/RingActions.tsx";
+import { BulkDecisionButtons, DetectButton } from "@/components/app/RingActions.tsx";
 import { requireAnalyst } from "@/lib/server/auth.ts";
 import { pool, settlement } from "@/lib/server/data.ts";
 import s from "./groups.module.css";
@@ -37,6 +37,19 @@ export default async function Groups({ params }: { params: Promise<{ settlement:
         </div>
         <DetectButton settlementId={S.id} />
       </header>
+      {groups.some((g) => g.status === "HELD") ? (
+        <div className={s.bulk}>
+          <p>
+            {groups.filter((g) => g.status === "HELD").length} held. Payouts wait until every held group is decided. Following the AI&apos;s recommendations in bulk is
+            still your decision, recorded group by group.
+          </p>
+          <BulkDecisionButtons
+            settlementId={S.id}
+            toClear={groups.filter((g, i) => g.status === "HELD" && inv[i]?.recommendation === "CLEAR").length}
+            toDeny={groups.filter((g, i) => g.status === "HELD" && inv[i]?.recommendation === "DENY_GROUP").length}
+          />
+        </div>
+      ) : null}
       {groups.length === 0 ? <p className={s.empty}>No groups among the claims.</p> : null}
       <ul className={s.list}>
         {groups.map((g, i) => {
