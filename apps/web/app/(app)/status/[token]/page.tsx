@@ -23,7 +23,7 @@ const ERRORS = ["not_image", "too_big", "no_file", "not_waiting", "too_short", "
  * link given when they filed (or again after logging in with PayPal), and it shows nothing personal:
  * no name, address, email or PayPal details, so a forwarded link exposes only the claim's progress.
  */
-export default async function Status({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ reoffer?: string; sent?: string; error?: string; lang?: string }> }) {
+export default async function Status({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ reoffer?: string; sent?: string; error?: string; lang?: string; confirmed?: string }> }) {
   const [{ token }, q] = await Promise.all([params, searchParams]);
   const id = await claimByStatusToken({ pool: pool() }, token);
   const d = id ? await claimDetail(id) : null;
@@ -73,6 +73,7 @@ export default async function Status({ params, searchParams }: { params: Promise
         {decided ? <p className={s.reason}>{c.reason && c.reason in REASONS ? t(`reason.${c.reason}` as MessageKey) : c.reason}</p> : null}
         {requestFor ? <p className={s.request}>{t("status.pleaseSend", { request: t(`request.${requestFor}` as MessageKey) })}</p> : null}
 
+        {q.confirmed === "1" ? <p className={s.notice} role="status">{t("status.confirmed")}</p> : null}
         {q.sent === "document" ? <p className={s.notice} role="status">{t("doc.sent")}</p> : null}
         {q.sent === "appeal" ? <p className={s.notice} role="status">{t("appeal.sent")}</p> : null}
         {error ? (

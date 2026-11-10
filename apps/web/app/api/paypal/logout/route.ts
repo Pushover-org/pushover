@@ -3,7 +3,10 @@ import { IDENTITY_COOKIE } from "@/lib/server/paypal-login.ts";
 
 export async function POST(req: NextRequest) {
   const settlement = req.nextUrl.searchParams.get("settlement") ?? "acme-restaurant-beverage";
-  const res = NextResponse.redirect(new URL(`/claim/${encodeURIComponent(settlement)}`, req.nextUrl.origin), 303);
+  // From the confirm page, back to the filing being confirmed (P13).
+  const confirm = req.nextUrl.searchParams.get("confirm");
+  const to = confirm && /^[A-Za-z0-9_-]{32}$/.test(confirm) ? `/confirm/${confirm}` : `/claim/${encodeURIComponent(settlement)}`;
+  const res = NextResponse.redirect(new URL(to, req.nextUrl.origin), 303);
   res.cookies.delete(IDENTITY_COOKIE);
   return res;
 }

@@ -80,6 +80,13 @@ export async function fileForPerson(desk: Desk, f: AssistantFiling, now = new Da
   return { claim, confirmToken, statusToken, lapsesAt: lapsesAt(desk, claim.agentFiledAt ?? now) };
 }
 
+/** The settlement an UNBOUND filing belongs to, from its confirm link (null if none is waiting). */
+export async function settlementOfConfirmLink(pool: Desk["pool"], token: string): Promise<string | null> {
+  if (!TOKEN.test(token)) return null;
+  const id = await claimIdByConfirmToken(pool, confirmTokenHash(token));
+  return id ? ((await getClaim(pool, id))?.settlementId ?? null) : null;
+}
+
 /** What the confirm page shows its person: what was filed in their name, and by which assistant. */
 export interface FilingToConfirm {
   claimId: string;

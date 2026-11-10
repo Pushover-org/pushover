@@ -1,0 +1,257 @@
+/* The confirm page (P13): a sheet like the status page, stamped "Waiting" in review ink. Nothing on
+   it is green until the person has logged in, and the claim itself is never shown as done here. */
+.page {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding-top: 2vh;
+}
+.top {
+  width: min(720px, 100%);
+  display: flex;
+  justify-content: flex-end;
+}
+.sheet {
+  position: relative;
+  width: min(720px, 100%);
+  display: grid;
+  gap: 18px;
+  padding: clamp(24px, 5vw, 48px);
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 31px, var(--hair) 31px 32px),
+    var(--card);
+  border: 1px solid var(--hair-2);
+  box-shadow: var(--shadow-paper);
+  animation: sheet 0.9s var(--ease) both;
+}
+@keyframes sheet {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(1deg);
+  }
+}
+.meta {
+  padding-right: 140px;
+}
+.stamp {
+  position: absolute;
+  right: clamp(16px, 5vw, 48px);
+  top: clamp(16px, 4vw, 40px);
+  animation: thump 0.5s var(--ease) 0.55s both;
+}
+@keyframes thump {
+  0% {
+    opacity: 0;
+    transform: scale(2.2) rotate(-14deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.sheet h1 {
+  margin-top: 28px;
+  font-size: clamp(2.2rem, 1.4rem + 3vw, 3.6rem);
+  line-height: 0.98;
+  max-width: 16ch;
+}
+.lede {
+  font-size: var(--step-1);
+  line-height: 1.35;
+}
+.lapses {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--review-wash);
+  color: var(--review);
+  font-size: 14px;
+}
+
+.filed {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px dashed var(--hair-2);
+  background: var(--card);
+}
+.filed dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.filed dl > div {
+  display: grid;
+  grid-template-columns: minmax(110px, 160px) 1fr;
+  gap: 4px 16px;
+}
+.filed dt {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.filed dd {
+  margin: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.words blockquote {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--hair-2);
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.3;
+}
+@media (max-width: 560px) {
+  .meta {
+    padding-right: 0;
+    padding-top: 56px;
+  }
+  .filed dl > div {
+    grid-template-columns: 1fr;
+  }
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 22px;
+}
+.step {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 16px;
+}
+.stepNo {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  font-size: 14px;
+}
+.step[data-done="true"] .stepNo {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--on-green);
+}
+/* Only the number fades while a step is locked: its words stay readable (C11). */
+.step[data-locked="true"] .stepNo {
+  opacity: 0.45;
+}
+.stepBody {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.stepBody h2,
+.notMine h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1;
+  margin-top: 2px;
+}
+.muted {
+  color: var(--ink-2);
+  font-size: 14.5px;
+}
+.hint {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.err {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--deny-wash);
+  color: var(--deny);
+  font-size: 14px;
+}
+.paypal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 26px;
+  width: fit-content;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--dur-micro) var(--ease), background var(--dur-micro) var(--ease);
+}
+.paypal:hover {
+  background: var(--green);
+}
+.paypal:active {
+  transform: scale(0.97);
+}
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+}
+.ok,
+.warn {
+  margin-left: 10px;
+  padding: 2px 9px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+}
+.ok {
+  background: var(--green-wash);
+  color: var(--green);
+}
+.warn {
+  background: var(--review-wash);
+  color: var(--review);
+}
+.link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.confirm {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+.sworn {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+  font-size: 15px;
+}
+.sworn input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: var(--green);
+}
+.notMine {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding-top: 18px;
+  border-top: 1px solid var(--hair-2);
+}
+.notMine p {
+  color: var(--ink-2);
+  font-size: 14.5px;
+}
