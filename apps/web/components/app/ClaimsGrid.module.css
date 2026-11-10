@@ -195,3 +195,25 @@
   background: var(--deny-wash);
   color: var(--deny);
 }
+
+.tools {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+.groupLink {
+  font-size: 12.5px;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--paper-2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.groupLink[data-s="HELD"] {
+  background: var(--review-wash);
+  color: var(--review);
+}
+.groupLink[data-s="DENIED"] {
+  background: var(--deny-wash);
+  color: var(--deny);
+}

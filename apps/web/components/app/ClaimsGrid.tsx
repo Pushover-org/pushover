@@ -1,10 +1,10 @@
 "use client";
 // The claims queue (spec §4.7): AG Grid with custom cell renderers for the evidence thumbnail,
 // the decision stamp, failed checks, and where the examiner's logged recommendation lost to the rules.
-import { AllCommunityModule, ModuleRegistry, type ColDef, type ICellRendererParams, type RowClickedEvent } from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry, type ColDef, type GridApi, type ICellRendererParams, type RowClickedEvent } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { dollars, GROUP_LABEL, OUTCOME_LABEL, REASON_SHORT } from "@/lib/labels.ts";
 import type { Outcome } from "@/lib/pilot-shared.ts";
 import { ledgerTheme } from "./grid-theme.ts";
@@ -29,9 +29,13 @@ export interface GridRow {
   modelSaid: "approve" | "deny" | null;
   cluster: number | null;
   decidedBy: string | null;
-  group: string | null;
+  label: string | null;
   truth: "honest" | "fraud" | "ineligible" | null;
   paypalVerified: boolean | null;
+  /** The PayPal account's pseudonym, first 10 hex: never the payer ID. */
+  paypal: string | null;
+  /** The linked group this claim is in, if any (plan items P20, P26). */
+  group: { id: number; size: number; status: "HELD" | "CLEARED" | "DENIED"; href: string } | null;
 }
 
 type P<K extends keyof GridRow> = ICellRendererParams<GridRow, GridRow[K]>;
@@ -51,7 +55,7 @@ const Claim = ({ data }: ICellRendererParams<GridRow>) => (
     <b className="num">{data?.id}</b>
     <small>
       {data?.name} · {data?.state}
-      {data?.paypalVerified ? " · PayPal ✓" : ""}
+      {data?.paypal ? ` · PayPal ${data.paypal}…${data.paypalVerified ? "" : " (unverified)"}` : ""}
     </small>
   </span>
 );
@@ -102,12 +106,21 @@ const Amount = ({ data }: ICellRendererParams<GridRow>) => (
 );
 
 const Label = ({ data }: ICellRendererParams<GridRow>) =>
-  data?.group ? (
+  data?.label ? (
     <span className={s.label} data-truth={data.truth}>
-      {GROUP_LABEL[data.group] ?? data.group}
+      {GROUP_LABEL[data.label] ?? data.label}
     </span>
   ) : (
     <span className={s.dim}>live claim</span>
+  );
+
+const Group = ({ data }: ICellRendererParams<GridRow>) =>
+  data?.group ? (
+    <a className={s.groupLink} data-s={data.group.status} href={data.group.href} onClick={(e) => e.stopPropagation()}>
+      Group {data.group.id} · {data.group.status === "HELD" ? "held" : data.group.status.toLowerCase()} ({data.group.size})
+    </a>
+  ) : (
+    <span className={s.dim}>—</span>
   );
 
 const FILTERS: { key: string; label: string; test: (r: GridRow) => boolean }[] = [
@@ -116,11 +129,13 @@ const FILTERS: { key: string; label: string; test: (r: GridRow) => boolean }[] =
   { key: "APPROVE", label: OUTCOME_LABEL.APPROVE, test: (r) => r.outcome === "APPROVE" },
   { key: "DENY", label: OUTCOME_LABEL.DENY, test: (r) => r.outcome === "DENY" },
   { key: "NEED_MORE", label: OUTCOME_LABEL.NEED_MORE, test: (r) => r.outcome === "NEED_MORE" },
+  { key: "GROUPED", label: "In a linked group", test: (r) => r.group !== null },
   { key: "DISAGREE", label: "Model said ≠ rules said", test: (r) => r.modelSaid !== null && (r.modelSaid === "approve") !== (r.outcome === "APPROVE") },
 ];
 
 export function ClaimsGrid({ rows, settlementId, initial }: { rows: GridRow[]; settlementId: string; initial: string }) {
   const router = useRouter();
+  const api = useRef<GridApi<GridRow> | null>(null);
   const [filter, setFilter] = useState(FILTERS.some((f) => f.key === initial) ? initial : "ALL");
   const [search, setSearch] = useState("");
   const shown = useMemo(() => rows.filter(FILTERS.find((f) => f.key === filter)?.test ?? (() => true)), [rows, filter]);
@@ -135,7 +150,8 @@ export function ClaimsGrid({ rows, settlementId, initial }: { rows: GridRow[]; s
       { headerName: "Model said", field: "modelSaid", cellRenderer: ModelVsRules, width: 160 },
       { headerName: "Cluster", field: "cluster", width: 100, type: "rightAligned", valueFormatter: (p) => (p.value && p.value > 1 ? `of ${p.value}` : "—"), cellClass: "num" },
       { headerName: "Amount", field: "entitlementCents", cellRenderer: Amount, width: 120, type: "rightAligned" },
-      { headerName: "Label (ground truth)", field: "group", cellRenderer: Label, width: 220, getQuickFilterText: (p) => GROUP_LABEL[p.value ?? ""] ?? "" },
+      { headerName: "Linked group", colId: "linked", valueGetter: (p) => (p.data?.group ? `Group ${p.data.group.id} (${p.data.group.status.toLowerCase()})` : ""), cellRenderer: Group, width: 190 },
+      { headerName: "Label (ground truth)", field: "label", cellRenderer: Label, width: 220, getQuickFilterText: (p) => GROUP_LABEL[p.value ?? ""] ?? "" },
     ],
     [],
   );
@@ -153,10 +169,33 @@ export function ClaimsGrid({ rows, settlementId, initial }: { rows: GridRow[]; s
             );
           })}
         </div>
-        <label className={s.search}>
-          <span className="sr-only">Search claims</span>
-          <input type="search" placeholder="Search claim, name, reason…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </label>
+        <span className={s.tools}>
+          <label className={s.search}>
+            <span className="sr-only">Search claims</span>
+            <input type="search" placeholder="Search claim, name, reason…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </label>
+          <button
+            className="pill pill--quiet"
+            onClick={() =>
+              api.current?.exportDataAsCsv({
+                fileName: `${settlementId}-claims.csv`,
+                columnKeys: ["seq", "outcome", "reason", "modelSaid", "cluster", "entitlementCents", "linked", "label"],
+                processCellCallback: (p) => {
+                  const d = p.node?.data;
+                  if (!d) return String(p.value ?? "");
+                  switch (p.column.getColId()) {
+                    case "seq": return d.id;
+                    case "entitlementCents": return d.outcome === "APPROVE" && d.entitlementCents !== null ? (d.entitlementCents / 100).toFixed(2) : "";
+                    case "label": return d.label ? GROUP_LABEL[d.label] ?? d.label : "";
+                    default: return String(p.value ?? "");
+                  }
+                },
+              })
+            }
+          >
+            Export CSV
+          </button>
+        </span>
       </div>
       <div className={s.grid}>
         <AgGridReact<GridRow>
@@ -166,6 +205,7 @@ export function ClaimsGrid({ rows, settlementId, initial }: { rows: GridRow[]; s
           defaultColDef={{ sortable: true, resizable: true, suppressMovable: true }}
           quickFilterText={search}
           getRowId={(p) => p.data.id}
+          onGridReady={(e) => (api.current = e.api)}
           onRowClicked={(e: RowClickedEvent<GridRow>) => e.data && router.push(`/admin/${settlementId}/claim/${e.data.id}`)}
           rowClass={s.row ?? ""}
           animateRows

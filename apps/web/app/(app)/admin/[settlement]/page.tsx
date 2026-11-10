@@ -1,9 +1,10 @@
+import { listGroups } from "@proofofclaim/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ClaimsGrid, type GridRow } from "@/components/app/ClaimsGrid.tsx";
 import { dollars } from "@/lib/labels.ts";
 import { requireAnalyst } from "@/lib/server/auth.ts";
-import { asFiledCents, claimViews, demoTruth, settlement } from "@/lib/server/data.ts";
+import { asFiledCents, claimViews, demoTruth, pool, settlement } from "@/lib/server/data.ts";
 import s from "../admin.module.css";
 
 export const metadata: Metadata = { title: "Claims desk" };
@@ -14,13 +15,14 @@ export default async function Admin({ params, searchParams }: { params: Promise<
   await requireAnalyst(`/admin/${id}`);
   const S = await settlement(id);
   if (!S) notFound();
-  const [views, truth] = await Promise.all([claimViews(S.id), demoTruth()]);
+  const [views, truth, groups] = await Promise.all([claimViews(S.id), demoTruth(), listGroups(pool(), S.id, { activeOnly: true })]);
+  const groupOf = new Map(groups.flatMap((g) => g.members.map((m) => [m, { id: g.id, size: g.members.length, status: g.status, href: `/admin/${S.id}/groups/${g.id}` }] as const)));
   const rows: GridRow[] = views.map((v) => {
     const t = truth.get(v.id);
     return {
       id: v.id, seq: v.seq, tier: v.tier, name: v.name, state: v.state, outcome: v.outcome, reason: v.reason, entitlementCents: v.entitlementCents, asFiledCents: asFiledCents(v, S),
       hasEvidence: v.hasEvidence, failed: v.failed, unknown: v.unknown, modelSaid: v.modelSaid, cluster: v.cluster, decidedBy: v.decidedBy,
-      group: t?.group ?? null, truth: t?.truth ?? null, paypalVerified: v.paypalVerified,
+      label: t?.group ?? null, truth: t?.truth ?? null, paypalVerified: v.paypalVerified, paypal: v.paypalPseudonym?.slice(0, 10) ?? null, group: groupOf.get(v.id) ?? null,
     };
   });
   const review = views.filter((v) => v.outcome === "REVIEW").length;
