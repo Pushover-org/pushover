@@ -89,6 +89,37 @@
   background: var(--ink);
   color: var(--paper);
 }
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--hair-2);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.who em {
+  font-style: normal;
+  color: var(--ink-3);
+}
+.who button,
+.login {
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hair-2);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.who button:hover,
+.login:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
 @media (max-width: 1020px) {
   .case {
     display: none;

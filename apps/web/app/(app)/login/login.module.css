@@ -1,0 +1,33 @@
+.page {
+  display: grid;
+  place-items: start center;
+  padding-top: 4vh;
+}
+.card {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 16px;
+  padding: clamp(24px, 4vw, 40px);
+  border-radius: 18px;
+  border: 1px solid var(--hair-2);
+  background: var(--card);
+  box-shadow: 0 30px 60px -40px rgb(21 20 15 / 0.35);
+}
+.card h1 {
+  font-size: clamp(2.2rem, 1.6rem + 2vw, 3.2rem);
+  line-height: 0.95;
+}
+.lede {
+  color: var(--ink-2);
+  font-size: 15px;
+}
+.note {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--paper-2);
+  font-size: 14px;
+}
+.judge {
+  font-size: 13.5px;
+  color: var(--ink-3);
+}

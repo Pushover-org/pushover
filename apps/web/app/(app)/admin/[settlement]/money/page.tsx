@@ -1,9 +1,10 @@
-import { planDistribution } from "@proofofclaim/desk";
+import { openProposal, planDigest, planDistribution, type PlanSummary } from "@proofofclaim/desk";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { DistributeButton, ReadBackButton } from "@/components/app/MoneyActions.tsx";
+import { ApproveButton, ProposeButton, ReadBackButton, WithdrawButton } from "@/components/app/MoneyActions.tsx";
 import { PayoutGrid } from "@/components/app/PayoutGrid.tsx";
 import { dollars } from "@/lib/labels.ts";
+import { requireAnalyst } from "@/lib/server/auth.ts";
 import { desk } from "@/lib/server/data.ts";
 import { DEMO_DAILY_CAP_CENTS, money } from "@/lib/server/money.ts";
 import s from "./money.module.css";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function MoneyPage({ params }: { params: Promise<{ settlement: string }> }) {
   const { settlement: id } = await params;
+  const me = await requireAnalyst(`/admin/${id}/money`);
   const d = await desk(id);
   if (!d) notFound();
   const S = d.settlement;
@@ -23,6 +25,12 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
   const total = payable.reduce((t, p) => t + p.payoutCents, 0);
   const byId = plan?.payees.filter((p) => p.payerId && payable.some((x) => x.claimId === p.claimId)).length ?? 0;
   const batches = [...new Map(m.rows.map((r) => [r.batchId, r])).values()];
+  const open = await openProposal(d.pool, S.id, "CLAIMS");
+  const expired = open !== null && open.expiresAt.getTime() <= Date.now();
+  const proposed = open?.plan as PlanSummary | undefined;
+  // Shown before anyone presses: approval refuses a plan that no longer hashes the same.
+  const stale = open !== null && plan !== null && !planDigest(S.id, plan).hash.equals(open.planHash);
+  const at = (d8: Date) => d8.toISOString().replace("T", " ").slice(0, 16);
 
   const parts = [
     { k: "paid", label: "Paid", cents: m.paidCents },
@@ -92,7 +100,36 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
             </li>
           </ul>
         </div>
-        <DistributeButton settlementId={S.id} label={`Hold to send ${dollars(total)}`} disabled={payable.length === 0} />
+        <div className={s.approval}>
+          <p className="label">Two people, every time</p>
+          {open && !expired ? (
+            <>
+              <p className={s.proposal}>
+                <b>{open.proposedBy.name}</b> proposed round {proposed?.round ?? "?"} at <span className="num">{at(open.proposedAt)}</span> UTC:{" "}
+                <b className="num">{proposed?.items.length ?? 0}</b> payments, <b className="num">{dollars(open.totalCents)}</b>.
+              </p>
+              {stale ? <p className={s.stale}>Claims changed since this was proposed. Approving will refuse and send nothing; propose the round again.</p> : null}
+              {open.proposedBy.id === me.id ? (
+                <p className={s.wait}>Waiting for a supervisor other than you to approve.</p>
+              ) : me.role === "supervisor" ? (
+                <ApproveButton settlementId={S.id} proposalId={open.id} label={`Hold to approve and send ${dollars(open.totalCents)}`} />
+              ) : (
+                <p className={s.wait}>Waiting for a supervisor to approve. Analysts can propose; only a supervisor who didn&apos;t propose can send.</p>
+              )}
+              {open.proposedBy.id === me.id || me.role === "supervisor" ? <WithdrawButton settlementId={S.id} proposalId={open.id} /> : null}
+            </>
+          ) : (
+            <>
+              <p className={s.wait}>
+                {expired ? "The last proposal expired unapproved. " : ""}You propose the round; a supervisor other than you approves it before PayPal is called.
+              </p>
+              <ProposeButton settlementId={S.id} label={`Propose paying ${dollars(total)}`} disabled={payable.length === 0} />
+            </>
+          )}
+          <p className={s.you}>
+            You: {me.name} ({me.role})
+          </p>
+        </div>
       </section>
 
       <section className={s.batches} aria-labelledby="batches">

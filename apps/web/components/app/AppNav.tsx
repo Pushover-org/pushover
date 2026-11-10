@@ -11,7 +11,7 @@ const LINKS = [
   { href: `/report/${S}`, label: "Court report" },
 ];
 
-export function AppNav() {
+export function AppNav({ analyst }: { analyst: { name: string; role: string } | null }) {
   const path = usePathname();
   const active = (href: string) => (href === `/admin/${S}` ? path === href || path.startsWith(`${href}/claim`) : path.startsWith(href));
   return (
@@ -36,6 +36,18 @@ export function AppNav() {
             </a>
           ))}
         </nav>
+        {analyst ? (
+          <form action="/api/admin/logout" method="post" className={s.who}>
+            <span>
+              {analyst.name} <em>{analyst.role}</em>
+            </span>
+            <button>Log out</button>
+          </form>
+        ) : (
+          <a className={s.login} href="/login" aria-current={path === "/login" ? "page" : undefined}>
+            Analyst login
+          </a>
+        )}
       </div>
     </header>
   );

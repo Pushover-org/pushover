@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ClaimsGrid, type GridRow } from "@/components/app/ClaimsGrid.tsx";
 import { dollars } from "@/lib/labels.ts";
+import { requireAnalyst } from "@/lib/server/auth.ts";
 import { asFiledCents, claimViews, demoTruth, settlement } from "@/lib/server/data.ts";
 import s from "../admin.module.css";
 
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Admin({ params, searchParams }: { params: Promise<{ settlement: string }>; searchParams: Promise<{ outcome?: string }> }) {
   const [{ settlement: id }, { outcome }] = await Promise.all([params, searchParams]);
+  await requireAnalyst(`/admin/${id}`);
   const S = await settlement(id);
   if (!S) notFound();
   const [views, truth] = await Promise.all([claimViews(S.id), demoTruth()]);

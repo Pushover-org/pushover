@@ -344,3 +344,36 @@ claimant's identity.
   (`RECEIVER_ACCOUNT_INVALID`), so reconciliation must read every item.
 - About 5% of approved proof claims are picked at random for audit before payout (R11).
 - claims-v1 stays frozen; claims-v2 (R13) adds a perfect-fake group to measure what's left.
+
+## Admin login and two-person money (owner decision 2026-11-10)
+
+The admin screens show claimants' details and move money, so nothing there is anonymous.
+
+- **Accounts** (`analysts`, migration 0006): role `analyst` or `supervisor`. Created only by
+  `pnpm admin:add` (password from `NEW_ANALYST_PASSWORD`, never a web form). The judges' two
+  sandbox logins come from `pnpm demo:analysts` (`JUDGE_ANALYST_PASSWORD`,
+  `JUDGE_SUPERVISOR_PASSWORD`); they guard play money only, and the daily sandbox cap still applies.
+- **Passwords:** scrypt from `node:crypto` (N = 2^17, r = 8, p = 1, 16-byte salt, 32-byte key),
+  parameters stored with each hash. An unknown email is checked against a decoy hash, and gets the
+  same answer as a wrong password.
+- **Sessions:** a random 32-byte token in an httpOnly cookie (`poc_admin`, SameSite=Lax, Secure on
+  HTTPS, 12 hours). Only its SHA-256 is stored, so a database leak opens no session. Logout deletes
+  the row.
+- **Throttling:** every login, failure and lockout is an audit-log row. Five failures for an email,
+  or twenty from one network (a keyed /24 or /48 hash, never the raw IP), in 15 minutes lock it out.
+- **Where it is checked:** every admin page, server action and admin API route calls
+  `requireAnalyst()` / `currentAnalyst()` itself (`apps/web/lib/server/auth.ts`). A layout isn't
+  enough: Next.js doesn't re-run layouts on every navigation, and server actions skip them.
+  `test/admin-guard.test.ts` fails if a page reads data before the check or an action doesn't start
+  with it.
+- **Evidence photos:** served to a logged-in analyst, to the claimant who filed (their PayPal
+  identity cookie), or to anyone for the labelled demo corpus (public dataset and our renders).
+  `/demo/claim/[id]` shows labelled corpus claims read-only, so the demo needs no login.
+- **Money needs two people** (plan item C7): an analyst *proposes* a round (the cluster re-check
+  runs, the round is planned, and the exact plan is stored with its SHA-256). A *different* person
+  with the *supervisor* role approves it: the re-check runs again, the round is planned again, and
+  if the hash differs nothing is sent and the proposal is superseded. The database enforces the
+  same rules: approver ≠ proposer, approver is an enabled supervisor, no approval after expiry (24
+  hours), a decided proposal never changes, one open proposal per settlement and kind, and
+  **no payout batch can be inserted without an approved proposal** of the same settlement and kind.
+  The `distribute` audit row names both people.

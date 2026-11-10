@@ -95,7 +95,7 @@ export default async function Demo() {
         <div className={s.spots}>
           {spotlights.map(({ title, v }) =>
             v ? (
-              <a key={title} className={s.spot} href={`/admin/${S.id}/claim/${v.id}`}>
+              <a key={title} className={s.spot} href={`/demo/claim/${v.id}`}>
                 <div className={s.spotMedia}>
                   {v.hasEvidence ? (
                     <img src={`/api/evidence/${v.id}`} alt={`The evidence filed with claim ${v.id}`} loading="lazy" />
@@ -115,7 +115,7 @@ export default async function Demo() {
                   </span>
                   <h3>{title}</h3>
                   <p>{reasonText(v.reason)}</p>
-                  <span className={s.more}>Open in the claims desk →</span>
+                  <span className={s.more}>See every check →</span>
                 </div>
               </a>
             ) : null,
@@ -137,7 +137,7 @@ export default async function Demo() {
         <ul>
           {overruled.slice(0, 8).map((v) => (
             <li key={v.id}>
-              <a href={`/admin/${S.id}/claim/${v.id}`}>
+              <a href={`/demo/claim/${v.id}`}>
                 <span className="num">{v.id}</span>
                 <span className={s.said}>Model: approve</span>
                 <Stamp outcome={v.outcome} />
