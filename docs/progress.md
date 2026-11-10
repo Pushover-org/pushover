@@ -1,6 +1,6 @@
 # Progress (hand-off between machines and sessions)
 
-Last updated: 2026-11-10 (original laptop).
+Last updated: 2026-11-10 (second machine, Phase 9).
 
 ## The project: Proof of Claim (pivot from Pushover, 2026-10-31)
 
@@ -58,8 +58,9 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 6 Rings and the AI investigator (P25–P32, C8) | done (`e125701`..`270e259`) |
 | 7 The console (P17–P24, C6, C13) | done (`3fc0cec`..`f1d26ae`) |
 | 8 Claimant upgrades (P9, C9, C3, B3, C11, C12) | done (`4f6f196`, `f3430d8`, `a03e4e1`) |
-| 9 Assistants: MCP server and OpenAPI (P12–P15, C14) | next |
-| 10–14 | not started |
+| 9 Assistants: MCP server and OpenAPI (P11–P15, C14) | done (`c442fec`..`d27da57`) |
+| 10 APIMatic (from `docs/openapi.json`) | next, on the other laptop |
+| 11–14 | not started |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
 **C7** two-person approval (enforced in code and in the database), P35/P37 (already had),
@@ -76,7 +77,10 @@ digest on every payout (verified in the sandbox), **P38** verified webhooks (cod
 **P20** grid CSV export and linked-group column, **P21**/**C6** live scoreboard with lone fakes, **P22** group
 decisions one by one or in bulk, **P23** no money while a group is held, **P24** Bryntum timeline, **C13**
 read-only AG Studio agent, **P9**/**C9** appeal with a new photo, **C3** reasons in plain words, **B3** the
-requested-document upload, **C11** axe accessibility checks, **C12** Spanish and Hindi claimant pages.
+requested-document upload, **C11** axe accessibility checks, **C12** Spanish and Hindi claimant pages,
+**P12** MCP server (three tools, none can confirm, decide or pay), **P13** unbound until the person confirms with PayPal,
+**P14** the assistant's name on the claim and in the grid, **P11** "Filed by", **P15** OpenAPI 3.1 with the drift test,
+**C14** assistants send the receipt and it is checked like any claim.
 
 - **Phase 1 evidence (2026-11-10):** migration 0006 (analysts, sessions as token hashes, money
   proposals; database guards: no self-approval, supervisor only, no approval after expiry, no
@@ -145,6 +149,23 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
   Not covered: Bryntum's grid reports one `aria-required-children` rule inside its own markup.
   Checks at the end of Phase 8: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 905/905 in 37 files,
   `pnpm e2e` 16 passed, 1 skipped (the live drand test, run with `LIVE_DRAND=1`).
+- **Phase 9 evidence (2026-11-10, second machine):** research first: `@modelcontextprotocol/sdk` 1.32.2 read from
+  the package (web-standard Streamable HTTP transport, `registerTool` with zod objects and annotations); zod 4.6.7's own
+  `toJSONSchema` is 2020-12, OpenAPI 3.1's dialect, so no converter library. Migrations 0012 (UNBOUND, LAPSED) and 0013
+  (who filed, the confirm token's hash, database guards). 14 desk tests on Postgres: an unbound filing is in no Distribute
+  or cy-près plan even with an approval forced into its record (the plans are equal to the field), the database refuses
+  to approve it or plan a payout for it, an assistant's claim is paid only to the confirming PayPal account, confirm binds
+  once and moves the claim to the end of the filing order, one claim per PayPal account holds, unconfirmed filings don't
+  feed C6/C7/C9, lapse after 7 days, "not mine" closes. MCP: 8 tests through the SDK's own client (in memory and over
+  HTTP), 28 new import-boundary tests. OpenAPI drift test (5). Filed-by wording (4), limiter `allow()` (1). Planted bugs,
+  each failed its test: no exclusion in the check lookups; the plan selecting UNBOUND (leftover $1,900.00 → $1,889.75);
+  a fourth tool `approve_claim`; a `confirmed_by_person` field; a schema changed without regenerating `docs/openapi.json`;
+  an MCP tool drifting from its operation. e2e (new `assistants.spec.ts`, 8 tests): a real MCP client files a receipt
+  claim over HTTP, it waits UNBOUND on the desk and is not in the report, confirming without a PayPal login is refused,
+  the person confirms under oath and the table decides (REVIEW: e2e has no reader), the assistant's token stops, an
+  out-of-class confirmed claim is denied, "not mine" closes it, the confirm page passes axe at 390 px (en, hi).
+  Checks at the end of Phase 9: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 985/985 in 41 files, `pnpm e2e` 24 passed,
+  1 skipped (live drand).
 - **Live Log in with PayPal (P1) waits for the deployed URL:** PayPal's authorize page answers
   `invalid_redirect_uri` for `http://localhost:3100/api/paypal/callback` (checked 2026-11-10,
   `docs/sandbox-findings.md`). After the first deploy the owner adds
@@ -172,12 +193,26 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
   `pnpm typecheck` exit 0, `pnpm test` 75/75 in 7 files (15 import-boundary tests for the
   examiner and oracle bans). The lockfile no longer contains `@paypal/agent-toolkit`.
 
+## Hand-back to the other laptop (2026-11-10, after Phase 9)
+
+- **Next: Phase 10, APIMatic, on the other laptop.** Its input is `docs/openapi.json` (OpenAPI 3.1, regenerated with
+  `pnpm openapi`; the drift test fails if it falls behind the schemas in `apps/web/lib/api/schemas.ts`). The three
+  operations are `listSettlements`, `fileClaim` and `claimStatus`; the MCP endpoint is `/api/mcp`.
+- **Migrate the demo database to 0013** (`pnpm db:migrate`) before running the web app on it.
+- **New optional env:** `PUBLIC_ORIGIN` (the deployed origin, for the confirm and status links handed to assistants).
+- **After the first deploy (Phase 11):** the confirm page uses the same Log in with PayPal as the claim form, so the
+  one Return URL (`https://<deployed>/api/paypal/callback`) covers both.
+- **This laptop's setup, for the record:** `.env.local` at the repo root (copied from the older `.env` one folder up,
+  with `SESSION_SECRET`, `NETWORK_SECRET`, both payer keys and both judge passwords generated here, and
+  `DATABASE_URL` pointing at this laptop's `pushover-pg` container, database `proofofclaim`); `core.hooksPath` set
+  to `.githooks`; Playwright Chromium installed. The demo database here is migrated but not seeded.
+- Not done in Phase 9, optional: a line on the claim page telling people an assistant can file for them; a live
+  run of an assistant-filed receipt through the real reader (Haiku, under $0.01).
+
 ## In progress
 
-- **Next: Phase 9, assistants** (P12 MCP server with no decision or money tools, P13 unbound until the
-  person confirms with PayPal, P14 the assistant's name, P15 OpenAPI 3.1 and the drift test, C14).
-  Not done in Phase 6, optional: measuring the investigator itself on rings-v2's groups (about $0.05).
-- **Demo database:** migrate to 0011 (`pnpm db:migrate`) before running the web app on it.
+- Phase 9 is done (above). Not done in Phase 6, optional: measuring the investigator itself on rings-v2's groups (about $0.05).
+- **Demo database:** migrate to 0013 (`pnpm db:migrate`) before running the web app on it.
 - **Licence keys** in `.env.local`: `AG_STUDIO_LICENSE_KEY` (trial until 2026-12-25; its terms say
   evaluation only, production use needs a licence) and `BRYNTUM_LICENSE_KEY` (trial until 2026-12-25;
   Bryntum shows a "Trial" badge with a trial key). Both are visible in the browser by design; neither is
@@ -272,7 +307,7 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- `../FULL-BUILD-PLAN.md` Phase 9 (assistants: MCP server, unbound claims, OpenAPI), when the owner says go.
+- `../FULL-BUILD-PLAN.md` Phase 10 (APIMatic, from `docs/openapi.json`), on the other laptop, when the owner says go.
 
 ## Pushover history (kept for the record)
 

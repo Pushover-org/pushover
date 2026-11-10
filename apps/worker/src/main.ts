@@ -52,7 +52,7 @@ async function pass(): Promise<void> {
       const decided = await decideAfterClose(desk);
       if (decided) log("decided after close", { settlement: id, decided });
       const r = await workerTick(desk, pp);
-      if (r.readBacks || r.expired || Object.keys(r.history).length) log("tick", { settlement: id, ...r });
+      if (r.readBacks || r.expired || r.lapsed || Object.keys(r.history).length) log("tick", { settlement: id, ...r });
     } catch (err) {
       log("tick failed", { settlement: id, error: err instanceof Error ? err.message : String(err) });
     }

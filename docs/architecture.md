@@ -544,3 +544,128 @@ the browser run the same code):
   its text (now only its number fades). Third-party widgets, audited separately: AG Studio's default
   send button was 3.1:1 (fixed by theming Studio with the app's tokens); Bryntum's grid still reports
   one `aria-required-children` rule inside its own markup, which the e2e suite doesn't cover.
+
+## Assistants: MCP server, unbound claims, OpenAPI (plan items P11–P15, C14; 2026-11-10)
+
+An assistant can do the paperwork, receipt included. Only the person can make it a claim, and only
+a claim can be read, decided or paid.
+
+**Research first (checked on the second machine, not from memory):**
+- `@modelcontextprotocol/sdk` **1.32.2** is `latest` (published 2026-10-23). Its peer dependencies
+  are `zod ^3.25 || ^4.0` and an optional `@cfworker/json-schema`. Read from the package itself:
+  `McpServer.registerTool(name, { inputSchema, outputSchema, annotations }, cb)`, which takes a
+  whole zod object; `ToolAnnotations` (`readOnlyHint`, `destructiveHint`, …); and
+  `WebStandardStreamableHTTPServerTransport`, which takes a web `Request` and returns a `Response`,
+  exactly what a Next.js route handler has. With no `sessionIdGenerator` it is stateless. The SDK's
+  own example builds a server per request, and in `enableJsonResponse` mode `handleRequest`
+  resolves only once every reply is ready.
+- The SDK publishes tool schemas labelled draft-07. Apart from that label, they are identical to
+  zod's own 2020-12 output (measured; the drift test holds it).
+- zod 4.6.7 has `z.toJSONSchema` built in, with JSON Schema 2020-12 as its default target. That
+  is OpenAPI 3.1's dialect, so no converter library was added. `@asteasolutions/zod-to-openapi`
+  9.1.0 and `zod-openapi` 6.0.2 (both peer `zod ^4.0.0`) were considered and not needed. Requests
+  are generated with `io: "input"`; otherwise a field with a default (`units`) shows as required.
+
+**Owner decisions (2026-11-10), the defaults proposed before building:**
+- The MCP endpoint is open (no key) and rate-limited. The safety comes from what the tools can't
+  do, not from a key.
+- A receipt is stored and hashed at filing. The examiner reads it only after the person confirms,
+  so an unconfirmed filing spends no AI credit.
+- The confirm page is read-only, with a "this isn't mine" button that closes the filing.
+- An unconfirmed filing lapses after 7 days, or at the filing deadline if that comes first.
+- The e2e suite has no reader, so its confirmed receipt claim is decided REVIEW by rule 0.
+- An assistant's name is shown as "the name it gave", never as verified.
+
+**Unbound filings (migrations 0012, 0013; `packages/desk/src/assistants.ts`):**
+- **New states.** UNBOUND (filed by an assistant, not confirmed) and LAPSED (never confirmed:
+  timed out, or the person said it isn't theirs). They are in a migration of their own, because
+  Postgres can't use an enum value in the transaction that adds it.
+- **Nothing leaves UNBOUND except two ways:** SUBMITTED when its person confirms, or LAPSED.
+- **The database holds the line on its own:**
+  - an assistant's claim outside UNBOUND/LAPSED must have a confirmation time and a PayPal
+    pseudonym;
+  - a trigger refuses any payout item for an UNBOUND or LAPSED claim;
+  - an assistant's claim is paid only to the PayPal account that confirmed it
+    (`pseudonym:<hex>`), never to an email address.
+  - Measured: a forced APPROVE decision on an unbound filing changes no plan. A planted bug that
+    let the plan select it would have shrunk the leftover from $1,900.00 to $1,889.75, and the
+    test caught it.
+- **Confirming** (`confirmFiling`) needs the identity PayPal's login returned, in one transaction:
+  - It seals the payer ID and sets the per-settlement pseudonym. One claim per PayPal account
+    still holds, enforced by the same unique index.
+  - It replaces the email with PayPal's.
+  - It records the person's own network and device, not the assistant's servers. Otherwise every
+    claim filed through one assistant would look like a C9 velocity cluster.
+  - It moves the claim to the **end of the filing order** (a new `seq`, `submitted_at` = now). So
+    "earlier" in C6, C8 and C12 means earlier to be confirmed, and claims decided while it waited
+    are compared with it.
+  - Then the same `readEvidence` and `decideClaim` run as for the form.
+  - The person gets a fresh status link, and the assistant's link stops working: the claim is the
+    person's now.
+- **Unconfirmed filings are not claims.** They are left out of:
+  - C6, C7, C8, C9 and C12, and the ring detector, so a bot can't file a stranger's receipt or a
+    thousand look-alikes to make honest claims look like copies or a cluster;
+  - the court report, the totals, the scoreboard, the groups, the desk agent's rows and the
+    settlements counts (`claimViews` leaves them out unless asked).
+
+  Only the analysts' grid shows them.
+- **What an assistant sends.** No `sworn` field: an assistant can't swear for anyone, so the person
+  swears on the confirm page. No email: PayPal's replaces it. The worker lapses old filings
+  (`lapseUnconfirmed`).
+
+**The MCP server (`apps/web/lib/mcp/server.ts`, `POST|GET|DELETE /api/mcp`):**
+- Three tools: `list_settlements` (read-only), `file_claim` and `claim_status` (read-only). Each
+  carries annotations, and the server sends instructions saying the person must confirm with
+  PayPal.
+- Stateless: a fresh server and transport per request, JSON responses.
+- Both the MCP route and `/api/v1` call one service, `lib/server/assistant-api.ts`, so they can
+  only differ in transport.
+- **No tool can confirm, decide, approve or pay**, held three ways:
+  1. `tools.test.ts` lists the tools through the SDK's own client, in memory and over HTTP. It
+     fails on a fourth tool, or on any tool or input field named for confirming, deciding or
+     paying. Both planted bugs failed it.
+  2. ESLint forbids the assistant code from importing PayPal code, the PayPal login (which mints
+     a claimant's identity), analyst sign-in, or the desk's and database's deciding and paying
+     functions. `test/import-boundaries.test.ts` checks the rule and lints the real files.
+  3. The database (above).
+- **Rate limits** (`LIMITS` in `lib/api/schemas.ts`, published in the OpenAPI document):
+  - per network (a keyed hash, never the raw IP): 60 calls and 10 filings a minute;
+  - per settlement: 300 assistant filings an hour.
+
+  `PgRateLimiter.allow()` refuses at once with a retry time, where `take()` waits.
+
+**JSON API and OpenAPI 3.1 (P15):**
+- `GET /api/v1/settlements`, `POST /api/v1/claims` and `POST /api/v1/claims/status` (the token
+  goes in the body, so it stays out of URLs) are the JSON twins of the three tools.
+- `docs/openapi.json`, and the same document at `GET /api/openapi.json`, is generated from
+  `lib/api/schemas.ts` (`pnpm openapi`). The claim form's schema lives there too.
+- The drift test (`lib/api/openapi.test.ts`) fails:
+  - if the schemas change and the file isn't regenerated;
+  - if any tool's input or output schema differs from its operation's by more than the dialect
+    label;
+  - if the form and the assistants stop checking a shared field the same way.
+
+  Planted drifts failed it.
+
+**The confirm page (`/confirm/<token>`, `POST /api/claims/confirm`):**
+- It shows what was filed in the person's name and by which assistant, stamped "Waiting" in review
+  ink (never green).
+- Log in with PayPal carries the confirm token through the round trip, in the state cookie, and
+  comes back to the page.
+- The person ticks the sworn declaration and confirms, or closes the filing.
+- The identity cookie is `SameSite=Lax`, so another site can't post a confirmation with it. Closing
+  needs only the link, and it moves no money.
+- In English, Spanish and Hindi. The Spanish and Hindi are not reviewed by a professional
+  translator.
+
+**Filed by (P11, P14):**
+- The grid has a "Filed by" column (in CSV too) and the filters "Filed by an assistant" and
+  "Waiting for its person". The analyst's claim page and the claimant's status page say who filed
+  it, and the court report has `filed_by`.
+- Every label reads "gave its name as", because the name is self-declared.
+
+**Limits:**
+- Live Log in with PayPal still waits for the deployed callback URL (P1); the confirm flow is
+  tested with a sealed identity cookie, as the claim form is.
+- An 8 MB photo is about 11 MB of JSON; only small photos were sent through the routes in tests.
+- `PUBLIC_ORIGIN` (optional) sets the links handed to assistants when the app sits behind a proxy.
