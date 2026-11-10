@@ -1,0 +1,17 @@
+{
+  "name": "@proofofclaim/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@proofofclaim/checks": "workspace:*",
+    "@proofofclaim/claims": "workspace:*",
+    "@proofofclaim/db": "workspace:*",
+    "@proofofclaim/desk": "workspace:*",
+    "@proofofclaim/paypal": "workspace:*"
+  }
+}

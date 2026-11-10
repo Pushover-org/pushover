@@ -26,7 +26,8 @@
     "test:sandbox": "node --env-file-if-exists=.env.local node_modules/vitest/vitest.mjs run --config vitest.sandbox.config.ts",
     "demo:seed": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-seed.ts",
     "admin:add": "node --env-file-if-exists=.env.local packages/desk/scripts/add-analyst.ts",
-    "demo:analysts": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-analysts.ts"
+    "demo:analysts": "node --env-file-if-exists=.env.local packages/desk/scripts/demo-analysts.ts",
+    "worker": "node --env-file-if-exists=.env.local apps/worker/src/main.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
