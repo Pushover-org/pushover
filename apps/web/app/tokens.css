@@ -5,8 +5,9 @@
   --paper-3: #e2ddcd;
   --card: #fbfaf5;
   --ink: #15140f;
-  --ink-2: rgb(21 20 15 / 0.64);
-  --ink-3: rgb(21 20 15 / 0.44);
+  --ink-2: rgb(21 20 15 / 0.72);
+  /* WCAG AA: at least 4.5:1 for small text on paper, paper-2, paper-3 and card (C11). */
+  --ink-3: rgb(21 20 15 / 0.62);
   --hair: rgb(21 20 15 / 0.12);
   --hair-2: rgb(21 20 15 / 0.2);
 
@@ -18,7 +19,7 @@
   /* State inks: state only, never decoration. */
   --approve: var(--green);
   --deny: #a3321f;
-  --review: #9a6a00;
+  --review: #845b00; /* 4.9:1 or more on every paper tone (C11) */
   --more: #2b4c8c;
   --deny-wash: rgb(163 50 31 / 0.08);
   --review-wash: rgb(154 106 0 / 0.1);

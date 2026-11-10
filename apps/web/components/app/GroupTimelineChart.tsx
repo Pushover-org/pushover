@@ -8,7 +8,7 @@ import "@bryntum/scheduler-enterprise/svalbard-light.css";
 import { useRouter } from "next/navigation";
 import type { TimelineData } from "./GroupTimeline.tsx";
 
-const COLOR: Record<string, string> = { APPROVE: "#5c5a52", DENY: "#a3321f", REVIEW: "#9a6a00", NEED_MORE: "#2b4c8c" };
+const COLOR: Record<string, string> = { APPROVE: "#5c5a52", DENY: "#a3321f", REVIEW: "#845b00", NEED_MORE: "#2b4c8c" };
 const WORD: Record<string, string> = { APPROVE: "approved by the rules", DENY: "denied", REVIEW: "with a person", NEED_MORE: "asked for more" };
 const DAY = 86_400_000;
 const LEGEND = Object.entries(WORD)

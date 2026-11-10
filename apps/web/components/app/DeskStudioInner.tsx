@@ -2,11 +2,26 @@
 // The desk in AG Studio (plan item C13): a dashboard over the claims, and an agent that answers
 // questions about them. The agent gets AG Studio's reading tools only (no widget, filter or claim
 // changes), and the server passes on nothing else (lib/studio-llm.ts).
-import { createAiHarness, directLlmRunner, AgStudioAiModule, type AgAiHarnessSetup, type AgDataSourcesDefinition, type AgFieldDefinition, type AgFormat, type AgReportState, type AgStudioApi } from "ag-studio";
+import { createAiHarness, directLlmRunner, studioTheme, AgStudioAiModule, type AgAiHarnessSetup, type AgDataSourcesDefinition, type AgFieldDefinition, type AgFormat, type AgReportState, type AgStudioApi } from "ag-studio";
 import { AgStudio, AgStudioProvider } from "ag-studio-react";
 import { useMemo } from "react";
 import { deskAdapter } from "@/lib/studio-adapter.ts";
 import type { DeskRow } from "./DeskStudio.tsx";
+
+// The app's own tokens (app/tokens.css), so Studio reads as part of the desk. The accent is the
+// app's green: AG's default blue failed AA contrast on its send button (axe, C11).
+const THEME = studioTheme.withParams({
+  fontFamily: "var(--font-ui)",
+  textColor: "var(--ink)",
+  foregroundColor: "var(--ink)",
+  subtleTextColor: "var(--ink-2)",
+  backgroundColor: "var(--card)",
+  borderColor: "var(--hair-2)",
+  accentColor: "var(--green)",
+  studioCanvasBackgroundColor: "var(--paper)",
+  studioWrapperBackgroundColor: "var(--paper)",
+  studioWidgetBorderRadius: 10,
+});
 
 const FIELDS: [keyof DeskRow, string, AgFormat][] = [
   ["claim", "Claim", "textFormat"],
@@ -123,7 +138,7 @@ export default function DeskStudioInner({ rows, settlementName, licenseKey }: { 
 
   return (
     <AgStudioProvider modules={[AgStudioAiModule]} {...(licenseKey ? { licenseKey } : {})}>
-      <AgStudio style={{ height: "100%", width: "100%" }} data={data} mode="edit" initialState={REPORT} ai={ai} />
+      <AgStudio style={{ height: "100%", width: "100%" }} theme={THEME} data={data} mode="edit" initialState={REPORT} ai={ai} />
     </AgStudioProvider>
   );
 }
