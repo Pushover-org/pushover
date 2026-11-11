@@ -189,8 +189,9 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
   `retryOnTimeout` re-sent a 403 three times (off, tested). The SDK refuses any base URL but the sandbox
   or a local stand-in. C5 research: card purchases all carry one shared payer ID, so they can't show who
   bought; a PayPal-account purchase by buyer1 (order `6NE45228XM135812U`) captured with the same payer ID
-  as buyer1's Log in with PayPal; whether the merchant's history shows it waits on PayPal's refresh (up to
-  3 hours). The owner chose to record C5 and not build it. Checks: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 999/999 in 43 files, `pnpm e2e` 24
+  as buyer1's Log in with PayPal; whether the merchant's history shows it is not settled: checked every 10
+  minutes for 4 hours, never found, but both merchants' sandbox history stayed "last refreshed 03:29:59Z"
+  the whole time (captured 04:52Z). The owner chose to record C5 and not build it. Checks: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 999/999 in 43 files, `pnpm e2e` 24
   passed, 1 skipped.
 - **Live Log in with PayPal (P1) waits for the deployed URL:** PayPal's authorize page answers
   `invalid_redirect_uri` for `http://localhost:3100/api/paypal/callback` (checked 2026-11-10,
@@ -237,8 +238,10 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
 
 ## In progress
 
-- Phase 10 is done: P57 built, C5 recorded and not built. One C5 fact is still to be written down: whether the
-  merchant's history shows the test purchase with buyer1's payer ID and the item (check below). Not done in Phase 6, optional: measuring the investigator itself on rings-v2's groups (about $0.05).
+- Phase 10 is done: P57 built, C5 recorded and not built. One C5 fact is still unknown: whether the merchant's
+  history shows the test purchase with buyer1's payer ID and the item. The sandbox history stopped refreshing
+  at 03:29:59Z on 2026-11-11 and hadn't moved by 09:08Z; re-check once it does (command below). The same stall
+  can keep the P39 history check on "waiting for history" for hours during the demo. Not done in Phase 6, optional: measuring the investigator itself on rings-v2's groups (about $0.05).
 - **Demo database:** migrate to 0013 (`pnpm db:migrate`) before running the web app on it.
 - **C5 check:** `node --env-file-if-exists=.env.local packages/paypal/scripts/probe-purchases.ts baseline 2` lists
   the baseline merchant's purchases with payer and items; look for the 2026-11-11 lemonade (order `6NE45228XM135812U`).

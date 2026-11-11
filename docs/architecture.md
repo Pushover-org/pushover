@@ -732,8 +732,13 @@ money test sends a Distribute through the web app with the SDK's balance check a
   captured through the SDK's `OrdersController` and approved in a headless browser logged in as buyer1
   (order `6NE45228XM135812U`, capture `7L289335836229053`, COMPLETED). The capture's `payer.payer_id` is
   **the same** as the `payer_id` Log in with PayPal returned for buyer1 on 2026-11-02.
-- Still open: whether the merchant's Transaction Search shows that purchase with buyer1's payer ID and the
-  SKU. PayPal says history can take up to three hours; at 04:52Z it was last refreshed at 02:59:59Z.
+- Not settled: whether the merchant's Transaction Search shows that purchase with buyer1's payer ID and the
+  SKU. PayPal says history can take up to three hours. The purchase was captured at 04:52Z; a check every
+  10 minutes from 04:56Z to 08:58Z, and once more at 09:08Z, never found it. That says nothing either way:
+  the sandbox history of **both** merchants stayed "last refreshed 03:29:59Z" for the whole time (the first
+  check, before that refresh covered its start date, got PayPal's 404 INVALID_REQUEST, the "not available
+  yet" answer `findInHistory` already handles). For the demo this means the history check (P39) can show
+  "waiting for history" for hours after a payout in the sandbox; that is PayPal's refresh, not a fault.
 - Limits, from the SDK's own operation notes and the spec: Transaction Search reaches back three years,
   31 days per request, and has no payer filter, so a merchant's history has to be paged through and
   indexed, not searched per claim. C5 fits a merchant's own recent refund or recall program; it can't
