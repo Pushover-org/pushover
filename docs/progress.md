@@ -1,6 +1,6 @@
 # Progress (hand-off between machines and sessions)
 
-Last updated: 2026-11-10 (second machine, Phase 9).
+Last updated: 2026-11-11 (original laptop, Phase 10).
 
 ## The project: Proof of Claim (pivot from Pushover, 2026-10-31)
 
@@ -59,7 +59,7 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 7 The console (P17–P24, C6, C13) | done (`3fc0cec`..`f1d26ae`) |
 | 8 Claimant upgrades (P9, C9, C3, B3, C11, C12) | done (`4f6f196`, `f3430d8`, `a03e4e1`) |
 | 9 Assistants: MCP server and OpenAPI (P11–P15, C14) | done (`c442fec`..`2700ac9`) |
-| 10 APIMatic (from `docs/openapi.json`) | next, on the other laptop |
+| 10 APIMatic: PayPal's Server SDK (P57), purchase proof research (C5) | P57 done (`c2569ab`); C5 research waits on PayPal's history |
 | 11–14 | not started |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
@@ -178,6 +178,18 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
     the label on desktop; the confirm page said "your receipt is read" on no-receipt filings.
   Checks at the end of Phase 9: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 990/990 in 42 files, `pnpm e2e` 24 passed,
   1 skipped (live drand).
+- **Phase 10 evidence (2026-11-11, original laptop):** balances and Transaction Search now go through
+  `@paypal/paypal-server-sdk` 2.5.0 (APIMatic-generated), set up from the APIMatic Context Plugin's
+  TypeScript skills (which skill decided what: `docs/architecture.md`, last section). Sandbox, through the
+  SDK: balance $6,340.90; payout `4LF69280FT181700C` found as T0001 with its $0.25 fee; an unknown ID is
+  NOT_IN_HISTORY (`packages/paypal/sandbox/reporting.sandbox.ts`, 3/3). Two runtime traps found in the
+  source and handled: a failed token fetch stays cached (provider that never rejects, tested), and
+  `retryOnTimeout` re-sent a 403 three times (off, tested). The SDK refuses any base URL but the sandbox
+  or a local stand-in. C5 research: card purchases all carry one shared payer ID, so they can't show who
+  bought; a PayPal-account purchase by buyer1 (order `6NE45228XM135812U`) captured with the same payer ID
+  as buyer1's Log in with PayPal; whether the merchant's history shows it waits on PayPal's refresh (up to
+  3 hours). Checks: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 999/999 in 43 files, `pnpm e2e` 24
+  passed, 1 skipped.
 - **Live Log in with PayPal (P1) waits for the deployed URL:** PayPal's authorize page answers
   `invalid_redirect_uri` for `http://localhost:3100/api/paypal/callback` (checked 2026-11-10,
   `docs/sandbox-findings.md`). After the first deploy the owner adds
@@ -205,7 +217,7 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
   `pnpm typecheck` exit 0, `pnpm test` 75/75 in 7 files (15 import-boundary tests for the
   examiner and oracle bans). The lockfile no longer contains `@paypal/agent-toolkit`.
 
-## Hand-back to the other laptop (2026-11-10, after Phase 9)
+## Hand-back to the other laptop (2026-11-10, after Phase 9; taken back 2026-11-11)
 
 - **Next: Phase 10, APIMatic, on the other laptop.** Its input is `docs/openapi.json` (OpenAPI 3.1, regenerated with
   `pnpm openapi`; the drift test fails if it falls behind the schemas in `apps/web/lib/api/schemas.ts`). The three
@@ -218,13 +230,15 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
   with `SESSION_SECRET`, `NETWORK_SECRET`, both payer keys and both judge passwords generated here, and
   `DATABASE_URL` pointing at this laptop's `pushover-pg` container, database `proofofclaim`); `core.hooksPath` set
   to `.githooks`; Playwright Chromium installed. The demo database here is migrated but not seeded.
-- Not done in Phase 9, optional: a line on the claim page telling people an assistant can file for them; a live
-  run of an assistant-filed receipt through the real reader (Haiku, under $0.01).
+- Not done in Phase 9, optional: a line on the claim page telling people an assistant can file for them. (The live
+  run of an assistant-filed receipt through the real reader was done: Phase 9 evidence above.)
 
 ## In progress
 
-- Phase 9 is done (above). Not done in Phase 6, optional: measuring the investigator itself on rings-v2's groups (about $0.05).
+- Phase 10: P57 is done; C5 is waiting on PayPal's history (`docs/architecture.md`, last section). Not done in Phase 6, optional: measuring the investigator itself on rings-v2's groups (about $0.05).
 - **Demo database:** migrate to 0013 (`pnpm db:migrate`) before running the web app on it.
+- **C5 check:** `node --env-file-if-exists=.env.local packages/paypal/scripts/probe-purchases.ts baseline 2` lists
+  the baseline merchant's purchases with payer and items; look for the 2026-11-11 lemonade (order `6NE45228XM135812U`).
 - **Licence keys** in `.env.local`: `AG_STUDIO_LICENSE_KEY` (trial until 2026-12-25; its terms say
   evaluation only, production use needs a licence) and `BRYNTUM_LICENSE_KEY` (trial until 2026-12-25;
   Bryntum shows a "Trial" badge with a trial key). Both are visible in the browser by design; neither is
@@ -319,7 +333,7 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- `../FULL-BUILD-PLAN.md` Phase 10 (APIMatic, from `docs/openapi.json`), on the other laptop, when the owner says go.
+- Finish C5's research (above), then `../FULL-BUILD-PLAN.md` Phase 11 (deploy), when the owner says go.
 
 ## Pushover history (kept for the record)
 
