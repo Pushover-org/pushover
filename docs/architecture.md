@@ -738,3 +738,9 @@ money test sends a Distribute through the web app with the SDK's balance check a
   31 days per request, and has no payer filter, so a merchant's history has to be paged through and
   indexed, not searched per claim. C5 fits a merchant's own recent refund or recall program; it can't
   cover the demo settlement's 2015–2019 class period.
+- **Decision (owner, 2026-11-11): recorded, not built.** The deploy, demo, full eval and submission
+  (Phases 11–14) come first. Building it would take: a settlement setting naming the merchant whose records
+  it may read (that merchant's API credentials, and the SKUs in the class); a worker job that pages the
+  merchant's history into a local table of (payer ID, SKU, quantity, date, transaction ID); and a panel on
+  the analyst's claim page saying what PayPal's records show for the claimant's logged-in account. It would
+  be evidence for the person deciding, not a new rule: decision table v1 stays as committed.

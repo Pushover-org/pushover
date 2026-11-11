@@ -44,6 +44,8 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
   LIMITATIONS.md.
 - No green "safe" state anywhere in the UI (unknown shows as UNVERIFIED or HELD): Phase 12.
 - Pushed 2026-11-10: the 11 R10 commits (`adad2db..78d087b`). Ask before every push.
+- **C5 (purchase proof from the merchant's PayPal records): recorded, not built** (owner, 2026-11-11). Its
+  research is in `docs/architecture.md` (last section); Phase 11 comes next.
 
 ## FULL-BUILD-PLAN phases
 
@@ -59,7 +61,7 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 7 The console (P17–P24, C6, C13) | done (`3fc0cec`..`f1d26ae`) |
 | 8 Claimant upgrades (P9, C9, C3, B3, C11, C12) | done (`4f6f196`, `f3430d8`, `a03e4e1`) |
 | 9 Assistants: MCP server and OpenAPI (P11–P15, C14) | done (`c442fec`..`2700ac9`) |
-| 10 APIMatic: PayPal's Server SDK (P57), purchase proof research (C5) | P57 done (`c2569ab`); C5 research waits on PayPal's history |
+| 10 APIMatic: PayPal's Server SDK (P57), purchase proof research (C5) | done: P57 (`c2569ab`); C5 researched and recorded, not built (owner, 2026-11-11) |
 | 11–14 | not started |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
@@ -188,7 +190,7 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
   or a local stand-in. C5 research: card purchases all carry one shared payer ID, so they can't show who
   bought; a PayPal-account purchase by buyer1 (order `6NE45228XM135812U`) captured with the same payer ID
   as buyer1's Log in with PayPal; whether the merchant's history shows it waits on PayPal's refresh (up to
-  3 hours). Checks: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 999/999 in 43 files, `pnpm e2e` 24
+  3 hours). The owner chose to record C5 and not build it. Checks: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 999/999 in 43 files, `pnpm e2e` 24
   passed, 1 skipped.
 - **Live Log in with PayPal (P1) waits for the deployed URL:** PayPal's authorize page answers
   `invalid_redirect_uri` for `http://localhost:3100/api/paypal/callback` (checked 2026-11-10,
@@ -235,7 +237,8 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
 
 ## In progress
 
-- Phase 10: P57 is done; C5 is waiting on PayPal's history (`docs/architecture.md`, last section). Not done in Phase 6, optional: measuring the investigator itself on rings-v2's groups (about $0.05).
+- Phase 10 is done: P57 built, C5 recorded and not built. One C5 fact is still to be written down: whether the
+  merchant's history shows the test purchase with buyer1's payer ID and the item (check below). Not done in Phase 6, optional: measuring the investigator itself on rings-v2's groups (about $0.05).
 - **Demo database:** migrate to 0013 (`pnpm db:migrate`) before running the web app on it.
 - **C5 check:** `node --env-file-if-exists=.env.local packages/paypal/scripts/probe-purchases.ts baseline 2` lists
   the baseline merchant's purchases with payer and items; look for the 2026-11-11 lemonade (order `6NE45228XM135812U`).
@@ -333,7 +336,7 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- Finish C5's research (above), then `../FULL-BUILD-PLAN.md` Phase 11 (deploy), when the owner says go.
+- `../FULL-BUILD-PLAN.md` Phase 11 (deploy: Railway web, worker and Postgres; sandbox-only guard; eval gate), when the owner says go.
 
 ## Pushover history (kept for the record)
 
