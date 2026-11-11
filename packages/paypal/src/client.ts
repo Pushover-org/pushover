@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { pino } from "pino";
 import type { RateLimiter } from "./bucket.ts";
 import { issueOf, PayPalApiError, PayPalNetworkError, PayPalUnknownOutcomeError } from "./errors.ts";
+import { PayPalSdk } from "./sdk.ts";
 
 export interface Logger {
   warn(obj: object, msg: string): void;
@@ -50,6 +51,7 @@ export class PayPalClient {
   private readonly timeoutMs: number;
   private readonly maxAttempts: number;
   private readonly o: PayPalClientOptions;
+  private sdkInstance: PayPalSdk | undefined;
 
   constructor(o: PayPalClientOptions) {
     this.o = o;
@@ -59,6 +61,14 @@ export class PayPalClient {
     this.log = o.logger ?? defaultLogger;
     this.timeoutMs = o.timeoutMs ?? 15_000;
     this.maxAttempts = o.maxAttempts ?? 4;
+  }
+
+  /**
+   * PayPal's own Server SDK over the same credentials, limiter and timeouts, for the reporting calls
+   * (sdk.ts). Built on first use and kept, so its OAuth token is reused.
+   */
+  get sdk(): PayPalSdk {
+    return (this.sdkInstance ??= new PayPalSdk(this.o));
   }
 
   /** A fresh idempotency key for a NEW intent. Never call this to retry an existing one. */

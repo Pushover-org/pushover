@@ -18,13 +18,20 @@ describe("balances", () => {
     })]);
     const { client } = makeClient(pp.fetch);
     expect(await getBalance(client)).toEqual({ availableCents: 638715, totalCents: 638715, withheldCents: 0, asOf: new Date("2026-11-10T03:59:59Z") });
-    expect(pp.calls[0]?.url).toMatch(/\/v1\/reporting\/balances\?currency_code=USD$/);
+    const url = new URL(pp.calls[0]?.url ?? "");
+    expect(url.pathname).toBe("/v1/reporting/balances");
+    expect(url.searchParams.get("currency_code")).toBe("USD");
   });
   it("refuses to guess when there's no balance in the currency or no age", async () => {
     const { client } = makeClient(fakePayPal([json(200, { balances: [], as_of_time: "2026-11-10T03:59:59Z" })]).fetch);
     await expect(getBalance(client)).rejects.toThrow("no USD balance");
-    const { client: c2 } = makeClient(fakePayPal([json(200, { balances: [{ currency: "USD", available_balance: { value: "1.00" } }] })]).fetch);
+    const one = { currency_code: "USD", value: "1.00" };
+    const { client: c2 } = makeClient(fakePayPal([json(200, { balances: [{ currency: "USD", total_balance: one, available_balance: one }] })]).fetch);
     await expect(getBalance(c2)).rejects.toThrow("age is unknown");
+  });
+  it("refuses an answer that doesn't match PayPal's own schema, as the SDK checks it", async () => {
+    const { client } = makeClient(fakePayPal([json(200, { balances: [{ currency: "USD", available_balance: { value: "1.00" } }], as_of_time: "2026-11-10T03:59:59Z" })]).fetch);
+    await expect(getBalance(client)).rejects.toThrow("did not match the response schema");
   });
 });
 
@@ -36,7 +43,10 @@ describe("Transaction Search", () => {
     expect(await findInHistory(client, { transactionId: "4LF69280FT181700C", around })).toEqual({
       found: true, eventCode: "T0001", status: "S", amountCents: -100, feeCents: -25, lastRefreshed: new Date("2026-11-10T03:59:59Z"),
     });
-    expect(pp.calls[0]?.url).toContain("transaction_id=4LF69280FT181700C&start_date=2026-10-31T13:03:00Z&end_date=2026-11-01T14:03:00Z");
+    const q = new URL(pp.calls[0]?.url ?? "").searchParams;
+    expect([q.get("transaction_id"), q.get("start_date"), q.get("end_date"), q.get("fields"), q.get("page_size")]).toEqual([
+      "4LF69280FT181700C", "2026-10-31T13:03:00Z", "2026-11-01T14:03:00Z", "transaction_info", "1",
+    ]);
   });
   it("tells 'the history hasn't reached that day yet' apart from 'not there'", async () => {
     const { client } = makeClient(fakePayPal([json(404, NOT_AVAILABLE)]).fetch);

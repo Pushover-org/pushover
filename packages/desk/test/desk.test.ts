@@ -468,7 +468,7 @@ describe.skipIf(!DATABASE_URL)("the claims desk on real Postgres", () => {
     it("checks each payout against PayPal's own history: waiting, confirmed, or flagged after 3 days", async () => {
       // A Response body can be read once, so each reply is made fresh.
       const notYet = () => json(404, { name: "INVALID_REQUEST", message: "Data for the given start date is not available." });
-      const found = (id: string) => json(200, { transaction_details: [{ transaction_info: { transaction_id: id, transaction_event_code: "T0001", transaction_status: "S", transaction_amount: { value: "-1.00" }, fee_amount: { value: "-0.25" } } }] });
+      const found = (id: string) => json(200, { transaction_details: [{ transaction_info: { transaction_id: id, transaction_event_code: "T0001", transaction_status: "S", transaction_amount: { currency_code: "USD", value: "-1.00" }, fee_amount: { currency_code: "USD", value: "-0.25" } } }] });
       const n = round2.items.length;
       const first = fakePayPal(Array.from({ length: n }, () => notYet()));
       expect(await confirmInHistory(desk(), makeClient(first.fetch).client, { limit: n })).toEqual({ WAITING: n });
