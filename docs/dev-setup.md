@@ -39,7 +39,7 @@ Payouts, not the seeded orders.
    Check it: `ssh -T git@github-laxmi` must answer "Hi laxmikhengare!".
 3. Clone with that alias (not HTTPS, which would use whatever account is logged in):
    ```
-   git clone git@github-laxmi:Pushover-org/pushover.git
+   git clone git@github-laxmi:proof-of-claim/proof-of-claim.git
    ```
 4. Inside the clone, set the identity and turn on the repo's commit-msg hook:
    ```

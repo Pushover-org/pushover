@@ -13,7 +13,7 @@ const $ = (cents: number, dp = 2) => `$${(cents / 100).toLocaleString("en-US", {
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 const ci = (i: Interval) => `${i.k} of ${i.n} · 95% CI ${pct(i.low)}–${pct(i.high)}`;
 
-const REPO = "https://github.com/Pushover-org/pushover";
+const REPO = "https://github.com/proof-of-claim/proof-of-claim";
 
 /** Real sandbox payout items (docs/sandbox-findings.md), play money. */
 const SANDBOX = [

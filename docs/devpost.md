@@ -104,7 +104,7 @@ written with AI coding assistance (Claude Code); see AI_ASSISTANCE.md.
   sandbox buyer login and an eight-step tour.
 - More sandbox buyers (play money; sandbox.paypal.com only) are in the README. PayPal's sandbox gives
   every test buyer the same address, so change the street address on the claim form.
-- Repository (MIT): https://github.com/Pushover-org/pushover
+- Repository (MIT): https://github.com/proof-of-claim/proof-of-claim
 
 ## Sponsor tools to tick
 

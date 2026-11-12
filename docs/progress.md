@@ -383,6 +383,6 @@ Corrections to the spec are in `docs/architecture.md`.
 - Decisions and corrections to the Pushover spec: `docs/architecture.md`.
 - Dev database: Docker `pushover-pg` (postgres 17) on 127.0.0.1:5433, on the `default` Docker
   engine (`docker --context default ...`). Setup on another machine: `docs/dev-setup.md`.
-- Pushing: on the original laptop `origin` is `git@github-account4:Pushover-org/pushover.git`;
-  on the other laptop it is `git@github.com:Pushover-org/pushover.git`. Both push as
+- Pushing: on the original laptop `origin` is `git@github-account4:proof-of-claim/proof-of-claim.git`;
+  on the other laptop it is `git@github.com:proof-of-claim/proof-of-claim.git`. Both push as
   laxmikhengare.

@@ -10,7 +10,7 @@ import s from "./ledger.module.css";
 export const metadata: Metadata = { title: "Public ledger" };
 export const dynamic = "force-dynamic";
 
-const REPO = "https://github.com/Pushover-org/pushover/blob/main";
+const REPO = "https://github.com/proof-of-claim/proof-of-claim/blob/main";
 const short = (h: string) => `${h.slice(0, 12)}…${h.slice(-6)}`;
 
 /**
