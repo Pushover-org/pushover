@@ -91,7 +91,8 @@ export default function Landing() {
                 </li>
               </ol>
               <p className={s.checkNote}>
-                Pre-registered pilot of {summary.n} labelled claims ({bad.length} fraud or ineligible, {stopped} stopped), run {run}. The full held-out run is the next step.
+                Pre-registered pilot of {summary.n} labelled claims ({bad.length} fraud or ineligible, {stopped} stopped), run{" "}
+                <a href={`${REPO}/tree/main/packages/eval/results/${run}`}>{run}</a>. The full held-out run is the next step.
               </p>
             </div>
           </div>

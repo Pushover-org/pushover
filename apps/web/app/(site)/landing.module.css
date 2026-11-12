@@ -140,6 +140,10 @@
   color: var(--ink);
   font-weight: 600;
 }
+.checkNote a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .checkNote {
   font-size: 13px;
   color: var(--ink-3);
