@@ -11,6 +11,34 @@ model never decides a claim and never moves money.
   eight-step tour, and what is switched on right now)
 - Fictional settlement, PayPal **sandbox** only, play money. Nothing here can reach real PayPal.
 
+## For judges
+
+| What | Where | Sign-in |
+|---|---|---|
+| **Start here:** the sandbox logins, an eight-step tour, a real payout traced end to end, and what is switched on right now | [/judge](https://web-production-3f92e595.up.railway.app/judge) | None |
+| **Watch the AI get overruled:** Claude approves a fake receipt; the tax rule denies it and says why | [Landing page](https://web-production-3f92e595.up.railway.app/) | None |
+| **File a claim yourself** with Log in with PayPal and see the decision on the spot | [/claim](https://web-production-3f92e595.up.railway.app/claim/acme-restaurant-beverage) | Sandbox buyer 4, 5 or 6 ([below](#sandbox-test-accounts-play-money)); change the street address |
+| **The claims desk:** every claim, its twelve checks and reasons; filter "Model said ≠ rules said" | [/admin](https://web-production-3f92e595.up.railway.app/admin/acme-restaurant-beverage) | Analyst login (on /judge) |
+| **Move money with two people:** an analyst proposes, a different supervisor approves, PayPal Payouts pays, every item is read back | [/money](https://web-production-3f92e595.up.railway.app/admin/acme-restaurant-beverage/money) | Analyst, then supervisor (on /judge) |
+| **The public record:** the court report, and the ledger verified in your browser | [/report](https://web-production-3f92e595.up.railway.app/report/acme-restaurant-beverage) | None |
+| **The numbers:** pre-registered, 100 held-out claims, every miss named | [Results](#results-pre-registered-measured) · [docs/methodology.md](docs/methodology.md) | — |
+| **What it does not prove** | [LIMITATIONS.md](LIMITATIONS.md) | — |
+
+### What's different
+
+1. **The AI examines the evidence, and the rules can overrule it.** Claude reads each receipt photo
+   into structured findings; twelve checks in code (class period, product, arithmetic, sales tax
+   against the store's address, duplicate images, and more) decide. On 100 held-out claims the rules
+   overruled the AI's "approve" 30 times, and 7 fake receipts were caught by a tax rate their store
+   can't charge.
+2. **Money needs two people.** An analyst proposes the exact round and signs it; a different
+   supervisor approves; only then is PayPal called.
+3. **Unclaimed money goes to the court's charity (cy-près)**, after a re-offer window, in a second
+   PayPal Payouts batch, again with two people.
+4. **A pre-registered test with honest misses.** The claims, labels and pass mark were committed
+   before any run: $40 of fraud paid against $1,620 if everyone were paid, and 3 of 41 honest
+   claimants wrongly denied, each one named in [docs/methodology.md](docs/methodology.md).
+
 ## The problem
 
 Settlement funds are now flooded with fake claims, and the usual answers are to pay everyone or to
