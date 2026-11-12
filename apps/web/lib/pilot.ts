@@ -6,9 +6,11 @@ import type { Outcome, PilotClaim, PilotSummary } from "./pilot-shared.ts";
 
 export * from "./pilot-shared.ts";
 
-const RUN = "claims-pilot-2026-11-01-haiku";
+/** The held-out run (R13, 2026-11-12): 100 claims no rule or prompt was tuned on. */
+export const HOLDOUT_RUN = "claims-holdout-2026-11-12-haiku";
+/** The R9 pilot: 32 claims, the scroll story's cards. */
+export const PILOT_RUN = "claims-pilot-2026-11-01-haiku";
 const root = path.resolve(process.cwd(), "../..");
-const dir = path.join(root, "packages/eval/results", RUN);
 const MANIFEST = path.join(root, "packages/eval/corpus/claims-v1/manifest.jsonl");
 // Settlement terms (corpus settlement.json): $15 per drink up to 5 with a receipt, $10 without.
 const UNIT_CENTS = 1500;
@@ -21,7 +23,8 @@ function parseCsv(text: string): Record<string, string>[] {
   return rows.map((r) => Object.fromEntries(r.split(",").map((v, i) => [keys[i] ?? `_${i}`, v])));
 }
 
-export function loadPilot(): { claims: PilotClaim[]; summary: PilotSummary; run: string } {
+export function loadPilot(run: string = HOLDOUT_RUN): { claims: PilotClaim[]; summary: PilotSummary; run: string } {
+  const dir = path.join(root, "packages/eval/results", run);
   const summary = JSON.parse(readFileSync(path.join(dir, "summary.json"), "utf8")) as PilotSummary;
   const filed = new Map<string, { tier: "proof" | "no_proof"; units_claimed: number }>();
   for (const line of readFileSync(MANIFEST, "utf8").split("\n").filter(Boolean)) {
@@ -44,5 +47,5 @@ export function loadPilot(): { claims: PilotClaim[]; summary: PilotSummary; run:
       modelSaid: r.model_recommendation === "approve" || r.model_recommendation === "deny" || r.model_recommendation === "review" ? r.model_recommendation : null,
     };
   });
-  return { claims, summary, run: RUN };
+  return { claims, summary, run };
 }

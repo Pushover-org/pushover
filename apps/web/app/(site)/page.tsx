@@ -4,10 +4,10 @@ import { Pile } from "@/components/site/Pile.tsx";
 import { Reveal } from "@/components/site/Reveal.tsx";
 import { SmoothScroll } from "@/components/site/SmoothScroll.tsx";
 import { Thread } from "@/components/site/Thread.tsx";
-import { GROUPS, REASON_TEXT, loadPilot, type Interval } from "@/lib/pilot.ts";
+import { GROUPS, PILOT_RUN, REASON_TEXT, loadPilot, type Interval } from "@/lib/pilot.ts";
 import s from "./landing.module.css";
 
-const $ = (cents: number, dp = 2) => `$${(cents / 100).toFixed(dp)}`;
+const $ = (cents: number, dp = 2) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp })}`;
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 const ci = (i: Interval) => `${i.k} of ${i.n} · 95% CI ${pct(i.low)}–${pct(i.high)}`;
 
@@ -23,12 +23,14 @@ const SANDBOX = [
 
 export default function Landing() {
   const { claims, summary, run } = loadPilot();
+  // The scroll story's cards stay the 32 pilot claims (with their own pilot checks).
+  const pilot = loadPilot(PILOT_RUN);
   const { armA, armB, armC } = summary;
   const bad = claims.filter((c) => c.truth !== "honest");
   const stopped = bad.filter((c) => c.outcome !== "APPROVE").length;
   const fooled = claims.filter((c) => c.truth === "fraud" && c.modelAlone === "approve");
   const slipped = fooled.filter((c) => c.outcome === "APPROVE");
-  // The four things the page leads with (owner's reposition, 2026-11-10), all from the committed pilot run.
+  // The four things the page leads with (owner's reposition, 2026-11-10), all from the committed held-out run.
   // "No" is a denial or a hold for a person; asking for one more document is not counted.
   const overruled = claims.filter((c) => c.modelSaid === "approve" && (c.outcome === "DENY" || c.outcome === "REVIEW"));
   const overruledHonest = overruled.filter((c) => c.truth === "honest").length;
@@ -72,10 +74,10 @@ export default function Landing() {
               </div>
             </div>
             <div className={s.heroCheck}>
-              <ol className={s.proofs} aria-label="What it does, in the pilot run">
+              <ol className={s.proofs} aria-label="What it does, in the held-out run">
                 <li>
                   <b>The tax gives it away.</b> {taxCaught.length} fake receipts charged a sales tax their store&apos;s address can&apos;t have. The model said approve; the
-                  rule denied {taxCaught.length === 1 ? "it" : "both"}.
+                  rule denied {taxCaught.length === 1 ? "it" : taxCaught.length === 2 ? "both" : "every one"}.
                 </li>
                 <li>
                   <b>The model said approve, the rule said no.</b> {overruled.length} times: {overruled.length - overruledHonest} were fraud or didn&apos;t qualify
@@ -91,8 +93,8 @@ export default function Landing() {
                 </li>
               </ol>
               <p className={s.checkNote}>
-                Pre-registered pilot of {summary.n} labelled claims ({bad.length} fraud or ineligible, {stopped} stopped), run{" "}
-                <a href={`${REPO}/tree/main/packages/eval/results/${run}`}>{run}</a>. The full held-out run is the next step.
+                Pre-registered held-out run: {summary.n} labelled claims no rule or prompt was tuned on ({bad.length} fraud or ineligible, {stopped} stopped),
+                run <a href={`${REPO}/tree/main/packages/eval/results/${run}`}>{run}</a>.
               </p>
             </div>
           </div>
@@ -105,7 +107,7 @@ export default function Landing() {
         </section>
 
         {/* 02 · The pile (scroll story) */}
-        <Pile claims={claims} checkA={armA.honestAverageCheckCents} checkC={armC.honestAverageCheckCents} />
+        <Pile claims={pilot.claims} checkA={pilot.summary.armA.honestAverageCheckCents} checkC={pilot.summary.armC.honestAverageCheckCents} />
 
         {/* 03 · Model said / rules said */}
         <section className={s.section} id="rules" data-thread="03">
@@ -238,7 +240,7 @@ export default function Landing() {
               <p className="label">05 · The numbers</p>
               <h2 className={`display ${s.h2}`}>Three ways to run the same {summary.n} claims.</h2>
               <p className={s.sub}>
-                Pre-registered: the claims, their labels and the pass mark were committed to git before any run. Pilot slice, n = {summary.n} ({summary.honest} honest,{" "}
+                Pre-registered: the claims, their labels and the pass mark were committed to git before any run. Held-out set, n = {summary.n} ({summary.honest} honest,{" "}
                 {summary.fraud} fraud, {summary.ineligible} that don&apos;t qualify). Run <span className="num">{run}</span>.
               </p>
             </Reveal>
@@ -249,9 +251,11 @@ export default function Landing() {
             </Reveal>
             <Reveal>
               <p className={s.footnote}>
-                Model alone gives a bigger average check than ours because it wrongly denies {armB.honestWronglyDenied.k} honest people, so fewer share the fund. Proof of
-                Claim sends {armC.honestWorkload.k} of {armC.honestWorkload.n} honest claims back for one more document. Even if a person approved every claim sent for
-                review, fraud paid would be {$(armC.fraudCentsWorstCase, 0)}. The full 100-claim held-out run comes next; these are pilot numbers.
+                {armB.honestAverageCheckCents > armC.honestAverageCheckCents
+                  ? `Model alone gives a bigger average check than ours because it wrongly denies ${armB.honestWronglyDenied.k} honest people, so fewer share the fund.`
+                  : `Model alone wrongly denies ${armB.honestWronglyDenied.k} honest people; Proof of Claim denies ${armC.honestWronglyDenied.k} and still gives the bigger average honest check.`}{" "}
+                Proof of Claim sends {armC.honestWorkload.k} of {armC.honestWorkload.n} honest claims back for one more document. Even if a person approved every claim sent for
+                review, fraud paid would be {$(armC.fraudCentsWorstCase, 0)}. These are the held-out numbers; the 32-claim pilot before them is in docs/methodology.md.
               </p>
             </Reveal>
           </div>
@@ -344,7 +348,7 @@ export default function Landing() {
                 <b>Not a chatbot.</b> There is no chat window. The model reports findings; it never decides and never moves money.
               </li>
               <li>
-                <b>Not proven at scale yet.</b> Synthetic fakes, a fictional settlement, a small pilot. Every number here says where it came from.
+                <b>Not proven at scale yet.</b> Synthetic fakes, a fictional settlement, 100 held-out claims. Every number here says where it came from.
               </li>
             </Reveal>
           </div>

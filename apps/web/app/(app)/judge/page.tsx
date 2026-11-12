@@ -75,7 +75,7 @@ async function lastPayout(): Promise<LastPayout | null> {
       `SELECT i.claim_id, i.amount_cents, i.fee_cents, i.outcome, i.paypal_status, i.paypal_item_id, b.paypal_batch_id, i.history_status, i.history_code, b.created_at AS sent_at
        FROM payout_items i JOIN payout_batches b ON b.id = i.batch_id
        WHERE b.settlement_id = $1 AND b.kind = 'CLAIMS' AND i.paypal_item_id IS NOT NULL
-       ORDER BY (i.history_status = 'CONFIRMED') DESC, b.id DESC, i.id LIMIT 1`,
+       ORDER BY (i.history_status = 'CONFIRMED') DESC, (i.paypal_status = 'SUCCESS') DESC, b.id DESC, i.id LIMIT 1`,
       [S],
     )
     .catch(() => ({ rows: [] as LastPayout[] }));
