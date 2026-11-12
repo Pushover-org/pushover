@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.png">
+    <img src="docs/assets/logo-light.png" alt="Proof of Claim" width="420">
+  </picture>
+</p>
+
 # Proof of Claim
 
 **A claims desk for class-action settlements. We check the person and the proof.**
