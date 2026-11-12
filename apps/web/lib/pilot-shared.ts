@@ -74,5 +74,13 @@ export const REASON_TEXT: Record<string, string> = {
   NEED_DOCUMENT: "We need one more document",
   CHECK_UNVERIFIED: "A check couldn't confirm it",
   LOW_CONFIDENCE: "The reading was unsure",
+  // Reasons the pilot never produced but the held-out run did (plain words, never the code).
+  REPEAT_RECEIPT_DETAILS: "Same receipt details as another claim",
+  VELOCITY_CLUSTER: "A burst of claims from one network",
+  VISUAL_ANOMALY: "Signs of editing on the receipt",
+  TAX_UNCONFIRMED: "Tax couldn't be confirmed",
+  EXAMINER_INVALID: "The reading failed",
+  EXAMINER_REFUSED: "The reader declined",
+  EXAMINER_NOT_RUN: "Not read yet",
 };
 

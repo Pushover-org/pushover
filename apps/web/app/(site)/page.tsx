@@ -30,7 +30,16 @@ export default function Landing() {
   const exhibit = loadExhibit();
   const { armA, armB, armC } = summary;
   const fooled = claims.filter((c) => c.truth === "fraud" && c.modelAlone === "approve");
-  const slipped = fooled.filter((c) => c.outcome === "APPROVE");
+  // The table shows a spread, not all of them: at most two of each kind of fraud, ten in all.
+  const perGroup = new Map<string, number>();
+  const shownFooled = fooled.filter((c) => {
+    const n = perGroup.get(c.group) ?? 0;
+    if (n >= 2) return false;
+    perGroup.set(c.group, n + 1);
+    return true;
+  }).slice(0, 10);
+  // Every fraud the rules paid, not only the ones the model alone would also have paid.
+  const slipped = claims.filter((c) => c.truth === "fraud" && c.outcome === "APPROVE");
   // The four things the page leads with (owner's reposition, 2026-11-10), all from the committed held-out run.
   // "No" is a denial or a hold for a person; asking for one more document is not counted.
   const overruled = claims.filter((c) => c.modelSaid === "approve" && (c.outcome === "DENY" || c.outcome === "REVIEW"));
@@ -152,7 +161,7 @@ export default function Landing() {
                 <span className="label">Model alone</span>
                 <span className="label">Proof of Claim</span>
               </div>
-              {fooled.map((c) => (
+              {shownFooled.map((c) => (
                 <div key={c.id} className={s.versusRow} data-outcome={c.outcome}>
                   <span className="num">{c.id}</span>
                   <span>{GROUPS[c.group]?.long}</span>
@@ -162,16 +171,24 @@ export default function Landing() {
                   </span>
                 </div>
               ))}
+              {fooled.length > shownFooled.length ? (
+                <p className={s.versusMore}>
+                  {fooled.length - shownFooled.length} more, every one with its reason:{" "}
+                  <a href={`${REPO}/blob/main/packages/eval/results/${run}/claims.csv`}>the full results</a>.
+                </p>
+              ) : null}
             </Reveal>
 
             {slipped.length > 0 && (
               <Reveal className={s.slipped}>
                 <div>
                   <p className="label">The {slipped.length === 1 ? "one" : slipped.length} that got through</p>
-                  <h3 className="display">One person, five names. The first claim looks perfect.</h3>
+                  <h3 className="display">No receipt, a believable story, a new name each time.</h3>
                 </div>
                 <p>
-                  A flawless claim passes every document check. So now every claim starts with <b>Log in with PayPal</b>: one verified PayPal account, one claim, and the
+                  {slipped.length} {slipped.length === 1 ? "fraud was" : "frauds were"} paid, {$(armC.fraudCents, 0)} in all: no-receipt claims from one person using several names, or a bot
+                  farm&apos;s claim worded just differently enough. A flawless claim passes every document check. So every claim starts with <b>Log in with PayPal</b>: one
+                  verified PayPal account, one claim, and the
                   money goes to that exact account. We tested it in PayPal&apos;s sandbox: a payout to the logged-in account&apos;s ID succeeded, and a made-up ID was
                   refused.
                 </p>
