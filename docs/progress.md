@@ -1,6 +1,6 @@
 # Progress (hand-off between machines and sessions)
 
-Last updated: 2026-11-11 (original laptop, Phase 10).
+Last updated: 2026-11-12 (original laptop, Phase 11).
 
 ## The project: Proof of Claim (pivot from Pushover, 2026-10-31)
 
@@ -62,7 +62,8 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 8 Claimant upgrades (P9, C9, C3, B3, C11, C12) | done (`4f6f196`, `f3430d8`, `a03e4e1`) |
 | 9 Assistants: MCP server and OpenAPI (P11–P15, C14) | done (`c442fec`..`2700ac9`) |
 | 10 APIMatic: PayPal's Server SDK (P57), purchase proof research (C5) | done: P57 (`c2569ab`); C5 researched and recorded, not built (owner, 2026-11-11) |
-| 11–14 | not started |
+| 11 deploy (R12): Railway web, worker, Postgres (P51), eval gate (P52), sandbox-only guard (P53) | live at https://web-production-3f92e595.up.railway.app (2026-11-12); owner steps left: Return URL, webhook ID, phone check (`docs/deploy.md`) |
+| 12–14 | not started |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
 **C7** two-person approval (enforced in code and in the database), P35/P37 (already had),
@@ -238,6 +239,11 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
 
 ## In progress
 
+- **Phase 11 (2026-11-12):** deployed; `docs/deploy.md` has the services, how to deploy (`scripts/deploy.sh`:
+  committed code, checks, eval gate, `railway up`), secrets by name, how the demo data was loaded, and the
+  checks run on the live site. Left for the owner in the PayPal dashboard: the Return URL for Log in with
+  PayPal, the webhook (then `PAYPAL_GUARDED_WEBHOOK_ID` on web and worker), and opening it on a phone.
+  Next: Phase 12 (judges and demo).
 - Phase 10 is done: P57 built, C5 recorded and not built. One C5 fact is still unknown: whether the merchant's
   history shows the test purchase with buyer1's payer ID and the item. The sandbox history stopped refreshing
   at 03:29:59Z on 2026-11-11 and hadn't moved by 09:08Z; re-check once it does (command below). The same stall
@@ -339,7 +345,8 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- `../FULL-BUILD-PLAN.md` Phase 11 (deploy: Railway web, worker and Postgres; sandbox-only guard; eval gate), when the owner says go.
+- Owner: the three PayPal dashboard steps in `docs/deploy.md` (Return URL, webhook and its ID, phone check).
+- `../FULL-BUILD-PLAN.md` Phase 12 (judges and demo), then Phase 13 (full eval) and Phase 14 (submission).
 
 ## Pushover history (kept for the record)
 
