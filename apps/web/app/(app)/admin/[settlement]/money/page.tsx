@@ -39,15 +39,30 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
   const at = (d8: Date) => d8.toISOString().replace("T", " ").slice(0, 16);
 
   const parts = [
-    { k: "paid", label: "Paid", cents: m.paidCents },
-    { k: "unclaimed", label: "Unclaimed (returns after 30 days)", cents: m.unclaimedCents },
-    { k: "flight", label: "In flight", cents: m.inFlightCents },
-    { k: "unverified", label: "Unconfirmed", cents: m.unverifiedCents },
-    { k: "returned", label: "Returned or failed", cents: m.returnedCents },
-    { k: "cypres", label: "Sent to charity", cents: m.cyPresCents },
+    { k: "paid", label: "Paid to claimants, confirmed by PayPal", cents: m.paidCents },
+    { k: "unclaimed", label: "Unclaimed: comes back after 30 days", cents: m.unclaimedCents },
+    { k: "flight", label: "Sent, PayPal still processing", cents: m.inFlightCents },
+    { k: "unverified", label: "Sent, PayPal hasn't confirmed yet", cents: m.unverifiedCents },
+    { k: "returned", label: "Came back or failed", cents: m.returnedCents },
+    { k: "cypres", label: "Sent to the court's charity", cents: m.cyPresCents },
     { k: "fees", label: "PayPal fees", cents: m.feesCents },
-    { k: "held", label: "Held in the fund", cents: m.heldCents },
+    { k: "held", label: "Still in the fund", cents: m.heldCents },
   ];
+  const sum = parts.reduce((t, p) => t + p.cents, 0);
+  const balances = sum === S.fundCents;
+  /** Two signature lines: who proposed, and the different supervisor who must approve. */
+  const Signatures = ({ proposer, when }: { proposer: string | null; when: Date | null }) => (
+    <div className={s.sigs}>
+      <div className={s.sigLine}>
+        <span className={s.sigName}>{proposer ?? "\u00a0"}</span>
+        <span className={s.sigRole}>Proposed by an analyst{when ? ` · ${at(when)} UTC` : ""}</span>
+      </div>
+      <div className={s.sigLine}>
+        <span className={s.sigName}>{"\u00a0"}</span>
+        <span className={s.sigRole}>Approved by a different supervisor; only then is PayPal called</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className={s.page}>
@@ -58,24 +73,31 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
         </h1>
       </header>
 
-      <section className={s.ledger} aria-label="Where the fund is">
-        <div className={s.equation}>
-          <span className={s.fund}>
-            <small>Fund</small>
-            <b className="num">{dollars(S.fundCents)}</b>
-          </span>
-          <span className={s.eq}>=</span>
-          {parts.map((p, i) => (
-            <span key={p.k} className={s.term} data-k={p.k}>
-              {i > 0 ? <i>+</i> : null}
-              <small>{p.label}</small>
-              <b className="num">{dollars(p.cents)}</b>
-            </span>
-          ))}
+      <section className={s.ledger} aria-labelledby="fund-h">
+        <div className={s.ledgerHead}>
+          <p className="label" id="fund-h">
+            The fund
+          </p>
+          <b className={`num ${s.fundAmt}`}>{dollars(S.fundCents)}</b>
         </div>
-        <div className={s.bar} role="img" aria-label="The fund split into the parts above">
+        <div className={s.bar} role="img" aria-label="The fund split into the parts listed below">
           {parts.map((p) => (p.cents > 0 ? <span key={p.k} data-k={p.k} style={{ flexGrow: p.cents }} title={`${p.label}: ${dollars(p.cents)}`} /> : null))}
         </div>
+        <dl className={s.book}>
+          {parts.map((p) => (
+            <div key={p.k} className={s.bookRow} data-k={p.k} data-zero={p.cents === 0}>
+              <dt>
+                <span className={s.key} aria-hidden />
+                {p.label}
+              </dt>
+              <dd className="num">{dollars(p.cents)}</dd>
+            </div>
+          ))}
+          <div className={s.bookTotal} data-ok={balances}>
+            <dt>{balances ? "Adds up to the fund, to the cent" : "Does NOT add up to the fund"}</dt>
+            <dd className="num">{dollars(sum)}</dd>
+          </div>
+        </dl>
         <p className={s.note}>
           Payouts PayPal hasn&apos;t confirmed are shown as unconfirmed, never as paid.
           {m.feesUnknown > 0 ? ` ${m.feesUnknown} item fees are not reported yet; they are never assumed.` : ""}
@@ -85,12 +107,34 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
       <section className={s.distribute}>
         <div>
           <p className="label">Distribute</p>
-          <h2 className="display">{payable.length > 0 ? <>Pay {payable.length} approved claimants <em>{dollars(total)}</em>.</> : <>Nothing is waiting to be paid.</>}</h2>
-          <p>
-            Before any money moves, every approved claim is checked again against the whole settlement, so a bot cluster that formed after a claim was approved pulls it back
-            to a person. Then one PayPal Payouts batch pays everyone, pro rata, in whole cents.
-          </p>
-          <ul className={s.facts}>
+          <h2 className="display">
+            {payable.length > 0 ? (
+              <>
+                Pay {payable.length} approved claimants <em>{dollars(total)}</em>.
+              </>
+            ) : room < 100 ? (
+              <>Today&apos;s sandbox limit is used up.</>
+            ) : (
+              <>Nothing to pay right now.</>
+            )}
+          </h2>
+          {payable.length > 0 ? (
+            <p>
+              Before any money moves, every approved claim is checked again against the whole settlement, so a bot cluster that formed after a claim was approved pulls it
+              back to a person. Then one PayPal Payouts batch pays everyone, pro rata, in whole cents.
+            </p>
+          ) : room < 100 ? (
+            <p>
+              This public demo sends at most {dollars(DEMO_DAILY_CAP_CENTS, 0)} of play money in 24 hours, and {dollars(m.sentLast24hCents)} went out in the last 24. Approved
+              claims wait here for the next round; nothing is lost.
+            </p>
+          ) : (
+            <p>
+              Approved claims that haven&apos;t been paid appear here, ready for a round. To see one, <a href="/judge">file a claim as a sandbox buyer</a> or approve a claim
+              in the <a href={`/admin/${S.id}`}>review queue</a>.
+            </p>
+          )}
+          <ul className={s.facts} hidden={payable.length === 0}>
             <li>
               <b className="num">{byId}</b> paid straight to the PayPal account they logged in with
             </li>
@@ -128,9 +172,9 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
           {open && !expired ? (
             <>
               <p className={s.proposal}>
-                <b className={s.sig}>{open.proposedBy.name}</b> proposed round {proposed?.round ?? "?"} at <span className="num">{at(open.proposedAt)}</span> UTC:{" "}
-                <b className="num">{proposed?.items.length ?? 0}</b> payments, <b className="num">{dollars(open.totalCents)}</b>.
+                Round {proposed?.round ?? "?"}: <b className="num">{proposed?.items.length ?? 0}</b> payments, <b className="num">{dollars(open.totalCents)}</b>.
               </p>
+              <Signatures proposer={open.proposedBy.name} when={open.proposedAt} />
               {stale ? <p className={s.stale}>Claims changed since this was proposed. Approving will refuse and send nothing; propose the round again.</p> : null}
               {open.proposedBy.id === me.id ? (
                 <p className={s.wait}>Waiting for a supervisor other than you to approve.</p>
@@ -146,7 +190,12 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
               <p className={s.wait}>
                 {expired ? "The last proposal expired unapproved. " : ""}You propose the round; a supervisor other than you approves it before PayPal is called.
               </p>
-              <ProposeButton settlementId={S.id} label={`Propose paying ${dollars(total)}`} disabled={payable.length === 0} />
+              <Signatures proposer={null} when={null} />
+              {payable.length > 0 ? (
+                <ProposeButton settlementId={S.id} label={`Propose paying ${dollars(total)}`} disabled={false} />
+              ) : (
+                <p className={s.wait}>Nothing to propose yet.</p>
+              )}
             </>
           )}
           <p className={s.you}>
@@ -188,9 +237,9 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
           {cyOpen && !cyExpired ? (
             <>
               <p className={s.proposal}>
-                <b>{cyOpen.proposedBy.name}</b> proposed sending <b className="num">{dollars(cyOpen.totalCents)}</b> from {cyOpenPlan?.items.length ?? 0} returned payments to{" "}
-                {cyOpenPlan?.recipient.name ?? S.cyPres.name}.
+                Send <b className="num">{dollars(cyOpen.totalCents)}</b> from {cyOpenPlan?.items.length ?? 0} returned payments to {cyOpenPlan?.recipient.name ?? S.cyPres.name}.
               </p>
+              <Signatures proposer={cyOpen.proposedBy.name} when={cyOpen.proposedAt} />
               {cyOpen.proposedBy.id === me.id ? (
                 <p className={s.wait}>Waiting for a supervisor other than you to approve.</p>
               ) : me.role === "supervisor" ? (
@@ -205,9 +254,14 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
               <p className={s.wait}>
                 {cy.totalCents > 0
                   ? `${dollars(cy.totalCents)} from ${cy.items.length} returned ${cy.items.length === 1 ? "payment is" : "payments are"} past the re-offer window.`
-                  : "No returned money is past its re-offer window yet."}
+                  : `Nothing to send yet. Unclaimed money comes back after 30 days; once its ${Number(process.env["REOFFER_DAYS"] ?? REOFFER_DAYS)}-day re-offer window ends, it appears here, ready to send to ${S.cyPres.name}.`}
               </p>
-              <ProposeButton settlementId={S.id} kind="CY_PRES" label={`Propose sending ${dollars(cy.totalCents)} to cy-près`} disabled={cy.totalCents === 0} />
+              {cy.totalCents > 0 ? (
+                <>
+                  <Signatures proposer={null} when={null} />
+                  <ProposeButton settlementId={S.id} kind="CY_PRES" label={`Propose sending ${dollars(cy.totalCents)} to ${S.cyPres.name}`} disabled={false} />
+                </>
+              ) : null}
             </>
           )}
         </div>

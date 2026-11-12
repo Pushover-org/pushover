@@ -189,7 +189,10 @@ test.describe.serial("a claim, from filing to payment", () => {
     await expect(ana.getByRole("button", { name: /Hold to approve/ })).toHaveCount(0);
 
     const sol = await analyst(browser, E2E.supervisor, `/admin/${S}/money`);
-    await expect(sol.getByText(/E2E Analyst proposed round 1/)).toBeVisible();
+    // The proposal, and the proposer's signature on the first of the two signature lines.
+    await expect(sol.getByText(/^Round 1: 2 payments, \$25\.00\.$/)).toBeVisible();
+    await expect(sol.getByText("E2E Analyst", { exact: true })).toBeVisible();
+    await expect(sol.getByText("Approved by a different supervisor; only then is PayPal called")).toBeVisible();
     const hold = sol.getByRole("button", { name: /Hold to approve and send \$25\.00/ });
     await hold.hover();
     await sol.mouse.down();
