@@ -132,8 +132,8 @@ export default async function Judge() {
         </dl>
         <p className={s.note}>The claimant login works only on PayPal&apos;s sandbox, never on paypal.com. Nothing here moves real money.</p>
         <p className={s.note}>
-          Everyone shares this one demo: what you approve or send, the next visitor sees. On 12 November the two linked groups were decided and a first payment round
-          was sent, so the payout trail below is real.
+          Everyone shares this one demo: what you approve or send, the next visitor sees. On 12 November the two linked groups were decided and two payment rounds
+          were sent, so the payout trail below is real.
         </p>
       </section>
 
@@ -153,7 +153,9 @@ export default async function Judge() {
             <h3>File a claim yourself</h3>
             <p>
               <a href={`/claim/${S}`}>File a claim</a>: Log in with PayPal using the claimant login above, then pick &ldquo;No receipt&rdquo; ($10
-              flat) or photograph any restaurant receipt. The AI reports what the receipt shows; the rules decide on the spot and say why.
+              flat) or photograph any restaurant receipt. The AI reports what the receipt shows; the rules decide on the spot and say why. PayPal&apos;s
+              sandbox gives every test buyer the same address, so type a different street address on the form, or the duplicate rule will deny the claim,
+              as it should. More sandbox buyers are in the README.
             </p>
           </li>
           <li>

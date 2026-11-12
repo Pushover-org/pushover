@@ -65,7 +65,7 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 11 deploy (R12): Railway web, worker, Postgres (P51), eval gate (P52), sandbox-only guard (P53) | live at https://web-production-3f92e595.up.railway.app (2026-11-12); done: Return URL and webhook set, live Log in with PayPal works, owner logged in from a phone (`docs/deploy.md`) |
 | 12 judges and demo | done except P47 private copies (not built); `/judge`, `/demo/scale`, landing reposition, real round `UN6TR3QNHZV4C` |
 | 13 full eval (R13) and the real sandbox distribution | done: held-out GO on Haiku and Sonnet (`docs/methodology.md`), round 2 `YPBRD2TBA4Y9A` sent and read back |
-| 14 | not started |
+| 14 submission (R14) | written: README.md, LIMITATIONS.md (P50), AI_ASSISTANCE.md, `docs/video-script.md`, `docs/devpost.md`; owner records the video and submits |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
 **C7** two-person approval (enforced in code and in the database), P35/P37 (already had),
@@ -366,7 +366,11 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- `../FULL-BUILD-PLAN.md` Phase 14: README, LIMITATIONS.md, the 3-minute video script, the Devpost text.
+- **Owner, before 01:30 IST 13 November:** review README.md, LIMITATIONS.md and `docs/devpost.md`; record the
+  video from `docs/video-script.md` (no music; blur real restaurant names); upload it to YouTube as public;
+  paste the Devpost text, tick AG Grid, Bryntum and APIMatic, submit. On GitHub (as laxmikhengare), set the
+  repo's About description and website to the live URL. Keep the demo running until 21 December.
+- After submission: change nothing in the repo or video (rules); only fix outages on the live site.
 
 ## Pushover history (kept for the record)
 
