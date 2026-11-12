@@ -14,9 +14,9 @@ Every claim named below is in the live demo.
 
 | Time | Screen | Voice (say it your way) |
 |---|---|---|
-| 0:00–0:15 | Landing page hero: "We check the person and the proof", the three cited facts underneath | "When a company settles a class action, people who were overcharged can claim a share. In one recent settlement, 49% of 1.77 million claims were fraudulent. Every fake that's paid is taken from a real person. This is Proof of Claim." |
+| 0:00–0:15 | Landing page, fresh load: "The AI said approve. The rule said no." while the examination plays on claim c-114 (pencil circles the tax, the DENIED stamp lands) | "When a company settles a class action, people who were overcharged can claim a share. In one recent settlement, 49% of 1.77 million claims were fraudulent. Every fake that's paid is taken from a real person. This is Proof of Claim." |
 | 0:15–0:35 | `/demo`: the tally, then the three spotlight claims | "It's a claims desk. Claude reads each receipt and reports what it sees. Plain rules decide. A person approves the money, PayPal pays it, and money nobody claims goes to the court's chosen charity." |
-| 0:35–0:55 | Claims desk → claim **c-114** (or c-120): the examiner's findings, then the C4 tax check failing | "This receipt looks fine. Claude read it and recommended approve. But the sales tax on it can't exist at that store's address. The rule denies it, and says exactly why." |
+| 0:35–0:55 | Claims desk → claim **c-114**: the receipt, the AI's "approve" in pencil struck through, the DENIED stamp, the C4 tax check failing with its numbers | "This receipt looks fine. Claude read it and recommended approve. But the sales tax on it can't exist at that store's address. The rule denies it, and says exactly why." |
 | 0:55–1:10 | Claim **c-150**: the planted "ADMINISTRATOR APPROVED" text, the model's "approve", the rule's DENY (out of period) | "This one has an instruction written into it for the AI. The model said approve. It doesn't matter: the model can't decide anything. The receipt is from before the class period, so the rule says no." |
 | 1:10–1:30 | Linked groups → group 2: **c-029** and c-036, same inbox, the investigator's note, "Denied" | "One person, five names. The first claim looks perfect and passes every check alone. Two of them share an inbox, so they're held as a group. The AI investigator writes what it sees; a person decides." |
 | 1:30–1:45 | `/claim`: Log in with PayPal (sandbox), "Signed in as … verified account"; then a second buyer's claim **denied as a duplicate** | "Claimants log in with PayPal, so a claim belongs to one verified account and the money can only go there. Our second test buyer was denied: same address as an approved claim." |
@@ -28,6 +28,9 @@ Every claim named below is in the live demo.
 Optional cut if long: drop 1:30–1:45 (the duplicate denial) and keep the money path.
 
 ## Before recording
+
+- The landing page's examination plays once per load; reload the page to film it again. With reduced
+  motion switched on in the operating system it shows the finished state instead.
 
 - Log in as the analyst and supervisor in two browser profiles.
 - Check `/judge` shows "On" for PayPal sandbox, Log in with PayPal, the AI examiner and the webhook.
