@@ -50,7 +50,7 @@ Set once with `railway variable set NAME --stdin --service <svc>`, never in git,
   `PAYER_SEAL_KEY`, `PAYER_PSEUDONYM_KEY` (web and worker, the same values in both).
 - Generated fresh: `JUDGE_ANALYST_PASSWORD`, `JUDGE_SUPERVISOR_PASSWORD` (web; play-money logins for judges).
 - Set to the live domain: `PUBLIC_ORIGIN`, `PAYPAL_LOGIN_RETURN_URL` (`<origin>/api/paypal/callback`).
-- Not set yet: `PAYPAL_GUARDED_WEBHOOK_ID` (owner step below).
+- `PAYPAL_GUARDED_WEBHOOK_ID` (web and worker): `8P575864EG572884E`, created by the owner on 2026-11-12 (not a secret).
 
 AI spend on the public site is capped per server process: `DEMO_AI_BUDGET_USD=1` (examiner),
 `STUDIO_AI_BUDGET_USD=0.5` (desk agent). A restart resets the cap.
@@ -75,7 +75,7 @@ The live database was loaded on 2026-11-12 without opening it to the internet:
    dump over the private network in one transaction, refusing if any settlement already existed
    (`SEED_LOADED settlements=1 claims=57 analysts=2`), and was then deleted.
 
-## Owner steps (PayPal dashboard, app `pushover-guarded`)
+## Owner steps (PayPal dashboard, app `pushover-guarded`): 1 and 2 done 2026-11-12
 
 1. **Log in with PayPal (P1):** add `https://web-production-3f92e595.up.railway.app/api/paypal/callback`
    as a Return URL. Until then the claim form's PayPal login can't complete on the live site.
@@ -85,6 +85,10 @@ The live database was loaded on 2026-11-12 without opening it to the internet:
    `railway variable set PAYPAL_GUARDED_WEBHOOK_ID=<id> --service web` and the same for `worker`.
 3. **Phone:** open the live URL on a phone.
 
+PayPal's `GET /v1/notifications/webhooks` for the guarded app lists `8P575864EG572884E` with the live
+URL, subscribed to every event type (`*`). Only verified events are stored, and a stored event only makes
+the worker read a payout batch back, so the extra event types do nothing.
+
 ## Checked on 2026-11-12
 
 `/api/health` 200 `{"ok":true}`; `/`, `/settlements`, `/claim/acme-restaurant-beverage`, `/report/…`,
@@ -92,3 +96,11 @@ The live database was loaded on 2026-11-12 without opening it to the internet:
 iPhone 13 size: the analyst login lands on `/admin/acme-restaurant-beverage` on the same origin ("10 claims
 need a person"), groups and report pages load, no page errors. Worker log: `started`, interval 60 s.
 Found: on a phone the claims desk's long settlement eyebrow runs off the right edge (Phase 12).
+
+After the owner's steps: a forged webhook (made-up signature headers) is refused, `400 signature not
+verified`. **Live Log in with PayPal (P1):** the first try came back from PayPal with a code and was then
+redirected to `https://localhost:8080/…`: behind Railway's proxy the request's own origin is the
+container's. Fixed in `37424d5` (every redirect uses `PUBLIC_ORIGIN`, `apps/web/lib/server/origin.ts`).
+Then, in a headless browser as sandbox buyer1: the claim form shows "Signed in as Dana Reyes · verified
+account". Railway's Postgres is version 18 (`postgres-ssl:18`); we develop on 17, and all 13 migrations
+ran on it.
