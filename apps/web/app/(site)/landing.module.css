@@ -29,9 +29,96 @@
 .heroGrid {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: clamp(32px, 4vw, 64px);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-areas: "copy exhibit" "marks exhibit";
+  gap: clamp(28px, 3.5vw, 56px) clamp(32px, 5vw, 80px);
   align-items: center;
+}
+.heroCopy {
+  grid-area: copy;
+}
+.heroGrid > figure {
+  grid-area: exhibit;
+}
+/* The AI's word in pencil; the rule's word in its stamp ink. */
+.aiWord {
+  font-style: italic;
+  color: var(--pencil);
+}
+.ruleWord {
+  color: var(--deny);
+}
+.marks {
+  grid-area: marks;
+  align-self: start;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  border-top: 1px solid var(--hair-2);
+}
+.marks div {
+  padding: 14px 18px 0 0;
+}
+.marks dt {
+  font: 400 24px/1.1 var(--font-display);
+}
+.marks dd {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.marks [data-k="pencil"] dt {
+  font-style: italic;
+  color: var(--pencil);
+}
+.marks [data-k="stamp"] dt {
+  color: var(--deny);
+}
+.marks [data-k="sign"] dt {
+  color: var(--green);
+}
+/* The held-out run: four numbers, tabular, one baseline. */
+.tally {
+  position: relative;
+  margin-top: clamp(40px, 6vh, 72px);
+}
+.tally a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tally dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 14px 0 0;
+  border-top: 1px solid var(--ink);
+}
+.tally dl > div {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 18px 20px 4px 0;
+}
+.tally dl > div + div {
+  padding-left: 20px;
+  border-left: 1px solid var(--hair-2);
+}
+.tally dd {
+  margin: 0;
+  font: 400 clamp(2.4rem, 1.6rem + 2.2vw, 3.6rem)/1 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.tally dd small {
+  font-size: 0.45em;
+  letter-spacing: 0;
+  color: var(--ink-2);
+}
+.tally dt {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ink-2);
 }
 .kicker {
   display: inline-flex;
@@ -223,11 +310,12 @@
 .versusRow:hover {
   background: var(--paper-2);
 }
+/* The AI's answer in pencil, struck through in the stamp's ink where the rule overruled it. */
 .modelSaid {
-  font-family: var(--font-num);
-  font-size: 13px;
-  color: var(--deny);
+  font: italic 400 19px/1.2 var(--font-display);
+  color: var(--pencil);
   text-decoration: line-through;
+  text-decoration-color: var(--deny);
   text-decoration-thickness: 1.5px;
 }
 .rulesSaid b {
@@ -655,6 +743,24 @@
 @media (max-width: 900px) {
   .heroGrid {
     grid-template-columns: 1fr;
+    grid-template-areas: "copy" "exhibit" "marks";
+  }
+  .marks {
+    grid-template-columns: 1fr;
+  }
+  .marks div {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--hair);
+  }
+  .tally dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tally dl > div:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .tally dl > div:nth-child(n + 3) {
+    border-top: 1px solid var(--hair-2);
   }
   .heroCheck {
     gap: 32px;

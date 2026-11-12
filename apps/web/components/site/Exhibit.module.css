@@ -1,0 +1,317 @@
+/* "The examination". Timeline (once, on load): the receipt settles 0.2s; pencil marks 1.0–2.6s;
+   the stamp lands at 3.0s; the AI's "approve" is struck at 3.3s; the reason slip rises at 3.4s. */
+.exhibit {
+  position: relative;
+  margin: 0;
+  width: min(400px, 100%);
+  justify-self: center;
+  padding-top: 24px;
+  margin-right: clamp(0px, 7vw, 104px);
+}
+.tag {
+  position: absolute;
+  top: 0;
+  left: 24px;
+  z-index: 3;
+  padding: 6px 10px 6px 24px;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  background: var(--card);
+  font: 500 11px/1 var(--font-num);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transform: rotate(-3deg);
+  animation: settle 0.7s var(--ease) 0.2s both;
+}
+.tag::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -4px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+}
+.paper {
+  position: relative;
+}
+.receipt {
+  position: relative;
+  padding: 34px 32px 30px;
+  background: var(--receipt);
+  color: #2a2822;
+  font: 400 15px/1.75 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  transform: rotate(1.2deg);
+  box-shadow: 0 1px 0 var(--hair), 0 22px 44px -26px rgb(21 20 15 / 0.5);
+  animation: settle 0.7s var(--ease) 0.2s both;
+}
+/* The torn bottom edge. */
+.receipt::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -9px;
+  height: 10px;
+  background: radial-gradient(circle at 8px 10px, transparent 6.5px, var(--receipt) 7px) 0 0 / 16px 10px repeat-x;
+}
+.receipt p {
+  margin: 0;
+}
+.store {
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.addr {
+  margin-bottom: 14px !important;
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #5b574c;
+}
+.row {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.amt {
+  position: relative;
+}
+.total {
+  font-weight: 700;
+}
+.rule {
+  margin: 10px 0;
+  border: 0;
+  border-top: 1px dashed #b9b3a3;
+}
+
+/* Pencil: the AI's marks. Graphite, never a decision ink. */
+.pencil {
+  font: italic 400 22px/1.1 var(--font-display);
+  color: var(--pencil);
+  letter-spacing: 0;
+}
+.noteDrinks,
+.noteTax {
+  position: absolute;
+  white-space: nowrap;
+  animation: write 0.4s var(--ease) both;
+}
+.noteDrinks {
+  right: -108px;
+  top: 2px;
+  transform: rotate(-3deg);
+  animation-delay: 1s;
+}
+.noteTax {
+  right: -116px;
+  top: 0;
+  transform: rotate(-6deg);
+  animation-delay: 2s;
+}
+.circle {
+  position: absolute;
+  left: -16px;
+  top: -6px;
+  width: calc(100% + 32px);
+  height: calc(100% + 12px);
+  overflow: visible;
+  fill: none;
+  stroke: var(--pencil);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.circle path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 0.55s var(--ease) 1.45s forwards;
+}
+.model {
+  position: relative;
+  display: inline-block;
+  margin-top: 18px !important;
+  font-size: 21px;
+  clip-path: inset(0 100% 0 0);
+  animation: reveal 0.6s var(--ease) 2.35s forwards;
+}
+.said {
+  position: relative;
+}
+.said::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  top: 56%;
+  height: 2px;
+  background: var(--deny);
+  transform: rotate(-2deg) scaleX(0);
+  transform-origin: left;
+  animation: strike 0.25s var(--ease) 3.3s forwards;
+}
+
+/* Stamp: the rule's decision, in its state ink. */
+.stamp {
+  position: absolute;
+  right: -34px;
+  bottom: -30px;
+  z-index: 4;
+  padding: 8px 16px 7px;
+  border: 3px solid currentColor;
+  border-radius: 6px;
+  color: var(--deny);
+  background: rgb(255 253 248 / 0.55);
+  font: 700 34px/1 var(--font-num);
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+  mix-blend-mode: multiply;
+  transform: rotate(-9deg);
+  animation: stamp 0.24s cubic-bezier(0.3, 0, 0.2, 1) 3s both;
+}
+.stamp small {
+  display: block;
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1.5px solid currentColor;
+  font: 500 10.5px/1.3 var(--font-num);
+  letter-spacing: 0.12em;
+}
+
+/* The reason, typed. */
+.slip {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  margin: 50px 6px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--hair-2);
+  border-left: 3px solid var(--deny);
+  border-radius: 4px;
+  background: var(--card);
+  font-size: 14px;
+  color: var(--ink-2);
+  animation: rise 0.3s var(--ease) 3.4s both;
+}
+.slip b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.why {
+  font: 400 13px/1.5 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.src {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+  }
+}
+@keyframes write {
+  from {
+    opacity: 0;
+    translate: -6px 0;
+  }
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes reveal {
+  to {
+    clip-path: inset(0 -10px 0 0);
+  }
+}
+@keyframes strike {
+  to {
+    transform: rotate(-2deg) scaleX(1);
+  }
+}
+@keyframes stamp {
+  from {
+    opacity: 0;
+    scale: 1.14;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+/* Held until the figure is on screen (PlayWhenSeen). */
+.exhibit[data-wait="true"] *,
+.exhibit[data-wait="true"] *::after {
+  animation-play-state: paused !important;
+}
+
+@media (max-width: 900px) {
+  .exhibit {
+    width: min(330px, 78%);
+    margin: 8px auto 0 0;
+  }
+  .receipt {
+    padding: 24px 20px 22px;
+    font-size: 13px;
+  }
+  .slip {
+    margin-top: 52px;
+  }
+  .pencil {
+    font-size: 18px;
+  }
+  .noteDrinks {
+    right: -84px;
+  }
+  .noteTax {
+    right: -90px;
+  }
+  .model {
+    font-size: 18px;
+  }
+  .stamp {
+    right: -30px;
+    bottom: -34px;
+    font-size: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tag,
+  .receipt,
+  .noteDrinks,
+  .noteTax,
+  .stamp,
+  .slip {
+    animation: fade 0.2s linear both;
+  }
+  .circle path,
+  .model,
+  .said::after {
+    animation: none;
+    stroke-dashoffset: 0;
+    clip-path: none;
+    transform: rotate(-2deg) scaleX(1);
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+}

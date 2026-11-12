@@ -5,10 +5,10 @@
   transition: background var(--dur-ui) var(--ease), border-color var(--dur-ui) var(--ease);
   border-bottom: 1px solid transparent;
 }
+/* Solid paper once the page moves under it: no glass. */
 .nav[data-scrolled="true"] {
-  background: rgb(244 241 232 / 0.86);
-  backdrop-filter: blur(10px) saturate(1.2);
-  border-bottom-color: var(--hair);
+  background: var(--paper);
+  border-bottom-color: var(--hair-2);
 }
 .inner {
   display: flex;

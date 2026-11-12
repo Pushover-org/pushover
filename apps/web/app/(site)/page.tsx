@@ -1,9 +1,11 @@
 import { CHECK_IDS, CHECK_NAMES } from "@proofofclaim/claims";
+import { Exhibit } from "@/components/site/Exhibit.tsx";
 import { Nav } from "@/components/site/Nav.tsx";
 import { Pile } from "@/components/site/Pile.tsx";
 import { Reveal } from "@/components/site/Reveal.tsx";
 import { SmoothScroll } from "@/components/site/SmoothScroll.tsx";
 import { Thread } from "@/components/site/Thread.tsx";
+import { loadExhibit } from "@/lib/exhibit.ts";
 import { GROUPS, PILOT_RUN, REASON_TEXT, loadPilot, type Interval } from "@/lib/pilot.ts";
 import s from "./landing.module.css";
 
@@ -25,9 +27,8 @@ export default function Landing() {
   const { claims, summary, run } = loadPilot();
   // The scroll story's cards stay the 32 pilot claims (with their own pilot checks).
   const pilot = loadPilot(PILOT_RUN);
+  const exhibit = loadExhibit();
   const { armA, armB, armC } = summary;
-  const bad = claims.filter((c) => c.truth !== "honest");
-  const stopped = bad.filter((c) => c.outcome !== "APPROVE").length;
   const fooled = claims.filter((c) => c.truth === "fraud" && c.modelAlone === "approve");
   const slipped = fooled.filter((c) => c.outcome === "APPROVE");
   // The four things the page leads with (owner's reposition, 2026-11-10), all from the committed held-out run.
@@ -51,15 +52,16 @@ export default function Landing() {
                 <span className={s.dot} /> A claims desk for class-action settlements
               </p>
               <h1 className={`display ${s.h1}`}>
-                <span className={s.line}>We check the person</span>
                 <span className={s.line}>
-                  and the <em>proof</em>.
+                  The <i className={s.aiWord}>AI</i> said approve.
+                </span>
+                <span className={s.line}>
+                  The <span className={s.ruleWord}>rule</span> said no.
                 </span>
               </h1>
               <p className={s.lede}>
-                An AI reads every receipt and reports what it shows. Plain rules decide, so a receipt whose sales tax doesn&apos;t fit the store&apos;s address is denied even
-                when the model says approve. Honest claimants are paid to the PayPal account they logged in with, and money nobody claims goes to the court&apos;s chosen
-                nonprofit. Every dollar comes with a written reason.
+                Proof of Claim lets AI read every receipt and lets published rules decide. A person approves the money, PayPal pays it, and money nobody claims goes to the
+                court&apos;s chosen charity. Every dollar has a written reason.
               </p>
               <div className={s.ctas}>
                 <a className="pill pill--green" href="/demo">
@@ -68,35 +70,55 @@ export default function Landing() {
                 <a className="pill pill--quiet" href="/judge">
                   Judges: start here
                 </a>
-                <a className="pill pill--quiet" href="#pile">
-                  See how it decides ↓
-                </a>
               </div>
             </div>
-            <div className={s.heroCheck}>
-              <ol className={s.proofs} aria-label="What it does, in the held-out run">
-                <li>
-                  <b>The tax gives it away.</b> {taxCaught.length} fake receipts charged a sales tax their store&apos;s address can&apos;t have. The model said approve; the
-                  rule denied {taxCaught.length === 1 ? "it" : taxCaught.length === 2 ? "both" : "every one"}.
-                </li>
-                <li>
-                  <b>The model said approve, the rule said no.</b> {overruled.length} times: {overruled.length - overruledHonest} were fraud or didn&apos;t qualify
-                  {overruledHonest ? `, and ${overruledHonest === 1 ? "1 was an honest claimant" : `${overruledHonest} were honest claimants`} we got wrong` : ""}.
-                </li>
-                <li>
-                  <b>Leftovers go to a nonprofit.</b> Money nobody claims comes back after 30 days, and two people send it to the court&apos;s chosen charity in a second
-                  PayPal Payouts batch (cy-près).
-                </li>
-                <li>
-                  <b>The number we committed to first.</b> Fraud paid {$(armC.fraudCents)} of the {$(armA.fraudCents)} that paying everyone sends; honest claimants
-                  wrongly denied {armC.honestWronglyDenied.k} of {armC.honestWronglyDenied.n}.
-                </li>
-              </ol>
-              <p className={s.checkNote}>
-                Pre-registered held-out run: {summary.n} labelled claims no rule or prompt was tuned on ({bad.length} fraud or ineligible, {stopped} stopped),
-                run <a href={`${REPO}/tree/main/packages/eval/results/${run}`}>{run}</a>.
-              </p>
-            </div>
+            <Exhibit e={exhibit} />
+            <dl className={s.marks} aria-label="Who leaves which mark">
+              <div data-k="pencil">
+                <dt>Pencil</dt>
+                <dd>The AI reads and makes notes. It can be wrong.</dd>
+              </div>
+              <div data-k="stamp">
+                <dt>Stamp</dt>
+                <dd>A published rule decides, and says why.</dd>
+              </div>
+              <div data-k="sign">
+                <dt>Signature</dt>
+                <dd>Two people approve every payment.</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className={`wrap ${s.tally}`}>
+            <p className="label">
+              Pre-registered · {summary.n} held-out claims no rule or prompt was tuned on ·{" "}
+              <a href={`${REPO}/tree/main/packages/eval/results/${run}`}>{run}</a>
+            </p>
+            <dl>
+              <div>
+                <dt>fake receipts the AI approved, caught by their tax</dt>
+                <dd className="num">{taxCaught.length}</dd>
+              </div>
+              <div>
+                <dt>
+                  times the AI said approve and the rule said no ({overruledHonest} {overruledHonest === 1 ? "was an honest claimant" : "were honest claimants"} we got wrong)
+                </dt>
+                <dd className="num">{overruled.length}</dd>
+              </div>
+              <div>
+                <dt>fraud paid, of {$(armA.fraudCents, 0)} if everyone is paid</dt>
+                <dd className="num">{$(armC.fraudCents, 0)}</dd>
+              </div>
+              <div>
+                <dt>
+                  honest claimants wrongly denied (the AI deciding alone: {armB.honestWronglyDenied.k} of {armB.honestWronglyDenied.n})
+                </dt>
+                <dd className="num">
+                  {armC.honestWronglyDenied.k}
+                  <small> of {armC.honestWronglyDenied.n}</small>
+                </dd>
+              </div>
+            </dl>
           </div>
 
           <div className={`wrap ${s.facts}`}>
