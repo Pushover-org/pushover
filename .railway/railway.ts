@@ -2,11 +2,12 @@
 // Option names are from the `railway` package's own types (railway/iac, 3.16.0).
 //   railway config plan     preview; values are redacted
 //   railway config apply    make Railway match this file
-// Deploys go through scripts/deploy.sh, which runs the eval gate (P52) before `railway up`.
+// Deploys: every push to main on GitHub, once CI (lint, typecheck, unit and browser tests) has passed
+// (checkSuites). scripts/deploy.sh still deploys by hand, after the eval gate (P52) as well.
 //
 // Non-secrets are written here. Secrets use preserve(): they are set once with `railway variables`
 // (docs/deploy.md) and this file never sees or overwrites their values.
-import { defineRailway, empty, postgres, preserve, project, service } from "railway/iac";
+import { defineRailway, github, postgres, preserve, project, service } from "railway/iac";
 
 export default defineRailway(() => {
   const db = postgres("postgres");
@@ -32,8 +33,11 @@ export default defineRailway(() => {
     PAYER_PSEUDONYM_KEY: preserve(),
   };
 
+  // Both services build from the same repo and branch, and wait for GitHub's checks before deploying.
+  const repo = () => github("proof-of-claim/proof-of-claim", { branch: "main", checkSuites: true });
+
   const web = service("web", {
-    source: empty(),
+    source: repo(),
     build: { builder: "DOCKERFILE", dockerfilePath: "Dockerfile" },
     // A failing migration stops the deploy; the old one keeps serving.
     preDeploy: "node packages/db/src/bin/migrate.ts",
@@ -69,7 +73,7 @@ export default defineRailway(() => {
   });
 
   const worker = service("worker", {
-    source: empty(),
+    source: repo(),
     build: { builder: "DOCKERFILE", dockerfilePath: "Dockerfile" },
     start: "node apps/worker/src/main.ts",
     replicas: 1,

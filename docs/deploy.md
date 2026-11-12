@@ -16,6 +16,20 @@ One image serves both (`Dockerfile`: Node 24.9, pnpm 12.16.1, `next build`). `.d
 
 ## Deploy
 
+**Automatic (since 2026-11-12):** both `web` and `worker` build from GitHub,
+`proof-of-claim/proof-of-claim`, branch `main` (`.railway/railway.ts`, `github(…)`). Every push to `main`
+deploys, but only after the repo's CI has passed (`checkSuites: true`: lint, typecheck, unit and browser
+tests); until then Railway shows the deployment as WAITING. A push to `main` changes the live site.
+
+The eval gate does not run on these deploys: it needs the git-ignored `.data/` of the original laptop,
+which CI doesn't have. Run it before pushing a change to checks, rules or prompts:
+
+```bash
+node --env-file-if-exists=.env.local scripts/eval-gate.ts   # or scripts/deploy.sh, which also deploys
+```
+
+**By hand**, from a clean tree:
+
 ```bash
 scripts/deploy.sh          # web and worker
 scripts/deploy.sh web      # one service
@@ -31,8 +45,8 @@ Planted regression (2026-11-12: `imageMaxDistance` 0, `taxMarginPct` 50): expect
 `EVAL GATE: BLOCKED`.
 
 Infrastructure changes: edit `.railway/railway.ts`, then `railway config plan` and `railway config apply`.
-The plan keeps showing four changes (`source.type`, `sleepApplication`, the web restart policy) after
-every apply; Railway reads those back as null. The deployed manifests carry the values
+The plan keeps showing two changes (`sleepApplication`, the web restart policy) after every apply;
+Railway reads those back as null. The deployed manifests carry the values
 (`railway status --json`: `sleepApplication=false`, `healthcheckPath=/api/health`, worker
 `restartPolicyType=ALWAYS`).
 
