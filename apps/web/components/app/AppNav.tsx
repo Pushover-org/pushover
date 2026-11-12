@@ -4,6 +4,7 @@ import s from "./AppNav.module.css";
 
 const S = "acme-restaurant-beverage";
 const LINKS = [
+  { href: "/judge", label: "Judges" },
   { href: "/demo", label: "Live demo" },
   { href: `/claim/${S}`, label: "File a claim" },
   { href: `/admin/${S}`, label: "Claims desk" },

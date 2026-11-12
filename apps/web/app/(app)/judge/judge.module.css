@@ -1,0 +1,154 @@
+.page {
+  display: grid;
+  gap: 28px;
+  max-width: 880px;
+}
+.head h1 {
+  margin-top: 10px;
+  font-size: clamp(2.2rem, 1.4rem + 2.8vw, 3.6rem);
+  line-height: 0.95;
+}
+.lede {
+  margin-top: 14px;
+  color: var(--ink-2);
+  font-size: 16px;
+  max-width: 68ch;
+}
+.card {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border-radius: var(--r-card);
+  border: 1px solid var(--hair-2);
+  background: var(--card);
+}
+.card h2,
+.h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.1;
+}
+.logins {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.logins div {
+  display: grid;
+  gap: 4px;
+}
+.logins dt {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.logins dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.logins code,
+.steps code {
+  font-family: var(--font-num);
+  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--paper-2);
+  overflow-wrap: anywhere;
+}
+.note {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.steps {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  display: grid;
+  gap: 18px;
+}
+.steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 2px 12px;
+}
+.steps li::before {
+  content: counter(step);
+  grid-row: span 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--ink);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-num);
+  font-size: 13px;
+}
+.steps h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.steps p {
+  color: var(--ink-2);
+  font-size: 15px;
+  max-width: 70ch;
+}
+.steps a,
+.lede a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.status {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.status li {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.status b {
+  color: var(--ink);
+  font-weight: 600;
+}
+/* "On" is a fact about configuration, not a verdict, so it is ink, never green. */
+.state {
+  font-family: var(--font-num);
+  font-size: 12px;
+  text-align: center;
+  padding: 1px 0;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--ink);
+  color: var(--ink);
+}
+.state[data-on="false"] {
+  border-color: var(--review);
+  color: var(--review);
+  background: var(--review-wash);
+}
+.trail {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.trail code {
+  font-family: var(--font-num);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.trail a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

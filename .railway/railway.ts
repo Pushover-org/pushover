@@ -52,6 +52,9 @@ export default defineRailway(() => {
       PAYPAL_LOGIN_RETURN_URL: preserve(),
       JUDGE_ANALYST_PASSWORD: preserve(),
       JUDGE_SUPERVISOR_PASSWORD: preserve(),
+      // The sandbox buyer judges log in with (play money; spec §3.0 marks it safe to publish).
+      JUDGE_BUYER_EMAIL: preserve(),
+      JUDGE_BUYER_PASSWORD: preserve(),
       AG_STUDIO_LICENSE_KEY: preserve(),
       BRYNTUM_LICENSE_KEY: preserve(),
     },

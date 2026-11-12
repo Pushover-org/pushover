@@ -23,6 +23,7 @@ export function Nav() {
           Proof of Claim
         </a>
         <nav aria-label="Main" className={styles.links}>
+          <a href="/judge">Judges start here</a>
           <a href="/#pile">How it decides</a>
           <a href="/#numbers">The numbers</a>
           <a href="/report/acme-restaurant-beverage">Court report</a>

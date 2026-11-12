@@ -59,6 +59,9 @@ export default function Landing() {
                 <a className="pill pill--green" href="/demo">
                   Open the live demo
                 </a>
+                <a className="pill pill--quiet" href="/judge">
+                  Judges: start here
+                </a>
                 <a className="pill pill--quiet" href="#pile">
                   See how it decides ↓
                 </a>
