@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { pino } from "pino";
 import type { RateLimiter } from "./bucket.ts";
 import { issueOf, PayPalApiError, PayPalNetworkError, PayPalUnknownOutcomeError } from "./errors.ts";
-import { PayPalSdk } from "./sdk.ts";
+import { PayPalSdk, standInFor } from "./sdk.ts";
 
 export interface Logger {
   warn(obj: object, msg: string): void;
@@ -54,6 +54,8 @@ export class PayPalClient {
   private sdkInstance: PayPalSdk | undefined;
 
   constructor(o: PayPalClientOptions) {
+    // Sandbox only (plan item P53): any other base URL is refused before a request can be built.
+    standInFor(o.baseUrl);
     this.o = o;
     this.fetch = o.fetch ?? globalThis.fetch;
     this.sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));

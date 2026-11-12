@@ -1,5 +1,6 @@
 import { SlidingWindowLimiter, type RateLimiter } from "./bucket.ts";
 import { PayPalClient, type PayPalClientOptions } from "./client.ts";
+import { standInFor } from "./sdk.ts";
 
 export type PayPalApp = "guarded" | "baseline";
 
@@ -14,8 +15,11 @@ function required(env: Env, name: string): string {
 /** Credentials for one sandbox app, read from the spec §4.4 variable names. */
 export function paypalCredentials(app: PayPalApp, env: Env = process.env) {
   const prefix = app === "guarded" ? "PAYPAL_GUARDED" : "PAYPAL_BASELINE";
+  const baseUrl = required(env, "PAYPAL_API_BASE");
+  // Sandbox only (P53): Log in with PayPal builds its URL from this too, so the check is here as well.
+  standInFor(baseUrl);
   return {
-    baseUrl: required(env, "PAYPAL_API_BASE"),
+    baseUrl,
     clientId: required(env, `${prefix}_CLIENT_ID`),
     clientSecret: required(env, `${prefix}_CLIENT_SECRET`),
   };

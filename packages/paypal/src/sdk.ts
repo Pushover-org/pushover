@@ -27,12 +27,12 @@ type Interceptor = Parameters<ReturnType<Factory>["intercept"]>[0];
 
 const log = pino({ name: "paypal-sdk" });
 
-/** Where requests go: null for the sandbox itself, or a local stand-in's origin. Anything else is refused. */
+/** Where requests go: null for the sandbox itself, or a local stand-in's origin. Anything else is refused (P53). */
 export function standInFor(baseUrl: string): string | null {
   const b = baseUrl.replace(/\/+$/, "");
   if (b === SANDBOX_API) return null;
   if (LOCAL_STAND_IN.test(b)) return b;
-  throw new Error(`the PayPal SDK client only talks to the sandbox (${SANDBOX_API}) or a local stand-in, not ${b}`);
+  throw new Error(`PayPal: this app only talks to the sandbox (${SANDBOX_API}) or a local stand-in, not ${b}`);
 }
 
 export class PayPalSdk {

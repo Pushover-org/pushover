@@ -5,6 +5,7 @@ import type { AddressInfo } from "node:net";
 import { describe, expect, it } from "vitest";
 import type { RateLimiter } from "../src/bucket.ts";
 import { PayPalClient } from "../src/client.ts";
+import { paypalCredentials } from "../src/env.ts";
 import { PayPalApiError, PayPalNetworkError } from "../src/errors.ts";
 import { getBalance } from "../src/reporting.ts";
 import { SANDBOX_API, standInFor } from "../src/sdk.ts";
@@ -83,8 +84,10 @@ describe("where the SDK may send requests", () => {
     expect(standInFor("http://localhost:4010/")).toBe("http://localhost:4010");
     expect(() => standInFor("https://api-m.paypal.com")).toThrow("only talks to the sandbox");
     expect(() => standInFor("http://127.0.0.1.example.com")).toThrow("only talks to the sandbox");
-    const live = new PayPalClient({ baseUrl: "https://api-m.paypal.com", clientId: "id", clientSecret: "secret", limiter: { take: async () => undefined } });
-    expect(() => live.sdk).toThrow("only talks to the sandbox");
+    // Plan item P53: the client itself refuses production, and so does reading it from the environment.
+    expect(() => new PayPalClient({ baseUrl: "https://api-m.paypal.com", clientId: "id", clientSecret: "secret", limiter: { take: async () => undefined } })).toThrow("only talks to the sandbox");
+    expect(() => paypalCredentials("guarded", { PAYPAL_API_BASE: "https://api-m.paypal.com", PAYPAL_GUARDED_CLIENT_ID: "id", PAYPAL_GUARDED_CLIENT_SECRET: "secret" })).toThrow("only talks to the sandbox");
+    expect(paypalCredentials("guarded", { PAYPAL_API_BASE: SANDBOX_API, PAYPAL_GUARDED_CLIENT_ID: "id", PAYPAL_GUARDED_CLIENT_SECRET: "secret" }).baseUrl).toBe(SANDBOX_API);
   });
 
   it("a local stand-in gets the token request as well as the call, over the SDK's own transport", async () => {
