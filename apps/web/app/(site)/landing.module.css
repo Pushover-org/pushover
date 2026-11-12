@@ -106,6 +106,40 @@
     transform: none;
   }
 }
+.proofs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: proof;
+  display: grid;
+  gap: 14px;
+  max-width: 46ch;
+}
+.proofs li {
+  counter-increment: proof;
+  position: relative;
+  padding: 14px 16px 14px 48px;
+  border: 1px solid var(--hair-2);
+  border-radius: var(--r-card);
+  background: var(--card);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.proofs li::before {
+  content: counter(proof, decimal-leading-zero);
+  position: absolute;
+  left: 16px;
+  top: 15px;
+  font-family: var(--font-num);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.proofs b {
+  display: block;
+  color: var(--ink);
+  font-weight: 600;
+}
 .checkNote {
   font-size: 13px;
   color: var(--ink-3);

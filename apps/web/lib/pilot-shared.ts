@@ -13,6 +13,8 @@ export interface PilotClaim {
   claimedCents: number;
   tier: "proof" | "no_proof";
   modelAlone: "approve" | "deny" | null;
+  /** What the examiner itself recommended while reading the receipt (it never decides). */
+  modelSaid: "approve" | "deny" | "review" | null;
 }
 
 export interface Interval {

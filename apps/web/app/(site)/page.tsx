@@ -1,5 +1,4 @@
 import { CHECK_IDS, CHECK_NAMES } from "@proofofclaim/claims";
-import { Check } from "@/components/site/Check.tsx";
 import { Nav } from "@/components/site/Nav.tsx";
 import { Pile } from "@/components/site/Pile.tsx";
 import { Reveal } from "@/components/site/Reveal.tsx";
@@ -29,6 +28,11 @@ export default function Landing() {
   const stopped = bad.filter((c) => c.outcome !== "APPROVE").length;
   const fooled = claims.filter((c) => c.truth === "fraud" && c.modelAlone === "approve");
   const slipped = fooled.filter((c) => c.outcome === "APPROVE");
+  // The four things the page leads with (owner's reposition, 2026-11-10), all from the committed pilot run.
+  // "No" is a denial or a hold for a person; asking for one more document is not counted.
+  const overruled = claims.filter((c) => c.modelSaid === "approve" && (c.outcome === "DENY" || c.outcome === "REVIEW"));
+  const overruledHonest = overruled.filter((c) => c.truth === "honest").length;
+  const taxCaught = overruled.filter((c) => c.reason === "TAX_IMPLAUSIBLE");
 
   return (
     <>
@@ -45,15 +49,15 @@ export default function Landing() {
                 <span className={s.dot} /> A claims desk for class-action settlements
               </p>
               <h1 className={`display ${s.h1}`}>
-                <span className={s.line}>Bots filed half</span>
-                <span className={s.line}>the claims.</span>
+                <span className={s.line}>We check the person</span>
                 <span className={s.line}>
-                  Here&apos;s your <em>real</em> share.
+                  and the <em>proof</em>.
                 </span>
               </h1>
               <p className={s.lede}>
-                Proof of Claim reads every claim&apos;s evidence with AI, lets plain rules (not the model) decide, pays honest claimants straight to their PayPal account, and
-                gives leftover money to the court&apos;s chosen charity. Every dollar comes with a written reason.
+                An AI reads every receipt and reports what it shows. Plain rules decide, so a receipt whose sales tax doesn&apos;t fit the store&apos;s address is denied even
+                when the model says approve. Honest claimants are paid to the PayPal account they logged in with, and money nobody claims goes to the court&apos;s chosen
+                nonprofit. Every dollar comes with a written reason.
               </p>
               <div className={s.ctas}>
                 <a className="pill pill--green" href="/demo">
@@ -68,9 +72,26 @@ export default function Landing() {
               </div>
             </div>
             <div className={s.heroCheck}>
-              <Check fromCents={armA.honestAverageCheckCents} toCents={armC.honestAverageCheckCents} claims={summary.n} bad={bad.length} stopped={stopped} />
+              <ol className={s.proofs} aria-label="What it does, in the pilot run">
+                <li>
+                  <b>The tax gives it away.</b> {taxCaught.length} fake receipts charged a sales tax their store&apos;s address can&apos;t have. The model said approve; the
+                  rule denied {taxCaught.length === 1 ? "it" : "both"}.
+                </li>
+                <li>
+                  <b>The model said approve, the rule said no.</b> {overruled.length} times: {overruled.length - overruledHonest} were fraud or didn&apos;t qualify
+                  {overruledHonest ? `, and ${overruledHonest === 1 ? "1 was an honest claimant" : `${overruledHonest} were honest claimants`} we got wrong` : ""}.
+                </li>
+                <li>
+                  <b>Leftovers go to a nonprofit.</b> Money nobody claims comes back after 30 days, and two people send it to the court&apos;s chosen charity in a second
+                  PayPal Payouts batch (cy-près).
+                </li>
+                <li>
+                  <b>The number we committed to first.</b> Fraud paid {$(armC.fraudCents)} of the {$(armA.fraudCents)} that paying everyone sends; honest claimants
+                  wrongly denied {armC.honestWronglyDenied.k} of {armC.honestWronglyDenied.n}.
+                </li>
+              </ol>
               <p className={s.checkNote}>
-                Measured, not mocked: the average honest check in our pilot of {summary.n} labelled claims, when every claim is paid vs. when Proof of Claim decides.
+                Pre-registered pilot of {summary.n} labelled claims ({bad.length} fraud or ineligible, {stopped} stopped), run {run}. The full held-out run is the next step.
               </p>
             </div>
           </div>

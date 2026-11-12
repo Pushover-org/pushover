@@ -41,6 +41,7 @@ export function loadPilot(): { claims: PilotClaim[]; summary: PilotSummary; run:
       claimedCents: f.tier === "no_proof" ? NO_PROOF_CENTS : Math.min(f.units_claimed, MAX_UNITS) * UNIT_CENTS,
       tier: f.tier,
       modelAlone: r.b_decision === "approve" || r.b_decision === "deny" ? r.b_decision : null,
+      modelSaid: r.model_recommendation === "approve" || r.model_recommendation === "deny" || r.model_recommendation === "review" ? r.model_recommendation : null,
     };
   });
   return { claims, summary, run: RUN };
