@@ -62,7 +62,7 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 8 Claimant upgrades (P9, C9, C3, B3, C11, C12) | done (`4f6f196`, `f3430d8`, `a03e4e1`) |
 | 9 Assistants: MCP server and OpenAPI (P11–P15, C14) | done (`c442fec`..`2700ac9`) |
 | 10 APIMatic: PayPal's Server SDK (P57), purchase proof research (C5) | done: P57 (`c2569ab`); C5 researched and recorded, not built (owner, 2026-11-11) |
-| 11 deploy (R12): Railway web, worker, Postgres (P51), eval gate (P52), sandbox-only guard (P53) | live at https://web-production-3f92e595.up.railway.app (2026-11-12); Return URL and webhook done, live Log in with PayPal works; owner's phone check left (`docs/deploy.md`) |
+| 11 deploy (R12): Railway web, worker, Postgres (P51), eval gate (P52), sandbox-only guard (P53) | live at https://web-production-3f92e595.up.railway.app (2026-11-12); done: Return URL and webhook set, live Log in with PayPal works, owner logged in from a phone (`docs/deploy.md`) |
 | 12–14 | not started |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
@@ -242,8 +242,8 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
 - **Phase 11 (2026-11-12):** deployed; `docs/deploy.md` has the services, how to deploy (`scripts/deploy.sh`:
   committed code, checks, eval gate, `railway up`), secrets by name, how the demo data was loaded, and the
   checks run on the live site. The owner added the Return URL and the webhook (`8P575864EG572884E`, set
-  on web and worker); live Log in with PayPal works as buyer1 after the redirect fix (`37424d5`). Left:
-  the owner opening it on a phone.
+  on web and worker); live Log in with PayPal works as buyer1 after the redirect fix (`37424d5`). The owner
+  opened it on a phone and logged in with PayPal as buyer1: it worked. Phase 11 is done.
   Next: Phase 12 (judges and demo).
 - Phase 10 is done: P57 built, C5 recorded and not built. One C5 fact is still unknown: whether the merchant's
   history shows the test purchase with buyer1's payer ID and the item. The sandbox history stopped refreshing
@@ -346,7 +346,6 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- Owner: open the live URL on a phone.
 - `../FULL-BUILD-PLAN.md` Phase 12 (judges and demo), then Phase 13 (full eval) and Phase 14 (submission).
 
 ## Pushover history (kept for the record)

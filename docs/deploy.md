@@ -83,7 +83,7 @@ The live database was loaded on 2026-11-12 without opening it to the internet:
    `https://web-production-3f92e595.up.railway.app/api/paypal/webhook` for the payout events
    (`PAYMENT.PAYOUTSBATCH.*` and `PAYMENT.PAYOUTS-ITEM.*`). Then set its ID:
    `railway variable set PAYPAL_GUARDED_WEBHOOK_ID=<id> --service web` and the same for `worker`.
-3. **Phone:** open the live URL on a phone.
+3. **Phone:** open the live URL on a phone. Done 2026-11-12: the owner logged in with PayPal as buyer1 from a phone.
 
 PayPal's `GET /v1/notifications/webhooks` for the guarded app lists `8P575864EG572884E` with the live
 URL, subscribed to every event type (`*`). Only verified events are stored, and a stored event only makes
