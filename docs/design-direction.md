@@ -1,4 +1,29 @@
-# Design direction: Court Ledger (owner decision 2026-11-02)
+# Design direction: Court Ledger, then "Exhibit A" (owner decisions 2026-11-02 and 2026-11-12)
+
+## Exhibit A (2026-11-12): three marks
+
+Every claim is evidence, and three hands touch it. Each leaves its own mark, on every screen:
+
+| Mark | Who | Looks like | Token |
+|---|---|---|---|
+| **Pencil** | the AI examiner | Instrument Serif italic in graphite; hand-drawn circles and margin notes. Provisional: can be wrong | `--pencil` #565B63 (6.0:1 on paper) |
+| **Stamp** | a published rule | rubber stamp in its state ink, with the reason typed underneath in Geist Mono | `--deny`, `--review`, `--more`, `--approve` |
+| **Signature** | a person approving money | Instrument Serif italic in ledger green | `--green` |
+
+- The AI never gets a decision ink. Where the rule overruled it, its answer is struck through in the
+  stamp's ink.
+- No green for "safe": a passed check or a verified account is ink on paper.
+- Signature moment: "the examination" on the landing page (`components/site/Exhibit.tsx`): claim c-114
+  from the committed test set, its receipt, the AI's pencil ("approve, high confidence"), the tax rule's
+  stamp and its reason, computed at build time by `packages/checks`. Plays once when on screen; with
+  reduced motion it is the final state.
+- Motion: one easing curve (`--ease`); presses and small changes under 300 ms; nothing starts from
+  scale zero; the examination is the only long sequence.
+- No glass: bars over content are solid paper.
+
+The Court Ledger rules below still apply.
+
+## Court Ledger (2026-11-02)
 
 Proof of Claim decides who gets paid from a court-supervised fund. The design problem is
 **trust**: a judge, a class member and an analyst must all believe every dollar has a reason.

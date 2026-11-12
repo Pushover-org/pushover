@@ -75,7 +75,9 @@ button {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-2);
-  overflow-wrap: anywhere;
+  /* break-word, not anywhere: "anywhere" also shrinks the label's minimum width, which squeezed
+     the claims desk's header into a one-word column (found 2026-11-12). */
+  overflow-wrap: break-word;
 }
 :lang(hi) .label {
   font-family: var(--font-ui);

@@ -19,11 +19,16 @@
   /* State inks: state only, never decoration. */
   --approve: var(--green);
   --deny: #a3321f;
-  --review: #845b00; /* 4.9:1 or more on every paper tone (C11) */
+  --review: #6f4c00; /* 5.6:1 or more on every paper tone, paper-3 and the tinted bands included (C11) */
   --more: #2b4c8c;
   --deny-wash: rgb(163 50 31 / 0.08);
   --review-wash: rgb(154 106 0 / 0.1);
   --more-wash: rgb(43 76 140 / 0.08);
+
+  /* Pencil: the AI's marks only (design direction "Exhibit A"). Graphite, never a decision ink:
+     6.0:1 on paper, 6.5:1 on card. The paper of a receipt is --receipt. */
+  --pencil: #565b63;
+  --receipt: #fffdf8;
 
   --font-display: var(--font-instrument), "Times New Roman", serif;
   --font-ui: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
