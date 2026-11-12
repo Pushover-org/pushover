@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { desk, pool } from "@/lib/server/data.ts";
 import { IDENTITY_COOKIE, openIdentity } from "@/lib/server/paypal-login.ts";
+import { publicOrigin } from "@/lib/server/origin.ts";
 
 const DEVICE_COOKIE = "poc_device";
 
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
   const lang = String(data?.get("lang") ?? "");
   if (!/^[A-Za-z0-9_-]{32}$/.test(token)) return new NextResponse("bad link", { status: 400 });
   const page = (q: Record<string, string>) => {
-    const url = new URL(`/confirm/${token}`, req.nextUrl.origin);
+    const url = new URL(`/confirm/${token}`, publicOrigin(req));
     for (const [k, v] of Object.entries({ ...q, ...(/^(en|es|hi)$/.test(lang) ? { lang } : {}) })) url.searchParams.set(k, v);
     return NextResponse.redirect(url, 303);
   };
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   if (action === "disown") {
     await disownFiling(D, token);
-    const url = new URL(`/confirm/closed`, req.nextUrl.origin);
+    const url = new URL(`/confirm/closed`, publicOrigin(req));
     if (/^(en|es|hi)$/.test(lang)) url.searchParams.set("lang", lang);
     return NextResponse.redirect(url, 303);
   }
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
     const { statusToken } = await confirmFiling(D, token, {
       paypal: { payerId: identity.payerId, email: identity.email, verified: identity.verified, emailVerified: identity.emailVerified }, ip, deviceId,
     });
-    const url = new URL(`/status/${statusToken}`, req.nextUrl.origin);
+    const url = new URL(`/status/${statusToken}`, publicOrigin(req));
     url.searchParams.set("confirmed", "1");
     if (/^(en|es|hi)$/.test(lang)) url.searchParams.set("lang", lang);
     const res = NextResponse.redirect(url, 303);

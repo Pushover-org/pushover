@@ -4,6 +4,7 @@
 import { appealClaim, claimByStatusToken, ClaimRejectedError, sendDocument } from "@proofofclaim/desk";
 import { NextResponse, type NextRequest } from "next/server";
 import { claimView, desk, pool } from "@/lib/server/data.ts";
+import { publicOrigin } from "@/lib/server/origin.ts";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
   const c = id ? await claimView(id) : null;
   const d = c ? await desk(c.settlementId) : null;
   if (!id || !d) return new Response("not found", { status: 404 });
-  const back = new URL(`/status/${token}`, req.nextUrl.origin);
+  const back = new URL(`/status/${token}`, publicOrigin(req));
   const fail = (code: string) => {
     back.searchParams.set("error", code);
     return NextResponse.redirect(back, 303);

@@ -3,6 +3,7 @@
 import { claimByStatusToken, ClaimRejectedError, requestReoffer } from "@proofofclaim/desk";
 import { NextResponse, type NextRequest } from "next/server";
 import { claimView, desk, pool } from "@/lib/server/data.ts";
+import { publicOrigin } from "@/lib/server/origin.ts";
 
 export async function POST(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token") ?? "";
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
   const c = id ? await claimView(id) : null;
   const d = c ? await desk(c.settlementId) : null;
   if (!id || !d) return new Response("not found", { status: 404 });
-  const back = new URL(`/status/${token}`, req.nextUrl.origin);
+  const back = new URL(`/status/${token}`, publicOrigin(req));
   try {
     await requestReoffer(d, id);
     back.searchParams.set("reoffer", "asked");
