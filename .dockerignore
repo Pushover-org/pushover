@@ -1,0 +1,18 @@
+# Never in the image: secrets, local data, build output, dependencies (installed fresh).
+.env
+.env.*
+!.env.example
+CLAUDE.md
+.data/
+.git/
+**/node_modules/
+**/.next/
+test-results/
+playwright-report/
+blob-report/
+coverage/
+*.log
+*.tsbuildinfo
+packages/eval/results/*/transcripts.jsonl
+packages/eval/corpus/rings-dev/
+.code-review-graph/
