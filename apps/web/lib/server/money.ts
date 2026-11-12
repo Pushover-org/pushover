@@ -2,8 +2,14 @@
 import { webhookCounts } from "@proofofclaim/db";
 import { pool } from "./data.ts";
 
-/** Sandbox money the public demo may send in 24 hours (spec §4.7 abuse limits). */
-export const DEMO_DAILY_CAP_CENTS = 5000;
+/**
+ * Sandbox money the public demo may send in 24 hours (spec §4.7 abuse limits): $50 unless the
+ * deployment sets DEMO_DAILY_CAP_USD (raised only for the operator's full round, spec §5.5).
+ */
+export const DEMO_DAILY_CAP_CENTS = (() => {
+  const usd = Number(process.env["DEMO_DAILY_CAP_USD"] ?? "50");
+  return Number.isFinite(usd) && usd >= 0 ? Math.round(usd * 100) : 5000;
+})();
 
 export interface PayoutRow {
   batchId: number;

@@ -25,6 +25,9 @@ export default defineRailway(() => {
     PAYPAL_GUARDED_CLIENT_SECRET: preserve(),
     PAYPAL_GUARDED_WEBHOOK_ID: preserve(),
     NETWORK_SECRET: preserve(),
+    // Days a claimant may ask again for money that came back, before it is cy-près eligible. 2 on the
+    // demo so money unclaimed on 12 November (back after 30 days) reaches cy-près inside judging.
+    REOFFER_DAYS: "2",
     PAYER_SEAL_KEY: preserve(),
     PAYER_PSEUDONYM_KEY: preserve(),
   };
@@ -51,6 +54,8 @@ export default defineRailway(() => {
       // Most the public site's examiner and desk agent may spend per server process, in USD.
       DEMO_AI_BUDGET_USD: "1",
       STUDIO_AI_BUDGET_USD: "0.5",
+      // Play money the public demo may send in 24 hours (apps/web/lib/server/money.ts).
+      DEMO_DAILY_CAP_USD: "50",
       PUBLIC_ORIGIN: preserve(),
       PAYPAL_LOGIN_RETURN_URL: preserve(),
       JUDGE_ANALYST_PASSWORD: preserve(),
