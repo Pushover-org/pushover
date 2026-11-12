@@ -211,8 +211,8 @@
   font-size: 12px;
 }
 .ok {
-  background: var(--green-wash);
-  color: var(--green);
+  background: var(--paper-2);
+  color: var(--ink);
 }
 .warn {
   background: var(--review-wash);

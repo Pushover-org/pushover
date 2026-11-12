@@ -124,8 +124,9 @@
   background: var(--review-wash);
   color: var(--review);
 }
+/* "Every check passed" is not "safe": ink, never green. */
 .allPass {
-  color: var(--approve);
+  color: var(--ink);
 }
 .vs {
   display: grid;
@@ -184,8 +185,8 @@
   line-height: 1.7;
 }
 .payPill[data-s="ok"] {
-  background: var(--green-wash);
-  color: var(--approve);
+  background: var(--paper-2);
+  color: var(--ink);
 }
 .payPill[data-s="wait"] {
   background: var(--review-wash);

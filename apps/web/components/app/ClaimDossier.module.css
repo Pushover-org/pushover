@@ -217,9 +217,10 @@
   border-radius: 4px;
   white-space: nowrap;
 }
+/* A passed check is a fact, not a verdict that the claim is safe: ink, never green (owner, Phase 12). */
 .checks tr[data-r="PASS"] .result {
-  color: var(--approve);
-  background: var(--green-wash);
+  color: var(--ink);
+  background: var(--paper-2);
 }
 .checks tr[data-r="FAIL"] .result {
   color: var(--deny);

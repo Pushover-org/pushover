@@ -152,9 +152,10 @@
   border-radius: var(--r-pill);
   font-size: 12px;
 }
+/* PayPal's "verified" is a fact about the account, not a safe state: ink, never green. */
 .ok {
-  background: var(--green-wash);
-  color: var(--green);
+  background: var(--paper-2);
+  color: var(--ink);
 }
 .warn {
   background: var(--review-wash);

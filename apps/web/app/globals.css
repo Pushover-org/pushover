@@ -75,6 +75,7 @@ button {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-2);
+  overflow-wrap: anywhere;
 }
 :lang(hi) .label {
   font-family: var(--font-ui);
