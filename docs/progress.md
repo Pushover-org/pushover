@@ -245,6 +245,11 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
   on web and worker); live Log in with PayPal works as buyer1 after the redirect fix (`37424d5`). The owner
   opened it on a phone and logged in with PayPal as buyer1: it worked. Phase 11 is done.
   Next: Phase 12 (judges and demo).
+- **Phase 12 (2026-11-12, in progress):** `/judge` (P46: logins, eight steps, status read from config; P49:
+  the newest real payout's trail), no green for passed checks or verified accounts, the batch-ID collision
+  found and fixed (`0ba1820`, migration 0014), the app moved to database `proofofclaim_v2` and a real round
+  sent (`UN6TR3QNHZV4C`, `docs/deploy.md`). Left: P48 landing reposition, P41 labelled scale demo, P47
+  private copies.
 - Phase 10 is done: P57 built, C5 recorded and not built. One C5 fact is still unknown: whether the merchant's
   history shows the test purchase with buyer1's payer ID and the item. The sandbox history stopped refreshing
   at 03:29:59Z on 2026-11-11 and hadn't moved by 09:08Z; re-check once it does (command below). The same stall

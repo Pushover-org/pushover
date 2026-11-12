@@ -12,7 +12,10 @@ export default defineRailway(() => {
   const db = postgres("postgres");
 
   const shared = {
-    DATABASE_URL: db.env.DATABASE_URL,
+    // The app's own database on the Postgres service, built from its private parts by Railway (the
+    // password never appears here). proofofclaim_v2 since 2026-11-12; the service's default database
+    // keeps the first deployment's records (docs/deploy.md).
+    DATABASE_URL: "postgresql://${{postgres.PGUSER}}:${{postgres.PGPASSWORD}}@${{postgres.RAILWAY_PRIVATE_DOMAIN}}:5432/proofofclaim_v2",
     // Sandbox only: the PayPal client refuses any other base URL (P53).
     PAYPAL_ENV: "sandbox",
     PAYPAL_API_BASE: "https://api-m.sandbox.paypal.com",

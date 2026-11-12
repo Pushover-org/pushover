@@ -9,7 +9,7 @@ Live: **https://web-production-3f92e595.up.railway.app** (Railway project `proof
 |---|---|---|
 | `web` | The Next.js app | Dockerfile; migrates before going live (`preDeploy`); healthcheck `/api/health`; port 8080; sleeping off |
 | `worker` | `apps/worker/src/main.ts`, a pass every 60 s | Same image; restarts always; sleeping off |
-| `postgres` | Railway Postgres | Private network only; no public TCP proxy |
+| `postgres` | Railway Postgres 18 | Private network only; no public TCP proxy. The app's database is `proofofclaim_v2` (below) |
 
 One image serves both (`Dockerfile`: Node 24.9, pnpm 12.16.1, `next build`). `.dockerignore` and
 `.gitignore` keep `.env*`, `.data/` and `CLAUDE.md` out of the upload and the image.
@@ -104,3 +104,25 @@ container's. Fixed in `37424d5` (every redirect uses `PUBLIC_ORIGIN`, `apps/web/
 Then, in a headless browser as sandbox buyer1: the claim form shows "Signed in as Dana Reyes · verified
 account". Railway's Postgres is version 18 (`postgres-ssl:18`); we develop on 17, and all 13 migrations
 ran on it.
+
+## The second database (2026-11-12)
+
+The first live payout round collided with this laptop's: batch IDs were `poc-<settlement>-r<round>-p<part>`,
+and the laptop's database had already sent `poc-acme-restaurant-beverage-r1-p1` on the same sandbox app.
+PayPal refused the repeat and the desk, as built for retries, adopted the laptop's batch `2HMAKHX862SAE`
+(10 items) as the deployment's round 1 (planned: 3 claims, $40). No money moved twice. Fixed in `0ba1820`:
+migration 0014 names each database (`deployment_instance`, 10 hex characters) and every batch ID carries it.
+
+Emptying the live database was refused as a mass delete, so nothing was deleted: the Postgres service's
+default database keeps the first deployment's records as they are, and the app moved to a new database,
+`proofofclaim_v2`, made by a one-off service (`CREATE DATABASE`, additive), migrated by the web deploy,
+loaded from the same dump (`SEED_LOADED db=proofofclaim_v2 settlements=1 claims=57 analysts=2
+instance=47b3bd0413`), and the one-off service deleted. `DATABASE_URL` is built by Railway from the
+Postgres service's private parts (`.railway/railway.ts`); switching back is that one variable.
+
+Then, as the demo analyst, both linked groups were denied (all six claims are labelled fraud in claims-v1:
+F5 template crew c-037, c-062, c-098, c-148; F6 shared inbox c-029, c-036), the analyst proposed round 1
+(3 payments, $40.00) and the supervisor approved it. PayPal's record of batch `UN6TR3QNHZV4C`:
+`sender_batch_id poc-47b3bd0413-acme-restaurant-beverage-r1-p1`, SUCCESS, $40.00; c-007 $15, c-010 $10,
+c-012 $15, each UNCLAIMED (`RECEIVER_UNREGISTERED`: the labelled set's addresses are fictional), so that
+money returns after 30 days and goes through the re-offer window to cy-près. `/judge` shows this trail.
