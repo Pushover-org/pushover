@@ -10,7 +10,7 @@ The owner hands these over directly, never through git, chat or email:
 | File | Put it at | Notes |
 |---|---|---|
 | `CLAUDE.md` | repo root | The working rules for Claude sessions. Git-ignored on purpose. |
-| `RIGHTFULSHARE-BUILD-SPEC.md` | the folder **above** the repo | The build spec. CLAUDE.md expects it at `../RIGHTFULSHARE-BUILD-SPEC.md`. |
+| The build spec | the folder **above** the repo | CLAUDE.md names the file and expects it there. |
 | `PUSHOVER-BUILD-SPEC.md` | the folder **above** the repo | Reference only: hackathon facts (§1), PayPal basics (§3), Railway (§8). |
 | `research/03-pick-after-pushover-nogo.md` | `../research/` | Why the project pivoted. |
 | `.env.local` | repo root | Secrets: PayPal sandbox apps, Anthropic key, sandbox test card. **Send through a password manager or another encrypted channel.** |
@@ -88,7 +88,7 @@ pnpm test:sandbox    # optional: a real sandbox Payouts batch of 2 x $1.00 play 
 Open a fresh Claude Code chat in the repo folder. CLAUDE.md tells it to read the spec and
 `docs/progress.md` first. A first message that works:
 
-> Read CLAUDE.md, then ../RIGHTFULSHARE-BUILD-SPEC.md §0–§4 fully and §6, then
+> Read CLAUDE.md, then the build spec it names (§0–§4 fully and §6), then
 > docs/progress.md and docs/architecture.md. Verify the git identity shows laxmikhengare.
 > Continue with the next R step from docs/progress.md, explaining each step in plain language.
 

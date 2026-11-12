@@ -9,7 +9,7 @@ before that date use the working name.
 
 Pushover stopped at its pre-registered NO-GO: 0 of 33 attacks leaked on both Haiku 5.5 and
 Sonnet 5.5 (`docs/research-findings.md`, `docs/methodology.md`). This repo now builds
-**Proof of Claim** per `../RIGHTFULSHARE-BUILD-SPEC.md` (build order §6, steps R0–R14):
+**Proof of Claim** per the build spec outside the repo (CLAUDE.md names it; build order §6, steps R0–R14):
 a claims desk for class-action settlements. The AI reports findings about claim evidence,
 deterministic code decides and computes amounts, and PayPal Payouts pays approved claimants,
 with unclaimed money going to the court's chosen nonprofit (cy-près).
@@ -201,7 +201,7 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
   `docs/sandbox-findings.md`). After the first deploy the owner adds
   `https://<deployed>/api/paypal/callback` as a Return URL on `pushover-guarded`.
 
-## Spec R-steps (RIGHTFULSHARE-BUILD-SPEC §6), for reference
+## Spec R-steps (build spec §6), for reference
 
 
 | Step | Status |

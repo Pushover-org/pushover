@@ -5,14 +5,16 @@
 //   2. node --env-file-if-exists=.env.local scripts/identity/try-login.ts code '<that address>'
 //      Exchanges the code and prints which fields each userinfo path returns. Tokens are never printed;
 //      the payer_id is saved to PAYER_ID_FILE for pay-payer-id.ts.
-// Needs Log in with PayPal enabled on the guarded sandbox app, with RETURN_URL as its Return URL.
+// Needs Log in with PayPal enabled on the guarded sandbox app, with TRY_LOGIN_RETURN_URL set to one of
+// the Return URLs registered there (any page; you copy the address you land on).
 import { randomBytes } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { paypalCredentials } from "../../packages/paypal/src/env.ts";
 
 /** Git-ignored; scripts/identity/pay-payer-id.ts pays this account. */
 export const PAYER_ID_FILE = ".data/identity/payer-id.txt";
-const RETURN_URL = "https://example.com/rightfulshare/paypal-callback";
+const RETURN_URL = process.env["TRY_LOGIN_RETURN_URL"] ?? "";
+if (!RETURN_URL) throw new Error("set TRY_LOGIN_RETURN_URL to a Return URL registered on the guarded app");
 const SCOPES = "openid profile email address https://uri.paypal.com/services/paypalattributes";
 const env = paypalCredentials("guarded");
 const web = env.baseUrl.replace("api-m.", "www.");

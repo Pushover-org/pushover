@@ -288,7 +288,7 @@ when an unclaimed item returns is still unknown; the first returns are due about
 ## Proof of Claim: Log in with PayPal (claimant identity, 2026-11-02)
 
 Spec: `docs/paypal-specs/identity_v1.json`. Script: `scripts/identity/try-login.ts`. Enabled on
-the `pushover-guarded` sandbox app with Return URL `https://example.com/rightfulshare/paypal-callback`,
+the `pushover-guarded` sandbox app with a placeholder Return URL on `example.com`,
 "Account verification status" and "PayPal account ID (payer ID)" ticked, and logins from
 unconfirmed emails **not** allowed. Logged in as po-buyer1 (Dana Reyes). Play money.
 
@@ -324,7 +324,7 @@ unconfirmed emails **not** allowed. Logged in as po-buyer1 (Dana Reyes). Play mo
 with `redirect_uri=http://localhost:3100/api/paypal/callback` returns PayPal's generic error page,
 whose links carry `invalid_redirect_uri` and "Invalid redirect_uri http://localhost:3100/…". The
 same request with the Return URL already registered on the app
-(`https://example.com/rightfulshare/paypal-callback`) shows the normal login and consent page.
+(the `example.com` placeholder) shows the normal login and consent page.
 Not tested: whether the dashboard would accept localhost as a Return URL at all. Either way the
 live Log in with PayPal from the app is proved on the deployed URL (R12), and e2e signs the
 identity cookie itself.
