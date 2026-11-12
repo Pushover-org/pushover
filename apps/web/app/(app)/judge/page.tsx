@@ -131,6 +131,10 @@ export default async function Judge() {
           </div>
         </dl>
         <p className={s.note}>The claimant login works only on PayPal&apos;s sandbox, never on paypal.com. Nothing here moves real money.</p>
+        <p className={s.note}>
+          Everyone shares this one demo: what you approve or send, the next visitor sees. On 12 November the two linked groups were decided and a first payment round
+          was sent, so the payout trail below is real.
+        </p>
       </section>
 
       <section aria-labelledby="steps">
@@ -172,7 +176,8 @@ export default async function Judge() {
             <p>
               On <a href={`/admin/${S}/money`}>Money</a> the analyst proposes a payment round. Log out, log in as the supervisor and approve it: PayPal
               Payouts sends it in the sandbox, the page reads PayPal&apos;s answer back, and the worker later finds each payout in PayPal&apos;s own
-              history. Unclaimed money waits out its re-offer window, then goes to the nonprofit in a second batch.
+              history. Unclaimed money waits out its re-offer window, then goes to the nonprofit in a second batch. For a round with 120,000
+              claimants, see the <a href="/demo/scale">simulated scale page</a> (clearly marked; never sent to PayPal).
             </p>
           </li>
           <li>

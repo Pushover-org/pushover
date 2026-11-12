@@ -23,3 +23,10 @@ test("a first-time visitor gets the tour, the logins and an honest status list",
   await expect(page.getByRole("link", { name: "Judges: start here" })).toHaveAttribute("href", "/judge");
   await ctx.close();
 });
+
+test("the scale page keeps simulated and real money apart, and the simulated fund balances (P41)", async ({ page }) => {
+  await page.goto("/demo/scale");
+  await expect(page.getByText("Simulated · never sent to PayPal")).toBeVisible();
+  await expect(page.getByText("Real sandbox · play money")).toBeVisible();
+  await expect(page.getByText(/reserve equal the fund exactly/)).toBeVisible();
+});
