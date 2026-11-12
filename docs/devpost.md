@@ -9,34 +9,47 @@ Proof of Claim
 
 ## Elevator pitch (≤ 200 characters)
 
-A claims desk for class-action settlements: Claude reads every receipt, plain rules decide, two people
-approve, PayPal pays, and unclaimed money goes to the court's charity.
+The AI said approve. The rule said no. A settlement claims desk where Claude reads every receipt, rules
+decide, two people approve, PayPal pays, and leftovers go to charity.
 
 ## Inspiration
 
 Settlement funds are flooded with fake claims: one administrator received 80 million fraudulent claims in
 2023 (Jones Day), and 49% of 1.77 million claims in the Celsius settlement were fraudulent (FRT). Every
 fake that's paid comes out of a real class member's share. Today's choices are to pay everyone, deny in
-bulk, or ask a model to decide. We wanted a desk where AI does the reading, code does the deciding,
-people approve the money and PayPal moves it, with every dollar traceable.
+bulk, or ask a model to decide. Checking who files only goes so far: a claim also rests on its proof, and
+a convincing fake receipt is cheap to make. We wanted a desk where AI does the reading, code does the
+deciding, people approve the money and PayPal moves it, with every dollar traceable.
 
 ## What it does
 
+What sets it apart:
+
+1. **The AI examines the evidence, and the rules can overrule it.** Claude reads each receipt photo into
+   structured findings: store, address, date, line items, subtotal, tax, total. It cannot decide or pay.
+   Twelve checks in code (class period, product, arithmetic, sales tax against the store's address,
+   geography, duplicate images, template declarations, identity, velocity, visual anomalies, units,
+   repeat receipts) feed a versioned decision table: approve, deny, ask for one more document, or send to
+   a person. On 100 held-out claims the rules overruled Claude's "approve" 30 times; 7 fake receipts were
+   caught by a sales tax their store's address can't have.
+2. **Money needs two people.** An analyst proposes the exact round and signs it; a different supervisor
+   approves; only then does PayPal Payouts send it. Every item is read back from PayPal and shown as
+   unconfirmed until PayPal confirms it.
+3. **Leftover money goes to the court's charity (cy-près).** Unclaimed money comes back after 30 days, is
+   offered to the claimant again, then goes to the court's chosen nonprofit in a second Payouts batch,
+   again with two people.
+4. **A pre-registered test with honest misses.** The claims, labels and pass mark were committed before
+   any run, and every miss is named in the repository.
+
+Around that core:
+
 - A claimant logs in with PayPal, so a claim belongs to one verified PayPal account and the money can
   only go to that account.
-- Claude reads the receipt photo and returns structured findings. It cannot decide or pay.
-- Twelve checks in code (class period, product, arithmetic, sales tax against the store's address,
-  geography, duplicate images, template declarations, identity, velocity, visual anomalies, units, repeat
-  receipts) feed a versioned decision table: approve, deny, ask for one more document, or send to a person.
 - Linked claims (shared device, inbox or near-identical words) are held as a group; an AI investigator
   writes what it sees; a person decides.
-- Money needs two people: an analyst proposes the exact round, a different supervisor approves, and only
-  then does PayPal Payouts send it. Every item is read back from PayPal, matched against PayPal's own
-  transaction history, and shown as unconfirmed until PayPal confirms it.
-- Unclaimed money comes back after 30 days, is offered again, then goes to the court's chosen nonprofit
-  in a second Payouts batch (cy-près).
-- A public court report and ledger let anyone check every decision and dollar. AI assistants can file for
-  people through an MCP server; the person confirms with Log in with PayPal.
+- A public court report and ledger let anyone check every decision and dollar, and each payout is matched
+  against PayPal's own transaction history. AI assistants can file for people through an MCP server; the
+  person confirms with Log in with PayPal.
 
 ## How we built it
 
@@ -68,8 +81,10 @@ people approve the money and PayPal moves it, with every dollar traceable.
 
 On 100 held-out claims no rule or prompt was tuned on: **$40 of fraud paid, against $1,620 if everyone is
 paid**, and **3 of 41 honest claimants wrongly denied** (the model alone denied 8). Claude recommended
-approving and the rules said no 30 times; 28 of those were fraud or ineligible. A real sandbox round paid
-a sandbox buyer's $10 to her PayPal account, and the unclaimed money is on its way to the nonprofit.
+approving and the rules said no 30 times; 28 of those were fraud or ineligible. On camera, a sandbox
+claimant logs in with PayPal, is approved, and two people pay him: PayPal reports PROCESSING, then
+SUCCESS, and his $10 lands in his PayPal account. The unclaimed money from earlier rounds is on its way
+to the nonprofit.
 
 ## What we learned
 
