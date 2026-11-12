@@ -128,7 +128,7 @@ export default async function MoneyPage({ params }: { params: Promise<{ settleme
           {open && !expired ? (
             <>
               <p className={s.proposal}>
-                <b>{open.proposedBy.name}</b> proposed round {proposed?.round ?? "?"} at <span className="num">{at(open.proposedAt)}</span> UTC:{" "}
+                <b className={s.sig}>{open.proposedBy.name}</b> proposed round {proposed?.round ?? "?"} at <span className="num">{at(open.proposedAt)}</span> UTC:{" "}
                 <b className="num">{proposed?.items.length ?? 0}</b> payments, <b className="num">{dollars(open.totalCents)}</b>.
               </p>
               {stale ? <p className={s.stale}>Claims changed since this was proposed. Approving will refuse and send nothing; propose the round again.</p> : null}

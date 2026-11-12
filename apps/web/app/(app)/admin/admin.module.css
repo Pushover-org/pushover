@@ -2,11 +2,23 @@
   display: grid;
   gap: 28px;
 }
+/* Title on its own row; the settlement's figures and the desk's links share the row below. With all
+   three in one row the title was left the width of its longest word (found 2026-11-12). */
 .head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "title title" "facts links";
   gap: 24px 40px;
   align-items: end;
+}
+.head > :first-child {
+  grid-area: title;
+}
+.head > .facts {
+  grid-area: facts;
+}
+.head > .headLinks {
+  grid-area: links;
 }
 .h1 {
   margin-top: 10px;
@@ -30,6 +42,7 @@
 @media (max-width: 1100px) {
   .head {
     grid-template-columns: 1fr;
+    grid-template-areas: "title" "facts" "links";
     align-items: start;
   }
   .facts > div:first-child {

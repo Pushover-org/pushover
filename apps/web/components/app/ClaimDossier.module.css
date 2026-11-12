@@ -175,14 +175,13 @@
   background: var(--card);
   border-left: 1px solid var(--hair-2);
 }
-.vsCol strong {
-  font-family: var(--font-num);
-  font-size: 20px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+/* The AI's answer is pencil (graphite italic, design direction "Exhibit A"): it can be wrong, and
+   where the rule overruled it, it is struck through in the stamp's ink. */
+.vsCol[data-side="model"] strong {
+  font: italic 400 30px/1 var(--font-display);
+  color: var(--pencil);
 }
 .vsCol strong[data-agree="false"] {
-  color: var(--ink-3);
   text-decoration: line-through;
   text-decoration-color: var(--deny);
   text-decoration-thickness: 2px;

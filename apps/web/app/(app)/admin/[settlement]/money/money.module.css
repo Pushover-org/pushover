@@ -233,3 +233,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* A person's sign-off on money: the signature mark (design direction "Exhibit A"). */
+.sig {
+  font: italic 400 22px/1 var(--font-display);
+  color: var(--green);
+}

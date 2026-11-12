@@ -2,8 +2,7 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgb(244 241 232 / 0.92);
-  backdrop-filter: blur(10px);
+  background: var(--paper);
   border-bottom: 1px solid var(--hair);
 }
 .inner {
