@@ -64,7 +64,8 @@ by Nov 5 for the early eligibility check; everything by Nov 12, 23:59.
 | 10 APIMatic: PayPal's Server SDK (P57), purchase proof research (C5) | done: P57 (`c2569ab`); C5 researched and recorded, not built (owner, 2026-11-11) |
 | 11 deploy (R12): Railway web, worker, Postgres (P51), eval gate (P52), sandbox-only guard (P53) | live at https://web-production-3f92e595.up.railway.app (2026-11-12); done: Return URL and webhook set, live Log in with PayPal works, owner logged in from a phone (`docs/deploy.md`) |
 | 12 judges and demo | done except P47 private copies (not built); `/judge`, `/demo/scale`, landing reposition, real round `UN6TR3QNHZV4C` |
-| 13–14 | not started |
+| 13 full eval (R13) and the real sandbox distribution | done: held-out GO on Haiku and Sonnet (`docs/methodology.md`), round 2 `YPBRD2TBA4Y9A` sent and read back |
+| 14 | not started |
 
 Plan items landed: **P16** admin login (real accounts, roles, every action names the person),
 **C7** two-person approval (enforced in code and in the database), P35/P37 (already had),
@@ -246,6 +247,13 @@ requested-document upload, **C11** axe accessibility checks, **C12** Spanish and
   on web and worker); live Log in with PayPal works as buyer1 after the redirect fix (`37424d5`). The owner
   opened it on a phone and logged in with PayPal as buyer1: it worked. Phase 11 is done.
   Next: Phase 12 (judges and demo).
+- **Phase 13 (2026-11-12): done.** Held-out claims-v1 (100 claims), pre-registered gate GO on both models:
+  Haiku fraud paid $40 of $1,620 (worst case $245), honest denied 3/41, workload 8/41, 86/100 as expected,
+  $0.13; Sonnet $40, 2/41, 7/41, 87/100, $1.50 (owner approved the spend; credit was about $10). Misses and
+  fairness by kind in `docs/methodology.md`. Real distribution (§5.5) on the live demo: round 2
+  `YPBRD2TBA4Y9A`, 24 payments $455, Dana Reyes's $10 SUCCESS to her PayPal account, 23 UNCLAIMED; cap raised
+  to $1,000 for that round and set back to $50. The landing page now shows the held-out run; the scroll story
+  keeps the 32 pilot claims.
 - **Phase 12 (2026-11-12): done except P47.** `/judge` (P46: logins, eight steps, status read from the server's
   configuration; P49: the newest real payout's trail from claim to PayPal batch, item and history to the ledger);
   no green for passed checks, all-pass or verified accounts; labels wrap on phones; the batch-ID collision
@@ -358,8 +366,7 @@ Corrections to the spec are in `docs/architecture.md`.
 
 ## Next action
 
-- `../FULL-BUILD-PLAN.md` Phase 13 (full eval on the 100 held-out claims: Haiku about $0.23, at most $0.58;
-  the Sonnet comparison about $4.63, at most $11.53, needs the owner's go), then Phase 14 (submission).
+- `../FULL-BUILD-PLAN.md` Phase 14: README, LIMITATIONS.md, the 3-minute video script, the Devpost text.
 
 ## Pushover history (kept for the record)
 
