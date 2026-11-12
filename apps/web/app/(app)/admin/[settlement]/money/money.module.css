@@ -57,7 +57,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
   gap: 24px 48px;
-  align-items: end;
+  align-items: start;
   padding: 28px;
   border-radius: var(--r-card);
   border: 1.5px solid var(--green);
