@@ -1,0 +1,30 @@
+{
+  "runId": "claims-holdout-2026-11-12-sonnet",
+  "model": "claude-sonnet-5-5",
+  "corpus": "claims-v1",
+  "split": "holdout",
+  "claims": 100,
+  "decisionVersion": "decision-v1",
+  "config": {
+    "imageMaxDistance": 4,
+    "taxMarginPct": 2,
+    "template": {
+      "shingle": 3,
+      "threshold": 0.5,
+      "minOthers": 3
+    },
+    "velocity": {
+      "maxClaims": 5,
+      "hours": 24
+    }
+  },
+  "commit": "12f6f0a596203356b9360d8be8c84a7b2374cb72",
+  "finished": "2026-11-12T12:54:17.178Z",
+  "costUsd": 1.50364,
+  "examiner": {
+    "OK": 78
+  },
+  "modelAlone": {
+    "OK": 100
+  }
+}

@@ -122,6 +122,67 @@ Limits: 32 claims, one run per model, wide intervals (stated above). The pilot h
 seen before the checks were designed, so the unseen-only numbers equal the totals. The full run
 (R13) uses the 100 holdout claims.
 
+## Proof of Claim: the held-out run on claims-v1 — GO on both models (R13, 2026-11-12)
+
+Runs `claims-holdout-2026-11-12-haiku` and `-sonnet` (`packages/eval/results/`), code at commit `12f6f0a`,
+decision table `decision-v1`, check settings `PROVISIONAL_CONFIG` unchanged since R9. The 100 holdout claims
+(41 honest, 45 fraud, 14 ineligible; 78 with a receipt) and their labels were committed in R8 (2026-11-01)
+and never used to tune a rule, a threshold or a prompt; the pass mark is the R9 gate (§5.4). Every reading
+and every model-alone call returned OK on both models.
+
+| | Haiku 5.5 (main) | Sonnet 5.5 |
+|---|---|---|
+| Fraud paid, A pay everyone | $1,620.00 | $1,620.00 |
+| Fraud paid, B model alone | $700.00 | $575.00 |
+| Fraud paid, C Proof of Claim (worst case: every review approved) | **$40.00** ($245.00) | **$40.00** ($275.00) |
+| Ineligible paid, A / B / C | $225 / $0 / $0 | $225 / $0 / $0 |
+| Honest wrongly denied, B | 8/41 (19.5%, CI 10.2–34.0%) | 3/41 (7.3%, CI 2.5–19.4%) |
+| Honest wrongly denied, C | **3/41** (7.3%, CI 2.5–19.4%) | **2/41** (4.9%, CI 1.3–16.1%) |
+| Honest REVIEW + NEED_MORE, C | 8/41 (19.5%, CI 10.2–34.0%) | 7/41 (17.1%, CI 8.5–31.3%) |
+| Honest average check, A / B / C | $11.62 / $17.73 / $21.10 | $11.62 / $19.59 / $22.93 |
+| Receipts read exactly: date, state, subtotal, tax, total, drinks, merchant (of 78) | 77, 78, 76, 77, 75, 71, 78 | 77, 77, 77, 77, 76, 74, 78 |
+| Arm C outcome = expected | 86/100 | 87/100 |
+| The examiner said approve, the rule said deny or review | 30 (2 honest) | 32 (2 honest) |
+| Cost | $0.127 | $1.504 |
+
+**Gate:** fraud ratio C/A 0.025 (≤ 0.25), honest denied 7.3% / 4.9% (≤ 10%), workload 19.5% / 17.1%
+(≤ 30%): **GO** for both models. Haiku stays the main model.
+
+**What went wrong, all of it:**
+- **Honest claimants denied as duplicates (both models):** c-136 and c-155 (two different rendered
+  receipts, r-010 and r-008) were denied `DUPLICATE_IMAGE`. Every rendered receipt shares one layout, so two
+  different renders can hash within distance 4. This is the C6 false positive found on 2026-11-02 (c-115);
+  the owner kept decision table v1 and asked for it to be reported here and in LIMITATIONS.md. Real receipts
+  printed by the same store's till could collide the same way.
+- **Honest claimant denied, Haiku only:** c-059 (H1) `NO_QUALIFYING_PRODUCT`: Haiku did not match the drink
+  line to the product; Sonnet did. Haiku's own recommendation was also deny.
+- **Fraud paid, both models, $10 each:** c-045, c-050, c-052 (F6, one person with five names) and c-106 (F5,
+  bot farm), all without a receipt. They passed every check the eval runs. The eval has no PayPal logins,
+  so the one-claim-per-account rule that stops F6 in the app isn't in it.
+- The worst case ($245 / $275) counts every claim sent to a person as approved.
+
+**Fairness.** By honest kind (Haiku, C): real receipt (H1) 17 approved, 8 asked for one more document,
+1 denied, of 26; several drinks (H2) 6 approved, 2 denied (the duplicate renders), of 8; no receipt (H3)
+7 of 7 approved. Ring detection on the held-out rings-v2 (5,000 claims, pre-registered `60d27eb`, section
+below): false holds by honest kind are household 194/704 (27.6%), coincidence 4/50 (8.0%), shared network
+2/150 (1.3%), solo 17/2,320 (0.7%), campus 1/240 (0.4%). Households are held most: a family filing from
+one home looks like a ring until a person clears the group, which is why a group is held for a person and
+never denied by the code.
+
+**The real sandbox distribution (spec §5.5), on the deployed demo (`docs/deploy.md`).** Three sandbox buyers
+filed no-receipt claims through Log in with PayPal: Dana Reyes was approved; buyers 2 and 3 were denied
+"this person, address or payout email already has an approved claim", since all three sandbox accounts
+carry PayPal's same default sandbox address. With the demo's daily cap raised to $1,000 for this one round
+and put back to $50 after, the analyst proposed and the supervisor approved round 2: batch `YPBRD2TBA4Y9A`
+(`poc-47b3bd0413-acme-restaurant-beverage-r2-p1`), SUCCESS, 24 payments, $455.00, fees $6.00. PayPal's
+record: Dana Reyes $10.00 SUCCESS to the PayPal account she logged in with (item `EKCKLFNUSHSYJ`); 23
+labelled-set claimants UNCLAIMED `RECEIVER_UNREGISTERED` (their addresses are fictional). Round 1
+(`UN6TR3QNHZV4C`, 3 payments, $40.00) is also UNCLAIMED. With `REOFFER_DAYS=2` that money comes back
+around 12 December, is offered again for two days, and is then cy-près eligible during judging.
+
+Limits: one run per model; synthetic fraud (rendered fakes and edited real receipts) on a fictional
+settlement; 41 honest claimants, so the intervals are wide.
+
 The rest of this file is the Pushover record, kept as it was.
 
 How Pushover's number is measured, and what each run found. The plan is spec §2.6 and §5.5–§5.6;
