@@ -118,3 +118,20 @@ describe("reconcile", () => {
     }), { numRuns: 1000 });
   });
 });
+
+describe("batch IDs name the database (migration 0014)", () => {
+  // Two databases on one PayPal app both sent poc-<settlement>-r1-p1, and PayPal took the second
+  // for a retry of the first (2026-11-12). With the database's name in the ID they can't collide.
+  const allocation = allocate({ fundCents: 10_000, adminReserveCents: 0, feePerItemCents: 25, entitlements: [{ claimId: "c1", entitlementCents: 1500 }] });
+  const args = { settlementId: "s", round: 1, allocation, payees: [{ claimId: "c1", email: "a@example.com" }], emailSubject: "x", emailMessage: "y" };
+
+  it("puts the instance in claim and cy-près batch IDs", () => {
+    expect(buildClaimBatches({ ...args, instance: "0a1b2c3d4e" })[0]?.senderBatchId).toBe("poc-0a1b2c3d4e-s-r1-p1");
+    expect(buildClaimBatches({ ...args, instance: "ffffffffff" })[0]?.senderBatchId).not.toBe(buildClaimBatches({ ...args, instance: "0a1b2c3d4e" })[0]?.senderBatchId);
+    expect(buildCyPresBatch({ instance: "0a1b2c3d4e", settlementId: "s", round: 2, recipientEmail: "n@example.com", cents: 500, emailSubject: "x", emailMessage: "y" }).senderBatchId).toBe("poc-0a1b2c3d4e-s-cypres-r2");
+  });
+
+  it("refuses an instance that isn't 10 hex characters", () => {
+    expect(() => buildClaimBatches({ ...args, instance: "laptop" })).toThrow("10 hex characters");
+  });
+});

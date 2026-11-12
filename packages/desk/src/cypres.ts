@@ -4,7 +4,7 @@
 // carried it, so it can go only once (migration 0008).
 import { createHash } from "node:crypto";
 import { buildCyPresBatch, sendBatch } from "@proofofclaim/distribute";
-import { decideProposal, getProposal, insertProposal, markBatchSent, planBatch, recordCyPres, withTransaction, type Analyst, type MoneyProposal } from "@proofofclaim/db";
+import { decideProposal, deploymentInstance, getProposal, insertProposal, markBatchSent, planBatch, recordCyPres, withTransaction, type Analyst, type MoneyProposal } from "@proofofclaim/db";
 import { valueToCents, type PayPalClient } from "@proofofclaim/paypal";
 import type { Desk } from "./desk.ts";
 import { commitLedger, ledgerNote } from "./ledger.ts";
@@ -70,7 +70,7 @@ export async function approveCyPres(desk: Desk, pp: PayPalClient, approver: Anal
 
   const s = desk.settlement;
   const batch = buildCyPresBatch({
-    settlementId: s.id, round: plan.round, recipientEmail: plan.recipient.email, cents: plan.totalCents, note: ledgerNote(s.id, "CY_PRES", plan.round, ledger, hash),
+    instance: await deploymentInstance(desk.pool), settlementId: s.id, round: plan.round, recipientEmail: plan.recipient.email, cents: plan.totalCents, note: ledgerNote(s.id, "CY_PRES", plan.round, ledger, hash),
     emailSubject: `Cy-près distribution from the ${s.name}`,
     emailMessage: `Settlement money that could not be delivered to class members, sent to ${plan.recipient.name} as the court directed. Ledger sha256:${ledger.digest.slice(0, 16)}.`,
   });

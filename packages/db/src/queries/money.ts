@@ -65,3 +65,11 @@ export async function moneyBack(db: Queryable, claimId: string): Promise<{ cents
   const r = rows[0];
   return r ? { cents: Number(r.amount_cents), at: r.money_back_at, reoffers: r.reoffers } : null;
 }
+
+/** This database's own name, part of every PayPal batch ID it sends (migration 0014). */
+export async function deploymentInstance(db: Queryable): Promise<string> {
+  const { rows } = await db.query<{ id: string }>("SELECT id FROM deployment_instance");
+  const id = rows[0]?.id;
+  if (!id) throw new Error("deployment_instance is empty: run the migrations");
+  return id;
+}

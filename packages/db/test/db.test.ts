@@ -34,7 +34,15 @@ describe.skipIf(!DATABASE_URL)("packages/db against Postgres", () => {
     it("is a no-op the second time", async () => {
       expect(await migrate(pool)).toEqual([]);
       const { rows } = await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-      expect(rows.map((r) => r.version)).toEqual(["0001_init.sql", "0002_roles.sql", "0003_policy_v1.sql", "0004_claims.sql", "0005_identity.sql", "0006_analysts.sql", "0007_claimant_privacy.sql", "0008_money_path.sql", "0009_ledger.sql", "0010_rings.sql", "0011_followups.sql", "0012_assistant_states.sql", "0013_assistants.sql"]);
+      expect(rows.map((r) => r.version)).toEqual(["0001_init.sql", "0002_roles.sql", "0003_policy_v1.sql", "0004_claims.sql", "0005_identity.sql", "0006_analysts.sql", "0007_claimant_privacy.sql", "0008_money_path.sql", "0009_ledger.sql", "0010_rings.sql", "0011_followups.sql", "0012_assistant_states.sql", "0013_assistants.sql", "0014_instance.sql"]);
+    });
+
+    it("names this database once, in ten hex characters (0014)", async () => {
+      const { deploymentInstance } = await import("../src/index.ts");
+      const id = await deploymentInstance(pool);
+      expect(id).toMatch(/^[0-9a-f]{10}$/);
+      expect(await deploymentInstance(pool)).toBe(id);
+      await expect(pool.query("INSERT INTO deployment_instance (only_row) VALUES (true)")).rejects.toThrow();
     });
 
     it("refuses to continue when an applied migration was edited", async () => {

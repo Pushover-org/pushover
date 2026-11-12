@@ -1,6 +1,7 @@
-// Turns an allocation into PayPal batches. The batch ID derives from the settlement and the
-// round, so a retry can never create a second batch while PayPal remembers the ID. PayPal only
-// remembers it for 30 days, so the database must also refuse a repeat for good (R6).
+// Turns an allocation into PayPal batches. The batch ID derives from the database, the settlement
+// and the round, so a retry can never create a second batch while PayPal remembers the ID. PayPal
+// only remembers it for 30 days, so the database must also refuse a repeat for good (R6). The
+// database's own name (migration 0014) keeps two databases on one PayPal app from colliding.
 import { createPayoutBatch, type CreatePayoutBatchArgs, type CreatePayoutBatchResult, type PayoutItemInput, type PayPalClient } from "@proofofclaim/paypal";
 import type { Allocation } from "./allocate.ts";
 
@@ -11,6 +12,8 @@ export const MAX_ITEMS_PER_BATCH = 15_000;
 export type Payee = { claimId: string; wallet?: "PAYPAL" | "VENMO" } & ({ email: string; payerId?: never } | { payerId: string; email?: never });
 
 export interface ClaimBatchArgs {
+  /** This database's name (deployment_instance); left out only by callers that never call PayPal. */
+  instance?: string;
   settlementId: string;
   /** Increases for each distribution of the same settlement. */
   round: number;
@@ -22,6 +25,11 @@ export interface ClaimBatchArgs {
   note?: string;
   maxItems?: number;
 }
+
+const prefix = (instance: string | undefined) => {
+  if (instance !== undefined && !/^[0-9a-f]{10}$/.test(instance)) throw new Error(`instance must be 10 hex characters, got ${instance}`);
+  return instance ? `poc-${instance}-` : "poc-";
+};
 
 const assertRound = (round: number) => {
   if (!Number.isInteger(round) || round < 1) throw new Error(`round must be 1 or more, got ${round}`);
@@ -43,15 +51,15 @@ export function buildClaimBatches(a: ClaimBatchArgs): CreatePayoutBatchArgs[] {
   if (items.length === 0) throw new Error("nothing to pay");
   const out: CreatePayoutBatchArgs[] = [];
   for (let i = 0, part = 1; i < items.length; i += max, part++) {
-    out.push({ senderBatchId: `poc-${a.settlementId}-r${a.round}-p${part}`, emailSubject: a.emailSubject, emailMessage: a.emailMessage, items: items.slice(i, i + max) });
+    out.push({ senderBatchId: `${prefix(a.instance)}${a.settlementId}-r${a.round}-p${part}`, emailSubject: a.emailSubject, emailMessage: a.emailMessage, items: items.slice(i, i + max) });
   }
   return out;
 }
 
-export function buildCyPresBatch(a: { settlementId: string; round: number; recipientEmail: string; cents: number; emailSubject: string; emailMessage: string; note?: string }): CreatePayoutBatchArgs {
+export function buildCyPresBatch(a: { instance?: string; settlementId: string; round: number; recipientEmail: string; cents: number; emailSubject: string; emailMessage: string; note?: string }): CreatePayoutBatchArgs {
   assertRound(a.round);
   return {
-    senderBatchId: `poc-${a.settlementId}-cypres-r${a.round}`,
+    senderBatchId: `${prefix(a.instance)}${a.settlementId}-cypres-r${a.round}`,
     emailSubject: a.emailSubject,
     emailMessage: a.emailMessage,
     items: [{ senderItemId: `cypres-r${a.round}`, receiverEmail: a.recipientEmail, cents: a.cents, ...(a.note ? { note: a.note } : {}) }],

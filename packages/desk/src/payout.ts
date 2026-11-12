@@ -4,7 +4,7 @@
 import { allocate, buildClaimBatches, sendBatch, type Allocation, type Payee } from "@proofofclaim/distribute";
 import { createHash } from "node:crypto";
 import {
-  canMoveClaim, decideProposal, getClaim, getProposal, insertProposal, listClaims, markBatchSent, moveClaim, openProposal, planBatch, recordItemRead, withTransaction,
+  canMoveClaim, decideProposal, deploymentInstance, getClaim, getProposal, insertProposal, listClaims, markBatchSent, moveClaim, openProposal, planBatch, recordItemRead, withTransaction,
   type Analyst, type ClaimState, type MoneyProposal,
 } from "@proofofclaim/db";
 import { getBalance, getPayoutBatch, payoutItemOutcome, valueToCents, type PayPalClient } from "@proofofclaim/paypal";
@@ -245,7 +245,7 @@ async function distribute(
   const s = desk.settlement;
   const note = ledgerNote(s.id, "CLAIMS", plan.round, who.ledger, who.planHash);
   const batches = buildClaimBatches({
-    settlementId: s.id, round: plan.round, allocation: plan.allocation, payees: plan.payees, note,
+    instance: await deploymentInstance(desk.pool), settlementId: s.id, round: plan.round, allocation: plan.allocation, payees: plan.payees, note,
     emailSubject: `Your payment from the ${s.name}`,
     emailMessage: `Your claim was approved. This is your share of the settlement fund. Round ${plan.round}, ledger sha256:${who.ledger.digest.slice(0, 16)}.`,
   });
